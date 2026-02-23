@@ -1,0 +1,1564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Moriarty's Maze – Victorian London Pursuit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400;1,600&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #0d0b08;
+  --parchment: #e8d9b5;
+  --parchment-dark: #c9b98a;
+  --parchment-mid: #d8c89e;
+  --gold: #b8860b;
+  --gold-bright: #d4a017;
+  --gold-pale: #f0d060;
+  --crimson: #8b1a1a;
+  --crimson-bright: #c0392b;
+  --fog: #a0a89a;
+  --fog-dark: #6e7568;
+  --night: #1a1410;
+  --shadow: rgba(0,0,0,0.7);
+
+  --cab: #c0392b;
+  --tram: #2471a3;
+  --underground: #1a6b3c;
+  --river: #1f618d;
+
+  --node-r: 10;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Crimson Text', serif;
+  background: var(--ink);
+  color: var(--parchment);
+  min-height: 100vh;
+  overflow: hidden;
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='3' fill='%23b8860b'/%3E%3C/svg%3E") 10 10, crosshair;
+}
+
+/* ── TITLE SCREEN ── */
+#title-screen {
+  position: fixed; inset: 0; z-index: 200;
+  background: var(--ink);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 24px;
+  background-image:
+    radial-gradient(ellipse at 30% 20%, rgba(184,134,11,0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 80%, rgba(139,26,26,0.08) 0%, transparent 50%);
+}
+
+.title-ornament {
+  font-size: 14px; letter-spacing: 8px; text-transform: uppercase;
+  color: var(--gold); opacity: 0.7;
+  font-family: 'Cinzel', serif;
+}
+
+#title-screen h1 {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(36px, 6vw, 80px);
+  font-weight: 900;
+  color: var(--parchment);
+  text-align: center;
+  line-height: 1;
+  letter-spacing: 2px;
+  text-shadow: 0 0 40px rgba(184,134,11,0.4), 0 2px 4px rgba(0,0,0,0.8);
+  animation: flicker 6s ease-in-out infinite;
+}
+
+@keyframes flicker {
+  0%,90%,100% { opacity: 1; }
+  92% { opacity: 0.92; }
+  94% { opacity: 1; }
+  96% { opacity: 0.88; }
+}
+
+#title-screen h1 span { color: var(--gold-bright); }
+
+.title-subtitle {
+  font-family: 'IM Fell English', serif;
+  font-style: italic;
+  font-size: clamp(14px, 2vw, 20px);
+  color: var(--fog);
+  text-align: center;
+  letter-spacing: 1px;
+}
+
+.title-divider {
+  width: 300px; height: 1px;
+  background: linear-gradient(to right, transparent, var(--gold), transparent);
+}
+
+.mode-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 16px; margin-top: 8px;
+}
+
+.mode-card {
+  background: rgba(232,217,181,0.04);
+  border: 1px solid rgba(184,134,11,0.25);
+  padding: 20px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  min-width: 160px;
+}
+.mode-card::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: rgba(184,134,11,0.0);
+  transition: background 0.3s;
+}
+.mode-card:hover::before { background: rgba(184,134,11,0.06); }
+.mode-card:hover {
+  border-color: var(--gold);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.5), 0 0 20px rgba(184,134,11,0.15);
+}
+.mode-icon { font-size: 32px; display: block; margin-bottom: 10px; }
+.mode-title {
+  font-family: 'Cinzel', serif;
+  font-size: 13px; font-weight: 600;
+  color: var(--gold-bright); letter-spacing: 1px;
+  text-transform: uppercase; margin-bottom: 6px;
+}
+.mode-desc {
+  font-size: 12px; color: var(--fog); line-height: 1.4;
+  font-family: 'Crimson Text', serif; font-style: italic;
+}
+
+.title-footer {
+  font-size: 11px; color: var(--fog-dark); letter-spacing: 3px; text-transform: uppercase;
+  font-family: 'Cinzel', serif;
+}
+
+/* ── MAIN GAME LAYOUT ── */
+#game-wrap {
+  display: none;
+  position: fixed; inset: 0;
+  flex-direction: column;
+}
+#game-wrap.active { display: flex; }
+
+#top-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 16px;
+  height: 44px;
+  background: linear-gradient(to right, #0d0b08, #1a1410, #0d0b08);
+  border-bottom: 1px solid rgba(184,134,11,0.3);
+  flex-shrink: 0;
+  position: relative;
+}
+#top-bar::after {
+  content: '';
+  position: absolute; bottom: 0; left: 10%; right: 10%;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--gold-pale), transparent);
+  opacity: 0.3;
+}
+
+.top-title {
+  font-family: 'Cinzel', serif; font-size: 16px; font-weight: 700;
+  color: var(--gold); letter-spacing: 3px;
+}
+.top-title span { color: var(--parchment); font-weight: 400; }
+
+.top-round {
+  font-family: 'Cinzel', serif; font-size: 12px; color: var(--fog);
+  letter-spacing: 2px;
+}
+.top-round strong { color: var(--gold-bright); }
+
+.top-actions { display: flex; gap: 8px; }
+.top-btn {
+  background: transparent; border: 1px solid rgba(184,134,11,0.3);
+  color: var(--fog); font-family: 'Cinzel', serif; font-size: 10px;
+  padding: 4px 10px; cursor: pointer; letter-spacing: 1px; text-transform: uppercase;
+  transition: all 0.2s;
+}
+.top-btn:hover { border-color: var(--gold); color: var(--parchment); }
+
+/* ── MAIN CONTENT AREA ── */
+#content {
+  display: flex; flex: 1; overflow: hidden;
+}
+
+/* ── LEFT PANEL ── */
+#left-panel {
+  width: 220px; flex-shrink: 0;
+  background: #110e0b;
+  border-right: 1px solid rgba(184,134,11,0.2);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-section {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(184,134,11,0.1);
+}
+
+.panel-label {
+  font-family: 'Cinzel', serif; font-size: 9px;
+  letter-spacing: 3px; text-transform: uppercase;
+  color: var(--gold); opacity: 0.7; margin-bottom: 10px;
+}
+
+/* Moriarty card */
+.moriarty-card {
+  background: rgba(139,26,26,0.1);
+  border: 1px solid rgba(139,26,26,0.3);
+  padding: 10px;
+}
+.moriarty-portrait {
+  width: 60px; height: 60px; border-radius: 50%;
+  background: linear-gradient(135deg, #2a1a1a, #3d2020);
+  border: 2px solid rgba(139,26,26,0.5);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; margin: 0 auto 8px;
+  box-shadow: 0 0 20px rgba(139,26,26,0.3);
+}
+.moriarty-name {
+  font-family: 'Cinzel', serif; font-size: 11px;
+  text-align: center; color: var(--crimson-bright);
+  letter-spacing: 1px; margin-bottom: 6px;
+}
+.moriarty-info {
+  font-size: 11px; color: var(--fog); text-align: center;
+  font-style: italic;
+}
+.moriarty-info strong { color: var(--gold-bright); }
+
+.ticket-row {
+  display: flex; gap: 6px; margin-top: 8px; justify-content: center;
+  flex-wrap: wrap;
+}
+.ticket-chip {
+  display: flex; align-items: center; gap: 3px;
+  padding: 2px 6px;
+  border-radius: 2px;
+  font-size: 10px; font-family: 'Cinzel', serif;
+  letter-spacing: 0.5px;
+}
+.ticket-chip.fog { background: rgba(160,168,154,0.15); border: 1px solid rgba(160,168,154,0.4); color: var(--fog); }
+.ticket-chip.bluff { background: rgba(184,134,11,0.1); border: 1px solid rgba(184,134,11,0.4); color: var(--gold-bright); }
+
+/* Move log */
+#move-log {
+  flex: 1; overflow-y: auto; padding: 10px 14px;
+  scrollbar-width: thin; scrollbar-color: rgba(184,134,11,0.2) transparent;
+}
+.log-entry {
+  display: flex; align-items: flex-start; gap: 6px;
+  margin-bottom: 8px; font-size: 11px; line-height: 1.4;
+  animation: fadeIn 0.3s ease;
+}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; } }
+.log-round {
+  font-family: 'Cinzel', serif; font-size: 9px;
+  color: var(--gold); flex-shrink: 0; padding-top: 1px;
+  min-width: 20px;
+}
+.log-text { color: var(--fog); font-style: italic; }
+.log-text strong { color: var(--parchment); font-style: normal; }
+.log-icon { font-size: 12px; flex-shrink: 0; }
+
+/* Transport icons row */
+.transport-legend {
+  padding: 8px 14px; border-top: 1px solid rgba(184,134,11,0.1);
+}
+.transport-item {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 10px; color: var(--fog); margin-bottom: 3px;
+}
+.t-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.t-dot.cab { background: var(--cab); }
+.t-dot.tram { background: var(--tram); }
+.t-dot.underground { background: var(--underground); }
+.t-dot.river { background: var(--river); }
+
+/* ── MAP AREA ── */
+#map-area {
+  flex: 1; position: relative; overflow: hidden;
+  background: #0a0906;
+}
+
+#map-canvas {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+}
+
+/* Map pseudo-texture */
+#map-area::before {
+  content: '';
+  position: absolute; inset: 0; z-index: 0;
+  background:
+    radial-gradient(ellipse at 50% 40%, rgba(201,185,138,0.08) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(232,217,181,0.04) 0%, transparent 100%);
+  pointer-events: none;
+}
+
+/* Fog overlay */
+#fog-overlay {
+  position: absolute; inset: 0; z-index: 5;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 50%, transparent 20%, rgba(0,0,0,0.5) 100%);
+  transition: opacity 1s;
+}
+
+/* Node tooltip */
+#node-tooltip {
+  position: absolute; z-index: 50;
+  background: rgba(13,11,8,0.95);
+  border: 1px solid rgba(184,134,11,0.4);
+  padding: 8px 12px;
+  font-family: 'Crimson Text', serif;
+  font-size: 13px; color: var(--parchment);
+  pointer-events: none;
+  opacity: 0; transition: opacity 0.15s;
+  min-width: 120px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+}
+#node-tooltip.visible { opacity: 1; }
+#node-tooltip strong { font-family: 'Cinzel', serif; font-size: 11px; color: var(--gold); display: block; margin-bottom: 2px; }
+
+/* ── RIGHT PANEL ── */
+#right-panel {
+  width: 240px; flex-shrink: 0;
+  background: #110e0b;
+  border-left: 1px solid rgba(184,134,11,0.2);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+
+/* Detective cards */
+.detective-card {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(184,134,11,0.08);
+  display: flex; gap: 10px; align-items: flex-start;
+  cursor: pointer;
+  transition: background 0.2s;
+  position: relative;
+}
+.detective-card:hover { background: rgba(255,255,255,0.02); }
+.detective-card.active-turn {
+  background: rgba(184,134,11,0.07);
+  border-left: 2px solid var(--gold);
+}
+.detective-card.captured { opacity: 0.4; }
+
+.det-portrait {
+  width: 40px; height: 40px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; flex-shrink: 0;
+  border: 1px solid rgba(184,134,11,0.2);
+}
+.det-portrait.holmes { background: linear-gradient(135deg, #1a1a2e, #2d2d44); }
+.det-portrait.watson { background: linear-gradient(135deg, #1a2e1a, #2d442d); }
+.det-portrait.lestrade { background: linear-gradient(135deg, #1a1a1a, #333); }
+.det-portrait.gregson { background: linear-gradient(135deg, #2e1a1a, #44282e); }
+.det-portrait.wiggins { background: linear-gradient(135deg, #1a2a2e, #2a3e44); }
+
+.det-info { flex: 1; min-width: 0; }
+.det-name {
+  font-family: 'Cinzel', serif; font-size: 10px;
+  color: var(--parchment); letter-spacing: 0.5px; margin-bottom: 2px;
+}
+.det-position {
+  font-size: 10px; color: var(--fog); font-style: italic; margin-bottom: 4px;
+}
+.det-tickets {
+  display: flex; gap: 3px; flex-wrap: wrap;
+}
+.det-ticket {
+  font-size: 9px; padding: 1px 4px;
+  border-radius: 1px; font-family: 'Cinzel', serif; letter-spacing: 0.3px;
+}
+.det-ticket.cab { background: rgba(192,57,43,0.2); color: #e74c3c; }
+.det-ticket.tram { background: rgba(36,113,163,0.2); color: #3498db; }
+.det-ticket.underground { background: rgba(26,107,60,0.2); color: #27ae60; }
+.det-ticket.river { background: rgba(31,97,141,0.2); color: #2980b9; }
+
+.det-move-btn {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  background: transparent; border: 1px solid rgba(184,134,11,0.3);
+  color: var(--gold); font-size: 9px; font-family: 'Cinzel', serif;
+  padding: 3px 7px; cursor: pointer; letter-spacing: 1px;
+  transition: all 0.2s; display: none;
+  text-transform: uppercase;
+}
+.detective-card.active-turn .det-move-btn { display: block; }
+.det-move-btn:hover { background: rgba(184,134,11,0.15); border-color: var(--gold); }
+
+/* Reveal indicator */
+#reveal-banner {
+  position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%);
+  z-index: 100;
+  background: rgba(139,26,26,0.95);
+  border: 1px solid var(--crimson-bright);
+  padding: 8px 24px;
+  font-family: 'Cinzel', serif; font-size: 13px;
+  color: var(--parchment); text-align: center;
+  letter-spacing: 2px; text-transform: uppercase;
+  box-shadow: 0 0 40px rgba(139,26,26,0.5);
+  display: none; animation: pulseReveal 2s ease-in-out infinite;
+}
+@keyframes pulseReveal {
+  0%,100% { box-shadow: 0 0 40px rgba(139,26,26,0.5); }
+  50% { box-shadow: 0 0 60px rgba(192,57,43,0.8); }
+}
+
+/* ── BOTTOM BAR ── */
+#bottom-bar {
+  height: 48px; flex-shrink: 0;
+  background: linear-gradient(to right, #0d0b08, #1a1410, #0d0b08);
+  border-top: 1px solid rgba(184,134,11,0.3);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 16px; gap: 12px;
+}
+
+.phase-indicator {
+  display: flex; align-items: center; gap: 8px;
+}
+.phase-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--gold); animation: pulseDot 1.5s ease-in-out infinite;
+}
+@keyframes pulseDot {
+  0%,100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.7); }
+}
+.phase-text {
+  font-family: 'Cinzel', serif; font-size: 11px; color: var(--parchment);
+  letter-spacing: 1px;
+}
+
+.reveal-schedule {
+  display: flex; gap: 6px; align-items: center;
+}
+.reveal-label {
+  font-size: 10px; color: var(--fog); font-family: 'Cinzel', serif; letter-spacing: 1px;
+}
+.reveal-pip {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: rgba(139,26,26,0.2);
+  border: 1px solid rgba(139,26,26,0.4);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 8px; font-family: 'Cinzel', serif; color: var(--fog);
+  transition: all 0.3s;
+}
+.reveal-pip.past { background: rgba(100,100,100,0.3); border-color: rgba(100,100,100,0.4); color: #555; }
+.reveal-pip.upcoming { background: rgba(139,26,26,0.4); border-color: var(--crimson-bright); color: var(--crimson-bright); }
+.reveal-pip.current { background: var(--crimson); border-color: var(--crimson-bright); color: var(--parchment); animation: pulseDot 1s infinite; }
+
+.action-area { display: flex; gap: 8px; }
+.action-btn {
+  background: rgba(184,134,11,0.1);
+  border: 1px solid rgba(184,134,11,0.4);
+  color: var(--gold-bright);
+  font-family: 'Cinzel', serif; font-size: 10px;
+  padding: 6px 14px; cursor: pointer;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  transition: all 0.2s;
+}
+.action-btn:hover { background: rgba(184,134,11,0.2); box-shadow: 0 0 20px rgba(184,134,11,0.2); }
+.action-btn.danger { background: rgba(139,26,26,0.1); border-color: rgba(139,26,26,0.4); color: var(--crimson-bright); }
+.action-btn.danger:hover { background: rgba(139,26,26,0.2); }
+.action-btn:disabled { opacity: 0.3; cursor: default; }
+
+/* ── MODAL ── */
+#modal-overlay {
+  position: fixed; inset: 0; z-index: 150;
+  background: rgba(0,0,0,0.8);
+  display: flex; align-items: center; justify-content: center;
+  display: none;
+}
+#modal-overlay.active { display: flex; }
+#modal-box {
+  background: var(--ink);
+  border: 1px solid rgba(184,134,11,0.4);
+  padding: 32px;
+  max-width: 420px; width: 90%;
+  box-shadow: 0 0 60px rgba(184,134,11,0.15);
+}
+.modal-title {
+  font-family: 'Cinzel', serif; font-size: 20px; font-weight: 700;
+  color: var(--gold); text-align: center; margin-bottom: 16px;
+  letter-spacing: 2px;
+}
+.modal-body { font-size: 14px; color: var(--fog); line-height: 1.6; margin-bottom: 20px; text-align: center; font-style: italic; }
+.modal-actions { display: flex; gap: 10px; justify-content: center; }
+
+/* ── WIN/LOSE SCREEN ── */
+#outcome-screen {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,0.93);
+  display: none; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 20px;
+}
+#outcome-screen.active { display: flex; }
+.outcome-title {
+  font-family: 'Cinzel', serif; font-size: clamp(32px,5vw,64px);
+  font-weight: 900; text-align: center; letter-spacing: 3px;
+  animation: flickerIn 1s ease forwards;
+}
+@keyframes flickerIn {
+  0% { opacity: 0; } 80% { opacity: 0.8; } 90% { opacity: 0.6; } 100% { opacity: 1; }
+}
+.outcome-moriarty-wins { color: var(--crimson-bright); }
+.outcome-detectives-win { color: var(--gold); }
+.outcome-subtitle {
+  font-family: 'IM Fell English', serif; font-style: italic;
+  font-size: clamp(14px, 2vw, 22px); color: var(--fog); text-align: center;
+}
+
+/* ── COACH PANEL ── */
+#coach-panel {
+  display: none;
+  position: absolute; bottom: 0; left: 220px; right: 240px;
+  z-index: 80;
+  background: rgba(10, 8, 5, 0.95);
+  border-top: 1px solid rgba(184,134,11,0.3);
+  padding: 10px 16px;
+  max-height: 120px; overflow-y: auto;
+}
+#coach-panel.visible { display: block; }
+.coach-entry {
+  font-family: 'IM Fell English', serif; font-style: italic;
+  font-size: 13px; color: var(--parchment); line-height: 1.5;
+  margin-bottom: 4px;
+}
+.coach-entry::before { content: '"'; color: var(--gold); }
+.coach-entry::after { content: '"'; color: var(--gold); }
+.coach-label {
+  font-family: 'Cinzel', serif; font-size: 9px; letter-spacing: 2px;
+  color: var(--gold); margin-bottom: 6px; text-transform: uppercase; opacity: 0.7;
+}
+
+/* scroll bar styling */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(184,134,11,0.2); border-radius: 2px; }
+
+/* Animations for nodes */
+@keyframes nodeGlow {
+  0%,100% { filter: drop-shadow(0 0 4px rgba(184,134,11,0.6)); }
+  50% { filter: drop-shadow(0 0 10px rgba(184,134,11,0.9)); }
+}
+@keyframes moriGlow {
+  0%,100% { filter: drop-shadow(0 0 6px rgba(139,26,26,0.8)); }
+  50% { filter: drop-shadow(0 0 16px rgba(192,57,43,1)); }
+}
+
+</style>
+</head>
+<body>
+
+<!-- TITLE SCREEN -->
+<div id="title-screen">
+  <div class="title-ornament">London, 1895</div>
+  <h1>MORIARTY'S<br><span>MAZE</span></h1>
+  <div class="title-subtitle">A Hidden Movement Pursuit Across Victorian London</div>
+  <div class="title-divider"></div>
+  <div class="mode-grid">
+    <div class="mode-card" onclick="startGame('moriarty')">
+      <span class="mode-icon">🎩</span>
+      <div class="mode-title">Play as<br>Moriarty</div>
+      <div class="mode-desc">Navigate London unseen. Evade five determined detectives.</div>
+    </div>
+    <div class="mode-card" onclick="startGame('detective')">
+      <span class="mode-icon">🔍</span>
+      <div class="mode-title">Play as<br>Detectives</div>
+      <div class="mode-desc">Deduce, pursue, and corner the Napoleon of Crime.</div>
+    </div>
+    <div class="mode-card" onclick="startGame('coach')">
+      <span class="mode-icon">📋</span>
+      <div class="mode-title">Coach<br>Mode</div>
+      <div class="mode-desc">Observe and receive Holmesian deduction in real time.</div>
+    </div>
+  </div>
+  <div class="title-divider"></div>
+  <div class="title-footer">Reynolds's New Map of London · 1883 · 200 Nodes</div>
+</div>
+
+<!-- GAME WRAP -->
+<div id="game-wrap">
+  <!-- TOP BAR -->
+  <div id="top-bar">
+    <div class="top-title">MORIARTY'S <span>MAZE</span></div>
+    <div class="top-round">Round <strong id="round-num">1</strong> of 22</div>
+    <div class="top-actions">
+      <button class="top-btn" onclick="toggleCoach()">Coach</button>
+      <button class="top-btn" onclick="showModal('rules')">Rules</button>
+      <button class="top-btn" onclick="backToTitle()">← Exit</button>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div id="content">
+
+    <!-- LEFT PANEL -->
+    <div id="left-panel">
+      <div class="panel-section">
+        <div class="panel-label">The Adversary</div>
+        <div class="moriarty-card">
+          <div class="moriarty-portrait">🎩</div>
+          <div class="moriarty-name">Prof. James Moriarty</div>
+          <div class="moriarty-info" id="moriarty-status">Last seen: <strong>Node 34</strong></div>
+          <div class="ticket-row">
+            <div class="ticket-chip fog">🌫 Fog <span id="fog-count">3</span></div>
+            <div class="ticket-chip bluff">⚡ Bluff <span id="bluff-count">2</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-section" style="flex:1;display:flex;flex-direction:column;overflow:hidden;padding-bottom:0;">
+        <div class="panel-label">Movement Log</div>
+        <div id="move-log">
+          <div class="log-entry">
+            <div class="log-round">–</div>
+            <div class="log-icon">🕵️</div>
+            <div class="log-text"><strong>Game begun.</strong> Moriarty has vanished into the fog.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="transport-legend">
+        <div class="panel-label" style="margin-bottom:6px;">Transport Types</div>
+        <div class="transport-item"><div class="t-dot cab"></div> Hansom Cab (464)</div>
+        <div class="transport-item"><div class="t-dot tram"></div> Tramway (132)</div>
+        <div class="transport-item"><div class="t-dot underground"></div> Underground (26)</div>
+        <div class="transport-item"><div class="t-dot river"></div> River Boat (4)</div>
+      </div>
+    </div>
+
+    <!-- MAP AREA -->
+    <div id="map-area">
+      <canvas id="map-canvas"></canvas>
+      <div id="fog-overlay"></div>
+      <div id="node-tooltip"></div>
+      <div id="reveal-banner">⚠ Reveal Round – Moriarty Sighted!</div>
+      <div id="coach-panel">
+        <div class="coach-label">🔎 Holmes Advises</div>
+        <div id="coach-text"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div id="right-panel">
+      <div class="panel-section" style="padding-bottom:8px;">
+        <div class="panel-label">The Detective Bureau</div>
+      </div>
+      <div id="detective-list"></div>
+    </div>
+
+  </div>
+
+  <!-- BOTTOM BAR -->
+  <div id="bottom-bar">
+    <div class="phase-indicator">
+      <div class="phase-dot" id="phase-dot"></div>
+      <div class="phase-text" id="phase-text">Moriarty's Turn</div>
+    </div>
+    <div class="reveal-schedule" id="reveal-schedule">
+      <div class="reveal-label">Reveals:</div>
+    </div>
+    <div class="action-area">
+      <button class="action-btn danger" id="fog-btn" onclick="useFog()">Use Heavy Fog</button>
+      <button class="action-btn danger" id="bluff-btn" onclick="useBluff()">Double Bluff</button>
+      <button class="action-btn" id="end-turn-btn" onclick="endTurn()">End Turn →</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL -->
+<div id="modal-overlay">
+  <div id="modal-box">
+    <div class="modal-title" id="modal-title"></div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-actions" id="modal-actions"></div>
+  </div>
+</div>
+
+<!-- OUTCOME -->
+<div id="outcome-screen">
+  <div class="outcome-title" id="outcome-title"></div>
+  <div class="outcome-subtitle" id="outcome-subtitle"></div>
+  <div style="margin-top:20px; display:flex; gap:12px;">
+    <button class="action-btn" onclick="backToTitle()">Return to London</button>
+    <button class="action-btn danger" onclick="startGame(currentMode)">Play Again</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  GAME STATE
+// ═══════════════════════════════════════════════
+let currentMode = 'detective';
+let round = 1;
+const MAX_ROUNDS = 22;
+const REVEAL_ROUNDS = [3, 8, 13, 18, 22];
+const NODE_COUNT = 200;
+
+let gameState = {
+  moriartyNode: 0,
+  moriLastRevealed: -1,
+  fogTickets: 3,
+  bluffTickets: 2,
+  fogUsed: false,
+  bluffUsed: false,
+  detectives: [],
+  phase: 'moriarty', // 'moriarty' | 'detectives'
+  activeDetective: 0,
+  nodes: [],
+  edges: [],
+  selectedNode: null,
+};
+
+// ═══════════════════════════════════════════════
+//  NODE GENERATION (200 nodes, historically placed)
+// ═══════════════════════════════════════════════
+function generateNodes(W, H) {
+  const nodes = [];
+  // Seed positions based on rough Victorian London geography
+  // West End, City, Docklands, Southwark, etc.
+  const REGIONS = [
+    { name:'West End',    cx:0.25, cy:0.35, r:0.14, count:30 },
+    { name:'City',        cx:0.55, cy:0.40, r:0.11, count:28 },
+    { name:'Docklands',   cx:0.75, cy:0.45, r:0.12, count:18 },
+    { name:'Southwark',   cx:0.50, cy:0.65, r:0.12, count:22 },
+    { name:'Lambeth',     cx:0.38, cy:0.70, r:0.10, count:16 },
+    { name:'Hackney',     cx:0.65, cy:0.25, r:0.10, count:16 },
+    { name:'Islington',   cx:0.50, cy:0.22, r:0.09, count:15 },
+    { name:'Westminster', cx:0.30, cy:0.50, r:0.09, count:18 },
+    { name:'Bermondsey',  cx:0.62, cy:0.62, r:0.09, count:12 },
+    { name:'Marylebone',  cx:0.28, cy:0.25, r:0.09, count:12 },
+    { name:'Stepney',     cx:0.72, cy:0.35, r:0.08, count:13 },
+  ];
+
+  const PLACE_NAMES = [
+    'Baker St','Victoria','Waterloo','London Bridge','Paddington','Cannon St',
+    'Charing Cross','Euston','King\'s Cross','Liverpool St','Fenchurch St',
+    'Blackfriars','Temple','Aldgate','Moorgate','Monument','Bank','Mansion Hs',
+    'Southwark','Borough','Elephant','Kennington','Oval','Stockwell','Brixton',
+    'Lambeth','Westminster','Pimlico','Sloane Sq','Chelsea','Fulham','Hammersmith',
+    'Shepherd\'s Bush','Notting Hill','Bayswater','Marble Arch','Hyde Pk Cr',
+    'Edgware Rd','Marylebone','Regent\'s Pk','Great Portland','Oxford Circus',
+    'Bond St','Green Pk','St James','Piccadilly','Leicester Sq','Covent Gdn',
+    'Holborn','Chancery Ln','Farringdon','Barbican','Old St','Shoreditch',
+    'Whitechapel','Aldgate E','Stepney','Limehouse','Poplar','Blackwall',
+    'Greenwich','Deptford','Bermondsey','New Cross','Peckham','Camberwell',
+    'Hackney','Dalston','Stoke Newington','Highbury','Canonbury','Angel',
+    'City Rd','Clerkenwell','Smithfield','Newgate','Fleet St','Strand',
+    'Trafalgar','Whitehall','Parliament','Vauxhall','Nine Elms','Battersea',
+    'Wandsworth','Clapham','Balham','Tooting','Streatham','Norwood',
+    'Houndsditch','Bishopsgate','Spitalfields','Mile End','Bow','Stratford',
+    'West Ham','Plaistow','Barking','Ilford','Leyton','Clapton','Stoke Newington E',
+    'Finsbury Pk','Crouch End','Hornsey','Wood Green','Tottenham','Edmonton',
+    'St Pancras','Bloomsbury','Russell Sq','Tavistock','Fitzroy','Soho',
+    'Carnaby','Wardour','Berwick','Dean St','Greek St','Frith St','Shaftesbury',
+    'Haymarket','Pall Mall','St James\'s','Carlton','Reform Club','Athenaeum',
+    'Waterloo Rd','Blackfriars Rd','Borough Mkt','Tooley St','Bermondsey St',
+    'Jamaica Rd','Rotherhithe','Surrey Docks','Millwall','Isle of Dogs',
+    'Cubitt Town','Canary Wharf','West India Dk','East India Dk',
+  ];
+
+  let nodeIdx = 0;
+  for (const reg of REGIONS) {
+    for (let i = 0; i < reg.count && nodeIdx < NODE_COUNT; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = Math.random() * reg.r;
+      const nx = (reg.cx + Math.cos(angle) * dist) * W;
+      const ny = (reg.cy + Math.sin(angle) * dist) * H;
+      nodes.push({
+        id: nodeIdx,
+        x: Math.max(30, Math.min(W-30, nx)),
+        y: Math.max(30, Math.min(H-30, ny)),
+        name: PLACE_NAMES[nodeIdx] || `Node ${nodeIdx}`,
+        region: reg.name,
+      });
+      nodeIdx++;
+    }
+  }
+  while (nodes.length < NODE_COUNT) {
+    nodes.push({
+      id: nodes.length,
+      x: 30 + Math.random() * (W - 60),
+      y: 30 + Math.random() * (H - 60),
+      name: `Node ${nodes.length}`,
+      region: 'Other',
+    });
+  }
+  return nodes;
+}
+
+// ═══════════════════════════════════════════════
+//  EDGE GENERATION (procedural, connected)
+// ═══════════════════════════════════════════════
+function dist2(a, b) {
+  return (a.x-b.x)**2 + (a.y-b.y)**2;
+}
+
+function generateEdges(nodes) {
+  const edges = [];
+  const edgeSet = new Set();
+  const addEdge = (i, j, type) => {
+    const key = i < j ? `${i}-${j}` : `${j}-${i}`;
+    if (!edgeSet.has(key)) {
+      edgeSet.add(key);
+      edges.push({ a: i, b: j, type });
+    }
+  };
+
+  // Ensure connectivity: build spanning tree
+  const visited = new Set([0]);
+  const unvisited = new Set(Array.from({length: NODE_COUNT}, (_,i)=>i).slice(1));
+  while (unvisited.size > 0) {
+    let bestDist = Infinity, bestI = -1, bestJ = -1;
+    for (const i of visited) {
+      for (const j of unvisited) {
+        const d = dist2(nodes[i], nodes[j]);
+        if (d < bestDist) { bestDist = d; bestI = i; bestJ = j; }
+      }
+    }
+    addEdge(bestI, bestJ, 'cab');
+    visited.add(bestJ);
+    unvisited.delete(bestJ);
+  }
+
+  // Fill cab edges (target ~464 total)
+  const sorted = [];
+  for (let i = 0; i < NODE_COUNT; i++) {
+    for (let j = i+1; j < NODE_COUNT; j++) {
+      sorted.push([i, j, dist2(nodes[i], nodes[j])]);
+    }
+  }
+  sorted.sort((a,b)=>a[2]-b[2]);
+  for (const [i, j] of sorted) {
+    if (edges.filter(e=>e.type==='cab').length >= 464) break;
+    const d = Math.sqrt(dist2(nodes[i], nodes[j]));
+    const W = gameState.nodes[0]?.x ? 1 : 1; // relative
+    if (d < 180) addEdge(i, j, 'cab');
+  }
+
+  // Tramway: medium distance, structured corridors
+  for (let attempt = 0; edges.filter(e=>e.type==='tram').length < 132 && attempt < 5000; attempt++) {
+    const i = Math.floor(Math.random() * NODE_COUNT);
+    const j = Math.floor(Math.random() * NODE_COUNT);
+    if (i === j) continue;
+    const d = Math.sqrt(dist2(nodes[i], nodes[j]));
+    if (d > 80 && d < 250) addEdge(i, j, 'tram');
+  }
+
+  // Underground: long arcs
+  for (let attempt = 0; edges.filter(e=>e.type==='underground').length < 26 && attempt < 3000; attempt++) {
+    const i = Math.floor(Math.random() * NODE_COUNT);
+    const j = Math.floor(Math.random() * NODE_COUNT);
+    if (i === j) continue;
+    const d = Math.sqrt(dist2(nodes[i], nodes[j]));
+    if (d > 200) addEdge(i, j, 'underground');
+  }
+
+  // River: Thames corridor (nodes in central y-band)
+  const thamesY = { min: 0.45, max: 0.58 };
+  const thamesNodes = nodes.filter(n => {
+    const W = gameState.canvas?.width || 900;
+    const H = gameState.canvas?.height || 600;
+    return (n.y/H) >= thamesY.min && (n.y/H) <= thamesY.max;
+  });
+  const riverAdded = edges.filter(e=>e.type==='river').length;
+  for (let i = 0; i < thamesNodes.length && edges.filter(e=>e.type==='river').length < riverAdded+4; i++) {
+    const a = thamesNodes[i];
+    const b = thamesNodes[(i+1) % thamesNodes.length];
+    if (a && b && a.id !== b.id) addEdge(a.id, b.id, 'river');
+  }
+
+  return edges;
+}
+
+function getNeighbors(nodeId) {
+  return gameState.edges
+    .filter(e => e.a === nodeId || e.b === nodeId)
+    .map(e => ({ node: e.a === nodeId ? e.b : e.a, type: e.type }));
+}
+
+// ═══════════════════════════════════════════════
+//  DETECTIVES
+// ═══════════════════════════════════════════════
+const DETECTIVES = [
+  { name:'Sherlock Holmes', emoji:'🔍', cls:'holmes',  tickets:{cab:12,tram:8,underground:4,river:2} },
+  { name:'Dr John Watson',  emoji:'📖', cls:'watson',  tickets:{cab:11,tram:6,underground:3,river:1} },
+  { name:'Insp. Lestrade',  emoji:'⚖️', cls:'lestrade',tickets:{cab:10,tram:6,underground:3,river:1} },
+  { name:'Insp. Gregson',   emoji:'🗂️', cls:'gregson', tickets:{cab:10,tram:6,underground:3,river:1} },
+  { name:'Wiggins',         emoji:'🧢', cls:'wiggins', tickets:{cab:9, tram:5,underground:2,river:1} },
+];
+
+// ═══════════════════════════════════════════════
+//  CANVAS RENDERING
+// ═══════════════════════════════════════════════
+let canvas, ctx;
+let hoveredNode = null;
+let transform = { x: 0, y: 0, scale: 1 };
+let dragging = false, dragStart = null, dragOrigin = null;
+let validMoves = [];
+
+const COLORS = {
+  cab: '#c0392b',
+  tram: '#2471a3',
+  underground: '#1a6b3c',
+  river: '#1f618d',
+};
+
+function initCanvas() {
+  canvas = document.getElementById('map-canvas');
+  gameState.canvas = canvas;
+  ctx = canvas.getContext('2d');
+  resizeCanvas();
+
+  canvas.addEventListener('mousemove', onMouseMove);
+  canvas.addEventListener('click', onCanvasClick);
+  canvas.addEventListener('mousedown', e => {
+    if (e.button === 1 || e.button === 2 || e.altKey) {
+      dragging = true;
+      dragStart = { x: e.clientX, y: e.clientY };
+      dragOrigin = { ...transform };
+    }
+  });
+  canvas.addEventListener('mousemove', e => {
+    if (dragging) {
+      transform.x = dragOrigin.x + (e.clientX - dragStart.x);
+      transform.y = dragOrigin.y + (e.clientY - dragStart.y);
+      drawMap();
+    }
+  });
+  canvas.addEventListener('mouseup', () => { dragging = false; });
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.1 : 0.91;
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    transform.x = mx - (mx - transform.x) * factor;
+    transform.y = my - (my - transform.y) * factor;
+    transform.scale *= factor;
+    transform.scale = Math.max(0.4, Math.min(4, transform.scale));
+    drawMap();
+  }, { passive: false });
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
+}
+
+function resizeCanvas() {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width;
+  canvas.height = rect.height;
+  if (gameState.nodes.length === 0) return;
+  drawMap();
+}
+
+function worldToScreen(x, y) {
+  return [x * transform.scale + transform.x, y * transform.scale + transform.y];
+}
+function screenToWorld(x, y) {
+  return [(x - transform.x) / transform.scale, (y - transform.y) / transform.scale];
+}
+
+function drawMap() {
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  // Background map texture (sepia grid)
+  ctx.fillStyle = '#100d09';
+  ctx.fillRect(0, 0, W, H);
+
+  // Subtle grid lines (map feel)
+  ctx.strokeStyle = 'rgba(201,185,138,0.04)';
+  ctx.lineWidth = 1;
+  const gridSpacing = 40 * transform.scale;
+  const offX = transform.x % gridSpacing;
+  const offY = transform.y % gridSpacing;
+  for (let x = offX; x < W; x += gridSpacing) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  for (let y = offY; y < H; y += gridSpacing) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+
+  // Draw edges
+  for (const edge of gameState.edges) {
+    const a = gameState.nodes[edge.a];
+    const b = gameState.nodes[edge.b];
+    const [ax, ay] = worldToScreen(a.x, a.y);
+    const [bx, by] = worldToScreen(b.x, b.y);
+
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(bx, by);
+
+    const color = COLORS[edge.type];
+    const alpha = edge.type === 'cab' ? 0.18 : edge.type === 'tram' ? 0.3 : edge.type === 'underground' ? 0.45 : 0.5;
+    ctx.strokeStyle = color + Math.round(alpha * 255).toString(16).padStart(2,'0');
+    ctx.lineWidth = edge.type === 'underground' ? 2.5 * transform.scale : edge.type === 'tram' ? 1.8 * transform.scale : 1 * transform.scale;
+
+    if (edge.type === 'underground') {
+      ctx.setLineDash([6 * transform.scale, 4 * transform.scale]);
+    } else if (edge.type === 'river') {
+      ctx.setLineDash([8 * transform.scale, 3 * transform.scale]);
+      ctx.lineWidth = 2.5 * transform.scale;
+    } else {
+      ctx.setLineDash([]);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Highlight valid move edges
+  for (const mv of validMoves) {
+    const dest = gameState.nodes[mv.node];
+    const src = gameState.nodes[
+      gameState.phase === 'moriarty'
+        ? gameState.moriartyNode
+        : gameState.detectives[gameState.activeDetective].node
+    ];
+    if (!src || !dest) continue;
+    const [ax, ay] = worldToScreen(src.x, src.y);
+    const [bx, by] = worldToScreen(dest.x, dest.y);
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
+    ctx.strokeStyle = COLORS[mv.type] + 'cc';
+    ctx.lineWidth = 3 * transform.scale;
+    ctx.setLineDash([]);
+    ctx.stroke();
+  }
+
+  // Draw nodes
+  for (const node of gameState.nodes) {
+    const [sx, sy] = worldToScreen(node.x, node.y);
+    const r = 5 * Math.max(0.5, transform.scale);
+
+    const isMori = node.id === gameState.moriartyNode;
+    const isMoriRevealed = REVEAL_ROUNDS.includes(round) || (currentMode === 'moriarty');
+    const isDet = gameState.detectives.some(d => d.node === node.id);
+    const isValid = validMoves.some(m => m.node === node.id);
+    const isHovered = hoveredNode === node.id;
+    const isLastSeen = node.id === gameState.moriLastRevealed;
+
+    // Glow for valid moves
+    if (isValid) {
+      ctx.beginPath(); ctx.arc(sx, sy, r * 2.2, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(184,134,11,0.15)';
+      ctx.fill();
+    }
+
+    // Moriarty glow (if revealed)
+    if (isMori && isMoriRevealed) {
+      ctx.beginPath(); ctx.arc(sx, sy, r * 2.5, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(139,26,26,0.25)';
+      ctx.fill();
+    }
+
+    // Last seen pulse
+    if (isLastSeen && !isMoriRevealed) {
+      ctx.beginPath(); ctx.arc(sx, sy, r * 2, 0, Math.PI*2);
+      ctx.strokeStyle = 'rgba(139,26,26,0.4)';
+      ctx.lineWidth = 1; ctx.setLineDash([3,3]);
+      ctx.stroke(); ctx.setLineDash([]);
+    }
+
+    // Node circle
+    ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI*2);
+
+    if (isMori && isMoriRevealed) {
+      ctx.fillStyle = '#8b1a1a';
+    } else if (isDet) {
+      ctx.fillStyle = '#b8860b';
+    } else if (isValid) {
+      ctx.fillStyle = '#d4a017';
+    } else if (isHovered) {
+      ctx.fillStyle = '#e8d9b5';
+    } else {
+      ctx.fillStyle = '#3a3028';
+    }
+    ctx.fill();
+
+    // Border
+    ctx.strokeStyle = isValid ? '#d4a017' : isHovered ? '#c9b98a' : 'rgba(201,185,138,0.25)';
+    ctx.lineWidth = isValid ? 1.5 : 0.5;
+    ctx.stroke();
+
+    // Detective emoji labels
+    const dets = gameState.detectives.filter(d => d.node === node.id);
+    if (dets.length > 0 && transform.scale > 0.6) {
+      ctx.font = `${Math.round(12 * transform.scale)}px serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText(dets.map(d=>d.emoji).join(''), sx, sy - r - 3 * transform.scale);
+    }
+
+    // Moriarty marker
+    if (isMori && isMoriRevealed && transform.scale > 0.5) {
+      ctx.font = `${Math.round(14 * transform.scale)}px serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('🎩', sx, sy - r - 3 * transform.scale);
+    }
+
+    // Node label at high zoom
+    if (transform.scale > 1.2 && gameState.nodes.length > 0) {
+      ctx.font = `${Math.round(8 * transform.scale)}px Crimson Text, serif`;
+      ctx.fillStyle = isHovered ? '#e8d9b5' : 'rgba(201,185,138,0.5)';
+      ctx.textAlign = 'center';
+      ctx.fillText(node.name, sx, sy + r + 10 * transform.scale);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  INTERACTION
+// ═══════════════════════════════════════════════
+function onMouseMove(e) {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const [wx, wy] = screenToWorld(mx, my);
+
+  let nearest = null, nearDist = Infinity;
+  for (const node of gameState.nodes) {
+    const d = (node.x - wx)**2 + (node.y - wy)**2;
+    if (d < nearDist) { nearDist = d; nearest = node.id; }
+  }
+  const threshold = (20 / transform.scale) ** 2;
+  hoveredNode = nearDist < threshold ? nearest : null;
+
+  // Tooltip
+  const tooltip = document.getElementById('node-tooltip');
+  if (hoveredNode !== null) {
+    const node = gameState.nodes[hoveredNode];
+    const [sx, sy] = worldToScreen(node.x, node.y);
+    const isValid = validMoves.some(m => m.node === hoveredNode);
+    const validEdge = validMoves.find(m => m.node === hoveredNode);
+    const dets = gameState.detectives.filter(d => d.node === hoveredNode);
+
+    tooltip.innerHTML = `<strong>${node.name}</strong>${node.region ? `<span style="font-size:10px;color:#6e7568"> · ${node.region}</span>` : ''}<br>`;
+    if (isValid) tooltip.innerHTML += `<span style="color:#d4a017">→ Move via ${validEdge.type}</span>`;
+    if (dets.length) tooltip.innerHTML += `<br>${dets.map(d=>d.emoji+' '+d.name.split(' ')[0]).join(', ')}`;
+
+    tooltip.style.left = (sx + 12) + 'px';
+    tooltip.style.top = (sy - 10) + 'px';
+    tooltip.classList.add('visible');
+  } else {
+    tooltip.classList.remove('visible');
+  }
+
+  drawMap();
+}
+
+function onCanvasClick(e) {
+  if (dragging) return;
+  if (hoveredNode === null) return;
+
+  const mv = validMoves.find(m => m.node === hoveredNode);
+  if (!mv) return;
+
+  moveToNode(hoveredNode, mv.type);
+}
+
+function moveToNode(nodeId, type) {
+  if (gameState.phase === 'moriarty') {
+    gameState.moriartyNode = nodeId;
+    addLog(`R${round}`, '🎩', `Moriarty moves by <strong>${type}</strong>.`);
+    gameState.phase = 'detectives';
+    gameState.activeDetective = 0;
+    validMoves = computeDetValidMoves(0);
+    updateUI();
+    if (REVEAL_ROUNDS.includes(round)) {
+      gameState.moriLastRevealed = nodeId;
+      document.getElementById('reveal-banner').style.display = 'block';
+      setTimeout(() => document.getElementById('reveal-banner').style.display = 'none', 3000);
+      updateMoriartyStatus();
+    }
+    checkWin();
+  } else {
+    const det = gameState.detectives[gameState.activeDetective];
+    det.tickets[type]--;
+    det.node = nodeId;
+    addLog(`R${round}`, det.emoji, `<strong>${det.name.split(' ').pop()}</strong> moves to ${gameState.nodes[nodeId].name}.`);
+    checkCapture();
+    gameState.activeDetective++;
+    if (gameState.activeDetective >= 5) {
+      round++;
+      document.getElementById('round-num').textContent = round;
+      if (round > MAX_ROUNDS) { triggerOutcome('moriarty'); return; }
+      gameState.phase = 'moriarty';
+      validMoves = computeMoriValidMoves();
+    } else {
+      validMoves = computeDetValidMoves(gameState.activeDetective);
+    }
+    updateUI();
+    if (currentMode === 'moriarty' && gameState.phase === 'moriarty') {
+      // AI takes detective turns handled already above
+    }
+    if ((currentMode === 'detective' || currentMode === 'coach') && gameState.phase === 'moriarty') {
+      setTimeout(aiMoriartyMove, 600);
+    }
+    if (currentMode === 'moriarty' && gameState.phase === 'detectives') {
+      setTimeout(aiDetectiveMoves, 600);
+    }
+  }
+  updateDetectivePanel();
+  drawMap();
+}
+
+function computeMoriValidMoves() {
+  return getNeighbors(gameState.moriartyNode);
+}
+function computeDetValidMoves(detIdx) {
+  const det = gameState.detectives[detIdx];
+  return getNeighbors(det.node).filter(m => det.tickets[m.type] > 0);
+}
+
+// ═══════════════════════════════════════════════
+//  AI LOGIC
+// ═══════════════════════════════════════════════
+function aiMoriartyMove() {
+  const moves = computeMoriValidMoves();
+  if (!moves.length) { triggerOutcome('detectives'); return; }
+
+  // Score: maximise min distance to detectives
+  let best = null, bestScore = -1;
+  for (const mv of moves) {
+    const node = gameState.nodes[mv.node];
+    const minDetDist = Math.min(...gameState.detectives.map(d => {
+      const dn = gameState.nodes[d.node];
+      return (node.x - dn.x)**2 + (node.y - dn.y)**2;
+    }));
+    if (minDetDist > bestScore) { bestScore = minDetDist; best = mv; }
+  }
+
+  gameState.moriartyNode = best.node;
+  addLog(`R${round}`, '🎩', `Moriarty moves by <strong>${best.type}</strong>.`);
+  if (REVEAL_ROUNDS.includes(round)) {
+    gameState.moriLastRevealed = best.node;
+    document.getElementById('reveal-banner').style.display = 'block';
+    setTimeout(() => document.getElementById('reveal-banner').style.display = 'none', 3000);
+    updateMoriartyStatus();
+  }
+  gameState.phase = 'detectives';
+  gameState.activeDetective = 0;
+  validMoves = computeDetValidMoves(0);
+  updateUI();
+  drawMap();
+  checkWin();
+  if (currentMode === 'coach') provideCoachTip();
+}
+
+function aiDetectiveMoves() {
+  for (let i = gameState.activeDetective; i < 5; i++) {
+    const det = gameState.detectives[i];
+    const moves = computeDetValidMoves(i);
+    if (!moves.length) { gameState.activeDetective++; continue; }
+    // Move towards last known Moriarty position
+    const target = gameState.nodes[gameState.moriLastRevealed >= 0 ? gameState.moriLastRevealed : gameState.moriartyNode];
+    let best = null, bestScore = Infinity;
+    for (const mv of moves) {
+      const n = gameState.nodes[mv.node];
+      const d = (n.x - target.x)**2 + (n.y - target.y)**2;
+      if (d < bestScore) { bestScore = d; best = mv; }
+    }
+    if (best) {
+      det.tickets[best.type]--;
+      det.node = best.node;
+      addLog(`R${round}`, det.emoji, `<strong>${det.name.split(' ').pop()}</strong> moves to ${gameState.nodes[best.node].name}.`);
+    }
+    checkCapture();
+  }
+  round++;
+  document.getElementById('round-num').textContent = round;
+  if (round > MAX_ROUNDS) { triggerOutcome('moriarty'); return; }
+  gameState.phase = 'moriarty';
+  gameState.activeDetective = 0;
+  validMoves = computeMoriValidMoves();
+  updateUI();
+  updateDetectivePanel();
+  drawMap();
+  checkWin();
+}
+
+function provideCoachTip() {
+  const panel = document.getElementById('coach-panel');
+  const txt = document.getElementById('coach-text');
+  const tips = [
+    `Moriarty was last sighted near ${gameState.nodes[gameState.moriLastRevealed]?.name || 'an unknown locality'}. Holmes deduces he will seek the Underground if pressed.`,
+    `The fog of London thickens. Three possible escape corridors remain. Cut off the eastern flank first.`,
+    `Watson should advance northward — Moriarty cannot double back without crossing a detective's path.`,
+    `Elementary: the professor always avoids the river when his tickets are spent. Watch the cab routes.`,
+    `Lestrade and Gregson should fan outward. Holmes alone can anticipate Moriarty's next gambit.`,
+  ];
+  txt.innerHTML = `<div class="coach-entry">${tips[round % tips.length]}</div>`;
+  panel.classList.add('visible');
+}
+
+// ═══════════════════════════════════════════════
+//  SPECIAL TICKETS
+// ═══════════════════════════════════════════════
+function useFog() {
+  if (gameState.fogTickets <= 0 || gameState.fogUsed) return;
+  if (gameState.phase !== 'moriarty') return;
+  gameState.fogUsed = true;
+  gameState.fogTickets--;
+  document.getElementById('fog-count').textContent = gameState.fogTickets;
+  // Allow all neighbor types regardless
+  validMoves = gameState.nodes
+    .filter((_, i) => i !== gameState.moriartyNode)
+    .slice(0, 8)
+    .map(n => ({ node: n.id, type: 'fog' }));
+  addLog(`R${round}`, '🌫️', `Moriarty uses <strong>Heavy Fog</strong> — all routes obscured!`);
+  updateUI();
+  drawMap();
+}
+
+function useBluff() {
+  if (gameState.bluffTickets <= 0 || gameState.bluffUsed) return;
+  if (gameState.phase !== 'moriarty') return;
+  gameState.bluffUsed = true;
+  gameState.bluffTickets--;
+  document.getElementById('bluff-count').textContent = gameState.bluffTickets;
+  addLog(`R${round}`, '⚡', `Moriarty plays a <strong>Double Bluff</strong> — two moves incoming!`);
+  // Grant an extra move turn flag (simplified: just move twice)
+  gameState.bluffExtraTurn = true;
+  updateUI();
+}
+
+function endTurn() {
+  if (gameState.phase === 'moriarty') {
+    // Skip move (stay put)
+    addLog(`R${round}`, '🎩', `Moriarty lies in wait...`);
+    gameState.phase = 'detectives';
+    gameState.activeDetective = 0;
+    validMoves = computeDetValidMoves(0);
+    updateUI();
+    drawMap();
+    if (currentMode === 'moriarty') {
+      setTimeout(aiDetectiveMoves, 600);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  WIN CONDITIONS
+// ═══════════════════════════════════════════════
+function checkCapture() {
+  const det = gameState.detectives.find(d => d.node === gameState.moriartyNode);
+  if (det) {
+    addLog(`R${round}`, '🔓', `<strong>${det.name} captures Moriarty</strong> at ${gameState.nodes[gameState.moriartyNode].name}!`);
+    setTimeout(() => triggerOutcome('detectives'), 500);
+  }
+}
+
+function checkWin() {
+  const moves = computeMoriValidMoves();
+  if (!moves.length) {
+    addLog(`R${round}`, '🕸️', `Moriarty is <strong>cornered</strong> — nowhere to run!`);
+    setTimeout(() => triggerOutcome('detectives'), 500);
+  }
+}
+
+function triggerOutcome(winner) {
+  const screen = document.getElementById('outcome-screen');
+  const title = document.getElementById('outcome-title');
+  const sub = document.getElementById('outcome-subtitle');
+  screen.classList.add('active');
+  if (winner === 'moriarty') {
+    title.textContent = 'Moriarty Escapes!';
+    title.className = 'outcome-title outcome-moriarty-wins';
+    sub.textContent = 'The Napoleon of Crime vanishes once more into the London fog. The game is yours, Professor.';
+  } else {
+    title.textContent = 'Captured!';
+    title.className = 'outcome-title outcome-detectives-win';
+    sub.textContent = `Holmes closes the trap. "You've been most helpful, Moriarty," he remarked with a thin smile.`;
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  UI UPDATES
+// ═══════════════════════════════════════════════
+function updateUI() {
+  // Phase indicator
+  const phaseText = document.getElementById('phase-text');
+  const phaseDot = document.getElementById('phase-dot');
+  if (gameState.phase === 'moriarty') {
+    phaseText.textContent = currentMode === 'moriarty' ? "Your Move — Moriarty" : "Moriarty's Turn";
+    phaseDot.style.background = '#8b1a1a';
+  } else {
+    const det = DETECTIVES[gameState.activeDetective];
+    phaseText.textContent = `${det.name}'s Move`;
+    phaseDot.style.background = '#b8860b';
+  }
+
+  // Reveal pips
+  const schedEl = document.getElementById('reveal-schedule');
+  schedEl.innerHTML = '<div class="reveal-label">Reveals:</div>';
+  for (const r of REVEAL_ROUNDS) {
+    const pip = document.createElement('div');
+    pip.className = 'reveal-pip';
+    pip.textContent = r;
+    if (r < round) pip.className += ' past';
+    else if (r === round) pip.className += ' current';
+    else pip.className += ' upcoming';
+    schedEl.appendChild(pip);
+  }
+
+  // Buttons
+  document.getElementById('fog-btn').disabled = gameState.fogTickets <= 0 || gameState.fogUsed || gameState.phase !== 'moriarty' || currentMode === 'detective';
+  document.getElementById('bluff-btn').disabled = gameState.bluffTickets <= 0 || gameState.bluffUsed || gameState.phase !== 'moriarty' || currentMode === 'detective';
+  document.getElementById('end-turn-btn').style.display = currentMode !== 'detective' ? '' : 'none';
+
+  updateDetectivePanel();
+}
+
+function updateMoriartyStatus() {
+  const el = document.getElementById('moriarty-status');
+  if (gameState.moriLastRevealed >= 0) {
+    el.innerHTML = `Last seen: <strong>${gameState.nodes[gameState.moriLastRevealed]?.name}</strong>`;
+  } else {
+    el.innerHTML = `Position: <strong>Unknown</strong>`;
+  }
+}
+
+function updateDetectivePanel() {
+  const list = document.getElementById('detective-list');
+  list.innerHTML = '';
+  gameState.detectives.forEach((det, i) => {
+    const isActive = gameState.phase === 'detectives' && gameState.activeDetective === i;
+    const card = document.createElement('div');
+    card.className = 'detective-card' + (isActive ? ' active-turn' : '');
+    card.innerHTML = `
+      <div class="det-portrait ${det.cls}">${det.emoji}</div>
+      <div class="det-info">
+        <div class="det-name">${det.name}</div>
+        <div class="det-position">${gameState.nodes[det.node]?.name || 'Unknown'}</div>
+        <div class="det-tickets">
+          <span class="det-ticket cab">🚕 ${det.tickets.cab}</span>
+          <span class="det-ticket tram">🚃 ${det.tickets.tram}</span>
+          <span class="det-ticket underground">🚇 ${det.tickets.underground}</span>
+          <span class="det-ticket river">⛵ ${det.tickets.river}</span>
+        </div>
+      </div>
+      ${isActive && currentMode === 'detective' ? '<button class="det-move-btn">Select</button>' : ''}
+    `;
+    list.appendChild(card);
+  });
+}
+
+function addLog(round, icon, text) {
+  const log = document.getElementById('move-log');
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  entry.innerHTML = `<div class="log-round">${round}</div><div class="log-icon">${icon}</div><div class="log-text">${text}</div>`;
+  log.appendChild(entry);
+  log.scrollTop = log.scrollHeight;
+}
+
+// ═══════════════════════════════════════════════
+//  GAME INIT
+// ═══════════════════════════════════════════════
+function startGame(mode) {
+  currentMode = mode;
+  round = 1;
+
+  document.getElementById('title-screen').style.display = 'none';
+  document.getElementById('outcome-screen').classList.remove('active');
+  document.getElementById('game-wrap').classList.add('active');
+
+  if (!canvas) initCanvas();
+  resizeCanvas();
+
+  const W = canvas.width, H = canvas.height;
+
+  // Generate world
+  gameState.nodes = generateNodes(W, H);
+  gameState.edges = generateEdges(gameState.nodes);
+
+  // Place Moriarty
+  gameState.moriartyNode = Math.floor(Math.random() * NODE_COUNT);
+  gameState.moriLastRevealed = -1;
+  gameState.fogTickets = 3; gameState.bluffTickets = 2;
+  gameState.fogUsed = false; gameState.bluffUsed = false;
+  gameState.phase = mode === 'detective' || mode === 'coach' ? 'moriarty' : 'moriarty';
+  gameState.activeDetective = 0;
+
+  // Place detectives at spread start nodes
+  const startNodes = [12, 40, 70, 110, 160];
+  gameState.detectives = DETECTIVES.map((d, i) => ({
+    ...d,
+    node: startNodes[i],
+    tickets: { ...d.tickets },
+  }));
+
+  document.getElementById('fog-count').textContent = '3';
+  document.getElementById('bluff-count').textContent = '2';
+  document.getElementById('round-num').textContent = '1';
+  document.getElementById('move-log').innerHTML = '';
+  document.getElementById('coach-panel').classList.remove('visible');
+
+  addLog('–', '🕵️', `<strong>Game begun.</strong> Moriarty has vanished into the fog.`);
+
+  // Reset transform
+  transform = { x: W * 0.05, y: H * 0.05, scale: 0.9 };
+
+  validMoves = mode === 'moriarty' ? computeMoriValidMoves() : [];
+  updateUI();
+  drawMap();
+
+  // Start AI if needed
+  if (mode === 'detective' || mode === 'coach') {
+    setTimeout(aiMoriartyMove, 1000);
+  }
+}
+
+function backToTitle() {
+  document.getElementById('title-screen').style.display = 'flex';
+  document.getElementById('game-wrap').classList.remove('active');
+  document.getElementById('outcome-screen').classList.remove('active');
+}
+
+function toggleCoach() {
+  const panel = document.getElementById('coach-panel');
+  panel.classList.toggle('visible');
+  if (panel.classList.contains('visible')) provideCoachTip();
+}
+
+// ═══════════════════════════════════════════════
+//  MODAL
+// ═══════════════════════════════════════════════
+const RULES_TEXT = `Moriarty moves secretly each round, using Hansom Cab, Tramway, Underground, or River Boat connections. Five detectives pursue him across Victorian London. Moriarty wins by surviving all 22 rounds; detectives win by landing on his node. Moriarty is revealed on rounds 3, 8, 13, 18, and 22. Special tickets — Heavy Fog and Double Bluff — give Moriarty desperate advantages.`;
+
+function showModal(type) {
+  const overlay = document.getElementById('modal-overlay');
+  overlay.classList.add('active');
+  if (type === 'rules') {
+    document.getElementById('modal-title').textContent = 'Rules of the Chase';
+    document.getElementById('modal-body').textContent = RULES_TEXT;
+    document.getElementById('modal-actions').innerHTML = `<button class="action-btn" onclick="closeModal()">Understood</button>`;
+  }
+}
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('active');
+}
+document.getElementById('modal-overlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal();
+});
+
+// Handle resize
+window.addEventListener('resize', () => {
+  if (canvas) resizeCanvas();
+});
+</script>
+</body>
+</html>
