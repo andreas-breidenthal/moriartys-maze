@@ -4,224 +4,214 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Moriarty's Maze</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400;1,600&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
 <style>
-:root {
-  --ink:#0d0b08; --ink-mid:#1a1410; --parchment:#e8d9b5; --parch-dark:#c9b98a;
-  --gold:#b8860b; --gold-hi:#d4a017; --crimson:#8b1a1a; --crim-hi:#c0392b;
-  --fog:#a0a89a; --fog-dk:#6e7568;
-  --taxi:#d4a017; --bus:#c0392b; --tube:#1a6b3c; --water:#1f618d;
+:root{
+  --ink:#1a1208; --ink-mid:#231a0e; --ink-lt:#2e2214;
+  --parchment:#f0e6c8; --parch-mid:#dece9e; --parch-dk:#c8b47a;
+  --gold:#c8920a; --gold-hi:#f0b020; --gold-pale:#f8d870;
+  --crimson:#9b1c1c; --crim-hi:#dc3030; --crim-lt:#f06050;
+  --fog:#8a9480; --fog-dk:#5e6858;
+  --taxi:#e8b824; --bus:#dc3030; --tube:#1e8040; --water:#1a60a0;
+  --panel-bg:#f5e8c8; --panel-border:#c8a040;
+  --node-r:9px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden}
-body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parchment);touch-action:none}
+body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--ink);touch-action:none}
 
+/* ── TITLE ── */
 #title-screen{
   position:fixed;inset:0;z-index:400;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:16px;padding:20px;
-  background:var(--ink);
-  background-image:radial-gradient(ellipse at 25% 20%,rgba(184,134,11,.1) 0%,transparent 55%),
-    radial-gradient(ellipse at 75% 80%,rgba(139,26,26,.1) 0%,transparent 55%);
+  align-items:center;justify-content:center;gap:18px;padding:24px;
+  background:radial-gradient(ellipse at 30% 25%,#2d1f08 0%,#0e0a04 60%);
 }
-.t-orn{font-family:'Cinzel',serif;font-size:11px;letter-spacing:8px;text-transform:uppercase;color:var(--gold);opacity:.6}
-#title-screen h1{
-  font-family:'Cinzel',serif;font-weight:900;font-size:clamp(28px,6vw,68px);
-  color:var(--parchment);text-align:center;line-height:1;letter-spacing:2px;
-  text-shadow:0 0 40px rgba(184,134,11,.5),0 2px 4px rgba(0,0,0,.9);
-  animation:flicker 7s ease-in-out infinite;
-}
+.t-orn{font-family:'Cinzel',serif;font-size:12px;letter-spacing:8px;text-transform:uppercase;color:var(--gold);opacity:.7}
+#title-screen h1{font-family:'Cinzel',serif;font-weight:900;font-size:clamp(32px,7vw,80px);color:var(--parchment);text-align:center;line-height:1;letter-spacing:3px;text-shadow:0 0 50px rgba(200,146,10,.6),0 3px 6px rgba(0,0,0,.95);animation:flicker 7s ease-in-out infinite}
 #title-screen h1 span{color:var(--gold-hi)}
-@keyframes flicker{0%,88%,100%{opacity:1}90%{opacity:.88}95%{opacity:.82}}
-.t-sub{font-family:'IM Fell English',serif;font-style:italic;font-size:clamp(11px,1.8vw,16px);color:var(--fog);text-align:center}
-.t-rule{width:min(260px,80vw);height:1px;background:linear-gradient(to right,transparent,var(--gold),transparent)}
-.mode-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;width:min(500px,94vw)}
-.mode-card{
-  background:rgba(232,217,181,.03);border:1px solid rgba(184,134,11,.18);
-  padding:15px 12px;text-align:center;cursor:pointer;transition:all .25s;
-}
-.mode-card:hover{border-color:var(--gold);transform:translateY(-2px);box-shadow:0 8px 28px rgba(0,0,0,.6),0 0 18px rgba(184,134,11,.12)}
-.mode-icon{font-size:24px;display:block;margin-bottom:6px}
-.mode-title{font-family:'Cinzel',serif;font-size:10px;font-weight:600;color:var(--gold-hi);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px}
-.mode-desc{font-size:9.5px;color:var(--fog);line-height:1.4;font-style:italic}
-.t-foot{font-size:8px;color:var(--fog-dk);letter-spacing:3px;text-transform:uppercase;font-family:'Cinzel',serif}
+@keyframes flicker{0%,88%,100%{opacity:1}90%{opacity:.88}95%{opacity:.80}}
+.t-sub{font-family:'IM Fell English',serif;font-style:italic;font-size:clamp(13px,2vw,19px);color:var(--parch-dk);text-align:center}
+.t-rule{width:min(300px,80vw);height:1px;background:linear-gradient(to right,transparent,var(--gold),transparent)}
+.mode-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;width:min(560px,94vw)}
+.mode-card{background:rgba(240,230,200,.06);border:1px solid rgba(200,146,10,.3);padding:18px 14px;text-align:center;cursor:pointer;transition:all .25s}
+.mode-card:hover{border-color:var(--gold-hi);transform:translateY(-3px);background:rgba(240,230,200,.1);box-shadow:0 10px 32px rgba(0,0,0,.7),0 0 22px rgba(200,146,10,.15)}
+.mode-icon{font-size:28px;display:block;margin-bottom:8px}
+.mode-title{font-family:'Cinzel',serif;font-size:11px;font-weight:700;color:var(--gold-hi);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:5px}
+.mode-desc{font-size:11px;color:var(--parch-dk);line-height:1.45;font-style:italic}
+.t-foot{font-size:9px;color:var(--fog-dk);letter-spacing:4px;text-transform:uppercase;font-family:'Cinzel',serif}
 
+/* ── GAME SHELL ── */
 #game{display:none;position:fixed;inset:0;flex-direction:column}
 #game.on{display:flex}
 
+/* TOP BAR */
 #top-bar{
-  flex-shrink:0;height:40px;display:flex;align-items:center;justify-content:space-between;
-  padding:0 11px;
-  background:linear-gradient(to right,var(--ink),var(--ink-mid),var(--ink));
-  border-bottom:1px solid rgba(184,134,11,.28);
+  flex-shrink:0;height:46px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 14px;background:var(--ink-mid);
+  border-bottom:2px solid var(--gold);
+  box-shadow:0 2px 12px rgba(0,0,0,.5);
 }
-.tb-title{font-family:'Cinzel',serif;font-size:13px;font-weight:700;color:var(--gold);letter-spacing:3px}
+.tb-title{font-family:'Cinzel',serif;font-size:16px;font-weight:900;color:var(--gold-hi);letter-spacing:3px}
 .tb-title span{color:var(--parchment);font-weight:400}
-.tb-center{display:flex;align-items:center;gap:12px}
-.tb-move{font-family:'Cinzel',serif;font-size:9px;color:var(--fog);letter-spacing:1px}
-.tb-move strong{color:var(--gold-hi);font-size:12px}
-.reveal-pips{display:flex;gap:3px}
+.tb-center{display:flex;align-items:center;gap:16px}
+.tb-move{font-family:'Cinzel',serif;font-size:11px;color:var(--parch-dk);letter-spacing:1px}
+.tb-move strong{color:var(--gold-pale);font-size:15px}
+.reveal-pips{display:flex;gap:4px}
 .r-pip{
-  width:19px;height:19px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-  font-size:7px;font-family:'Cinzel',serif;border:1px solid rgba(139,26,26,.35);
-  background:rgba(139,26,26,.12);color:var(--fog);transition:all .3s;
+  width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-family:'Cinzel',serif;font-size:8px;font-weight:700;
+  border:1.5px solid rgba(155,28,28,.4);background:rgba(155,28,28,.15);color:var(--fog);transition:all .3s;
 }
-.r-pip.done{background:rgba(60,60,60,.2);border-color:rgba(60,60,60,.25);color:#555}
-.r-pip.next{background:rgba(139,26,26,.45);border-color:var(--crim-hi);color:var(--crim-hi);animation:pip-p 1.3s ease-in-out infinite}
-.r-pip.now{background:var(--crimson);border-color:var(--crim-hi);color:var(--parchment)}
+.r-pip.done{background:rgba(80,70,50,.3);border-color:rgba(80,70,50,.3);color:#666}
+.r-pip.next{background:rgba(155,28,28,.5);border-color:var(--crim-hi);color:var(--crim-lt);animation:pip-p 1.3s ease-in-out infinite}
+.r-pip.now{background:var(--crimson);border-color:var(--crim-hi);color:#fff}
 @keyframes pip-p{0%,100%{opacity:1}50%{opacity:.4}}
-.tb-actions{display:flex;gap:4px}
-.tb-btn{
-  background:transparent;border:1px solid rgba(184,134,11,.22);color:var(--fog);
-  font-family:'Cinzel',serif;font-size:8px;padding:3px 7px;cursor:pointer;
-  letter-spacing:1px;text-transform:uppercase;transition:all .2s;border-radius:1px;
-}
-.tb-btn:hover{border-color:var(--gold);color:var(--parchment)}
+.tb-actions{display:flex;gap:5px}
+.tb-btn{background:rgba(240,230,200,.08);border:1px solid rgba(200,146,10,.35);color:var(--parch-dk);font-family:'Cinzel',serif;font-size:9px;padding:4px 10px;cursor:pointer;letter-spacing:1px;text-transform:uppercase;transition:all .2s;border-radius:1px}
+.tb-btn:hover{border-color:var(--gold-hi);color:var(--parchment);background:rgba(240,230,200,.14)}
 
+/* CONTENT */
 #content{flex:1;display:flex;overflow:hidden;min-height:0}
 
-#left-panel{
-  width:190px;flex-shrink:0;background:#110e0b;
-  border-right:1px solid rgba(184,134,11,.15);
+/* PANELS */
+#left-panel,#right-panel{
+  width:210px;flex-shrink:0;
+  background:var(--panel-bg);
   display:flex;flex-direction:column;overflow:hidden;
+  color:var(--ink);
 }
-@media(max-width:640px){#left-panel{display:none}}
-#right-panel{
-  width:188px;flex-shrink:0;background:#110e0b;
-  border-left:1px solid rgba(184,134,11,.15);
-  display:flex;flex-direction:column;overflow:hidden;
-}
-@media(max-width:580px){#right-panel{display:none}}
+#left-panel{border-right:2px solid var(--panel-border)}
+#right-panel{border-left:2px solid var(--panel-border)}
+@media(max-width:700px){#left-panel{display:none}}
+@media(max-width:600px){#right-panel{display:none}}
 
-.p-sec{padding:8px 10px;border-bottom:1px solid rgba(184,134,11,.07)}
-.p-lbl{font-family:'Cinzel',serif;font-size:7px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);opacity:.6;margin-bottom:6px}
-.m-card{background:rgba(139,26,26,.07);border:1px solid rgba(139,26,26,.22);padding:7px}
-.m-portrait{width:42px;height:42px;border-radius:50%;margin:0 auto 5px;background:linear-gradient(135deg,#2a1a1a,#3d2020);border:2px solid rgba(139,26,26,.35);display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 0 16px rgba(139,26,26,.2)}
-.m-name{font-family:'Cinzel',serif;font-size:8.5px;text-align:center;color:var(--crim-hi);letter-spacing:.8px;margin-bottom:2px}
-.m-status{font-size:8.5px;color:var(--fog);text-align:center;font-style:italic}
-.m-status strong{color:var(--gold-hi)}
-.ghost-info{font-size:7.5px;color:rgba(192,57,43,.65);text-align:center;margin-top:2px;font-style:italic}
-.sp-row{display:flex;gap:3px;margin-top:5px;justify-content:center;flex-wrap:wrap}
-.sp-chip{display:flex;align-items:center;gap:2px;padding:2px 4px;border-radius:1px;font-size:7.5px;font-family:'Cinzel',serif}
-.sp-chip.fog{background:rgba(31,97,141,.13);border:1px solid rgba(31,97,141,.38);color:#5dade2}
-.sp-chip.bluff{background:rgba(184,134,11,.09);border:1px solid rgba(184,134,11,.32);color:var(--gold-hi)}
+.p-sec{padding:10px 12px;border-bottom:1px solid var(--parch-dk)}
+.p-lbl{font-family:'Cinzel',serif;font-size:8px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);opacity:.9;margin-bottom:7px;font-weight:700}
+.m-card{background:rgba(155,28,28,.07);border:1px solid rgba(155,28,28,.3);padding:9px;border-radius:2px}
+.m-portrait{width:46px;height:46px;border-radius:50%;margin:0 auto 6px;background:linear-gradient(135deg,#3d1a1a,#5c2828);border:2px solid rgba(155,28,28,.5);display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 0 18px rgba(155,28,28,.3)}
+.m-name{font-family:'Cinzel',serif;font-size:9px;text-align:center;color:var(--crimson);letter-spacing:.8px;margin-bottom:3px;font-weight:700}
+.m-status{font-size:10px;color:#5a4a30;text-align:center;font-style:italic;margin-bottom:3px}
+.m-status strong{color:var(--crimson);font-style:normal}
+.ghost-info{font-size:8.5px;color:rgba(155,28,28,.75);text-align:center;font-style:italic}
+.sp-row{display:flex;gap:4px;margin-top:7px;justify-content:center;flex-wrap:wrap}
+.sp-chip{display:flex;align-items:center;gap:2px;padding:3px 6px;border-radius:2px;font-size:9px;font-family:'Cinzel',serif;font-weight:700}
+.sp-chip.fog{background:rgba(26,96,160,.12);border:1.5px solid rgba(26,96,160,.45);color:#1a60a0}
+.sp-chip.bluff{background:rgba(200,146,10,.12);border:1.5px solid rgba(200,146,10,.45);color:var(--gold)}
 
-#move-log{flex:1;overflow-y:auto;padding:6px 9px;scrollbar-width:thin;scrollbar-color:rgba(184,134,11,.12) transparent}
-.log-entry{display:flex;align-items:flex-start;gap:3px;margin-bottom:5px;font-size:9px;line-height:1.4;animation:fadeIn .22s ease}
+#move-log{flex:1;overflow-y:auto;padding:7px 10px;scrollbar-width:thin;scrollbar-color:rgba(200,146,10,.2) transparent;background:rgba(0,0,0,.02)}
+.log-entry{display:flex;align-items:flex-start;gap:4px;margin-bottom:6px;font-size:10px;line-height:1.4;animation:fadeIn .2s ease}
 @keyframes fadeIn{from{opacity:0;transform:translateY(-2px)}to{opacity:1}}
-.log-n{font-family:'Cinzel',serif;font-size:7px;color:var(--gold);flex-shrink:0;padding-top:1px;min-width:18px}
-.log-i{font-size:9px;flex-shrink:0}
-.log-t{color:var(--fog);font-style:italic}
-.log-t strong{color:var(--parchment);font-style:normal}
-.log-entry.reveal{background:rgba(139,26,26,.1);border-left:2px solid var(--crim-hi);padding:2px 4px;margin-left:-4px}
-.log-entry.reveal .log-t{color:#e8a0a0}
+.log-n{font-family:'Cinzel',serif;font-size:7.5px;color:var(--gold);flex-shrink:0;padding-top:1px;min-width:20px;font-weight:700}
+.log-i{font-size:10px;flex-shrink:0}
+.log-t{color:#5a4a30;font-style:italic}
+.log-t strong{color:var(--ink);font-style:normal}
+.log-entry.reveal{background:rgba(155,28,28,.08);border-left:3px solid var(--crim-hi);padding:3px 5px;margin-left:-5px;border-radius:1px}
+.log-entry.reveal .log-t{color:var(--crimson)}
 
-.t-legend{padding:6px 10px;border-top:1px solid rgba(184,134,11,.07)}
-.t-item{display:flex;align-items:center;gap:3px;font-size:7.5px;color:var(--fog);margin-bottom:2px}
-.t-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.t-legend{padding:8px 12px;border-top:1px solid var(--parch-dk);background:rgba(0,0,0,.03)}
+.t-item{display:flex;align-items:center;gap:5px;font-size:9px;color:#5a4a30;margin-bottom:3px}
+.t-dot{width:8px;height:4px;flex-shrink:0;border-radius:2px}
 .t-dot.taxi{background:var(--taxi)}.t-dot.bus{background:var(--bus)}
 .t-dot.underground{background:var(--tube)}.t-dot.water{background:var(--water)}
 
-#map-area{flex:1;position:relative;overflow:hidden;background:#09070a}
-#map-area::before{content:'';position:absolute;inset:0;pointer-events:none;z-index:1;background:radial-gradient(ellipse at 50% 45%,rgba(201,185,138,.04) 0%,transparent 65%)}
+/* MAP */
+#map-area{flex:1;position:relative;overflow:hidden;background:#2a1f10}
 #map-canvas{position:absolute;inset:0;width:100%;height:100%;cursor:grab;touch-action:none}
 #map-canvas.panning{cursor:grabbing}
-#fog-vignette{position:absolute;inset:0;z-index:2;pointer-events:none;background:radial-gradient(ellipse at 50% 50%,transparent 28%,rgba(0,0,0,.42) 100%)}
 
-#tooltip{
-  position:absolute;z-index:60;background:rgba(9,7,4,.97);border:1px solid rgba(184,134,11,.38);
-  padding:5px 9px;font-family:'Crimson Text',serif;font-size:10.5px;color:var(--parchment);
-  pointer-events:none;opacity:0;transition:opacity .1s;min-width:90px;max-width:170px;
-  box-shadow:0 4px 16px rgba(0,0,0,.7);
-}
+#tooltip{position:absolute;z-index:60;background:rgba(240,230,200,.97);border:1.5px solid var(--gold);border-radius:2px;padding:7px 11px;font-family:'Crimson Text',serif;font-size:11px;color:var(--ink);pointer-events:none;opacity:0;transition:opacity .1s;min-width:100px;max-width:185px;box-shadow:0 4px 18px rgba(0,0,0,.5)}
 #tooltip.on{opacity:1}
-.tt-name{font-family:'Cinzel',serif;font-size:8.5px;color:var(--gold);display:block;margin-bottom:1px}
-.tt-sub{font-size:7.5px;color:var(--fog-dk)}
-.tt-body{font-size:8.5px;color:var(--parch-dark);margin-top:2px}
+.tt-name{font-family:'Cinzel',serif;font-size:10px;color:var(--crimson);display:block;margin-bottom:2px;font-weight:700}
+.tt-sub{font-size:8.5px;color:var(--fog-dk);display:block;margin-bottom:2px}
+.tt-body{font-size:9.5px;color:#5a4a30}
 
-#reveal-flash{
-  position:absolute;top:9px;left:50%;transform:translateX(-50%);z-index:80;display:none;
-  background:rgba(139,26,26,.96);border:1px solid var(--crim-hi);padding:5px 18px;
-  font-family:'Cinzel',serif;font-size:10px;color:var(--parchment);letter-spacing:2px;text-transform:uppercase;
-  box-shadow:0 0 40px rgba(139,26,26,.6);animation:rev-p 1.8s ease-in-out infinite;
-}
-@keyframes rev-p{0%,100%{box-shadow:0 0 40px rgba(139,26,26,.6)}50%{box-shadow:0 0 70px rgba(192,57,43,.9)}}
-#zoom-hint{position:absolute;bottom:5px;right:7px;z-index:20;font-family:'Cinzel',serif;font-size:7px;color:rgba(184,134,11,.22);letter-spacing:1px;pointer-events:none}
+#reveal-flash{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:80;display:none;background:rgba(155,28,28,.97);border:1.5px solid var(--crim-hi);padding:7px 22px;font-family:'Cinzel',serif;font-size:12px;color:#fff;letter-spacing:2px;text-transform:uppercase;box-shadow:0 0 50px rgba(155,28,28,.7);border-radius:2px;animation:rev-p 1.8s ease-in-out infinite}
+@keyframes rev-p{0%,100%{box-shadow:0 0 50px rgba(155,28,28,.7)}50%{box-shadow:0 0 80px rgba(220,48,48,.95)}}
+#zoom-hint{position:absolute;bottom:6px;right:9px;z-index:20;font-family:'Cinzel',serif;font-size:8px;color:rgba(200,146,10,.4);letter-spacing:1px;pointer-events:none}
 
-.det-card{padding:6px 8px;border-bottom:1px solid rgba(184,134,11,.05);display:flex;gap:6px;align-items:flex-start}
-.det-card.active{background:rgba(184,134,11,.05);border-left:2px solid var(--gold)}
-.det-port{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;border:1px solid rgba(184,134,11,.15);background:linear-gradient(135deg,#1a1a2e,#2d2d44)}
+/* DETECTIVE CARDS */
+.det-card{padding:8px 10px;border-bottom:1px solid var(--parch-dk);display:flex;gap:7px;align-items:flex-start;transition:background .2s}
+.det-card.active{background:rgba(200,146,10,.12);border-left:3px solid var(--gold)}
+.det-port{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;border:1.5px solid var(--panel-border);background:linear-gradient(135deg,#e8dab0,#f5e8c8)}
 .det-info{flex:1;min-width:0}
-.det-name{font-family:'Cinzel',serif;font-size:7.5px;color:var(--parchment);margin-bottom:1px}
-.det-pos{font-size:7.5px;color:var(--fog);font-style:italic;margin-bottom:2px}
-.det-tix{display:flex;gap:2px;flex-wrap:wrap}
-.det-tix span{font-size:6.5px;padding:1px 3px;border-radius:1px;font-family:'Cinzel',serif}
-.det-tix .taxi{background:rgba(212,160,23,.15);color:var(--taxi)}
-.det-tix .bus{background:rgba(192,57,43,.15);color:#e74c3c}
-.det-tix .underground{background:rgba(26,107,60,.15);color:#27ae60}
+.det-name{font-family:'Cinzel',serif;font-size:9px;color:var(--ink);margin-bottom:2px;font-weight:700}
+.det-pos{font-size:9px;color:#5a4a30;font-style:italic;margin-bottom:3px}
+.det-tix{display:flex;gap:3px;flex-wrap:wrap}
+.det-tix span{font-size:8px;padding:1px 4px;border-radius:1px;font-family:'Cinzel',serif;font-weight:700}
+.det-tix .taxi{background:rgba(232,184,36,.2);color:#8a5800;border:1px solid rgba(232,184,36,.5)}
+.det-tix .bus{background:rgba(220,48,48,.12);color:#8a1010;border:1px solid rgba(220,48,48,.3)}
+.det-tix .underground{background:rgba(30,128,64,.12);color:#0a5020;border:1px solid rgba(30,128,64,.3)}
 
-#bottom-bar{flex-shrink:0;background:linear-gradient(to right,var(--ink),var(--ink-mid),var(--ink));border-top:1px solid rgba(184,134,11,.22)}
-#status-strip{display:flex;align-items:center;height:28px;padding:0 11px}
-.ph-dot{width:5px;height:5px;border-radius:50%;margin-right:5px;animation:ph-p 1.4s ease-in-out infinite}
-@keyframes ph-p{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.6)}}
-.ph-txt{font-family:'Cinzel',serif;font-size:8.5px;color:var(--parchment);letter-spacing:1px}
+/* BOTTOM BAR */
+#bottom-bar{flex-shrink:0;background:var(--panel-bg);border-top:2px solid var(--panel-border)}
+#status-strip{display:flex;align-items:center;height:32px;padding:0 14px;gap:8px}
+.ph-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;animation:ph-p 1.5s ease-in-out infinite}
+@keyframes ph-p{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.65)}}
+.ph-txt{font-family:'Cinzel',serif;font-size:10px;color:var(--ink);letter-spacing:1px;font-weight:700}
 
-#ai-bar{display:none;align-items:center;gap:6px;padding:4px 11px;font-family:'IM Fell English',serif;font-style:italic;font-size:10.5px;color:var(--fog);border-top:1px solid rgba(184,134,11,.07)}
+#ai-bar{display:none;align-items:center;gap:7px;padding:5px 14px;font-family:'IM Fell English',serif;font-style:italic;font-size:12px;color:#5a4a30;border-top:1px solid var(--parch-dk)}
 #ai-bar.on{display:flex}
-.think-dots span{display:inline-block;width:3px;height:3px;border-radius:50%;background:var(--gold);margin:0 1px;animation:td 1.1s ease-in-out infinite}
-.think-dots span:nth-child(2){animation-delay:.14s}
-.think-dots span:nth-child(3){animation-delay:.28s}
+.think-dots span{display:inline-block;width:4px;height:4px;border-radius:50%;background:var(--gold);margin:0 1px;animation:td 1.1s ease-in-out infinite}
+.think-dots span:nth-child(2){animation-delay:.15s}
+.think-dots span:nth-child(3){animation-delay:.3s}
 @keyframes td{0%,80%,100%{transform:scale(.5);opacity:.3}40%{transform:scale(1);opacity:1}}
 
-#move-prompt{display:none;flex-direction:column;gap:6px;padding:8px 11px 10px;background:rgba(11,9,6,.88);border-top:1px solid rgba(184,134,11,.1)}
+#move-prompt{display:none;flex-direction:column;gap:8px;padding:10px 14px 12px;background:var(--panel-bg);border-top:1px solid var(--parch-dk)}
 #move-prompt.on{display:flex}
-.mp-title{font-family:'Cinzel',serif;font-size:8.5px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);opacity:.78}
-#special-row{display:none;gap:4px;flex-wrap:wrap}
+.mp-title{font-family:'Cinzel',serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);font-weight:700}
+
+#special-row{display:none;gap:6px;flex-wrap:wrap}
 #special-row.on{display:flex}
-.sp-btn{background:rgba(31,97,141,.09);border:1px solid rgba(31,97,141,.32);color:#5dade2;font-family:'Cinzel',serif;font-size:7.5px;padding:3px 8px;cursor:pointer;letter-spacing:.8px;text-transform:uppercase;transition:all .2s;border-radius:1px}
-.sp-btn:hover{background:rgba(31,97,141,.2)}
-.sp-btn:disabled{opacity:.2;cursor:default}
-.sp-btn.bluff{background:rgba(184,134,11,.07);border-color:rgba(184,134,11,.32);color:var(--gold-hi)}
-.sp-btn.bluff:hover{background:rgba(184,134,11,.17)}
-.mp-controls{display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end}
-.mp-field{display:flex;flex-direction:column;gap:2px;flex:1;min-width:105px}
-.mp-field label{font-family:'Cinzel',serif;font-size:6.5px;letter-spacing:2px;text-transform:uppercase;color:var(--fog);opacity:.72}
-.mp-sel{background:rgba(9,7,4,.95);border:1px solid rgba(184,134,11,.28);color:var(--parchment);font-family:'Crimson Text',serif;font-size:11.5px;padding:4px 22px 4px 6px;border-radius:1px;cursor:pointer;width:100%;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%23b8860b'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 6px center}
+.sp-btn{background:rgba(26,96,160,.08);border:1.5px solid rgba(26,96,160,.4);color:#1a60a0;font-family:'Cinzel',serif;font-size:9px;padding:4px 10px;cursor:pointer;letter-spacing:.8px;text-transform:uppercase;transition:all .2s;border-radius:2px;font-weight:700}
+.sp-btn:hover{background:rgba(26,96,160,.18)}
+.sp-btn:disabled{opacity:.25;cursor:default}
+.sp-btn.bluff{background:rgba(200,146,10,.08);border-color:rgba(200,146,10,.45);color:var(--gold)}
+.sp-btn.bluff:hover{background:rgba(200,146,10,.18)}
+
+.mp-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
+.mp-field{display:flex;flex-direction:column;gap:3px;flex:1;min-width:115px}
+.mp-field label{font-family:'Cinzel',serif;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--fog-dk);font-weight:700}
+.mp-sel{background:#fff;border:1.5px solid var(--parch-dk);color:var(--ink);font-family:'Crimson Text',serif;font-size:13px;padding:5px 26px 5px 8px;border-radius:2px;cursor:pointer;width:100%;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='5'%3E%3Cpath d='M0 0l4.5 5L9 0z' fill='%23c8920a'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 7px center;background-color:#fff}
 .mp-sel:focus{outline:none;border-color:var(--gold)}
-.mp-sel option{background:#1a1410;color:var(--parchment)}
-.mp-sel:disabled{opacity:.3;cursor:default}
-.mp-actions{display:flex;gap:5px}
-.mp-btn{flex:1;background:rgba(184,134,11,.09);border:1px solid rgba(184,134,11,.42);color:var(--gold-hi);font-family:'Cinzel',serif;font-size:9.5px;padding:6px 12px;cursor:pointer;letter-spacing:2px;text-transform:uppercase;transition:all .2s;border-radius:1px}
-.mp-btn:hover{background:rgba(184,134,11,.2);box-shadow:0 0 14px rgba(184,134,11,.15)}
+.mp-sel option{background:#fff;color:var(--ink)}
+.mp-sel:disabled{opacity:.35;cursor:default;background-color:#f0e8d0}
+
+.mp-actions{display:flex;gap:7px}
+.mp-btn{flex:1;background:rgba(200,146,10,.12);border:1.5px solid rgba(200,146,10,.55);color:var(--gold);font-family:'Cinzel',serif;font-size:11px;padding:7px 14px;cursor:pointer;letter-spacing:2px;text-transform:uppercase;transition:all .2s;border-radius:2px;font-weight:700}
+.mp-btn:hover{background:rgba(200,146,10,.22);box-shadow:0 0 14px rgba(200,146,10,.2)}
 .mp-btn:disabled{opacity:.22;cursor:default}
-.mp-btn.cc{background:rgba(26,107,60,.09);border-color:rgba(26,107,60,.42);color:#27ae60}
-.mp-btn.cc:hover{background:rgba(26,107,60,.2)}
+.mp-btn.cc{background:rgba(30,128,64,.09);border-color:rgba(30,128,64,.5);color:#1a7030}
+.mp-btn.cc:hover{background:rgba(30,128,64,.2)}
 
-#coach-panel{display:none;position:absolute;bottom:0;left:0;right:0;z-index:70;background:rgba(7,5,3,.97);border-top:1px solid rgba(26,107,60,.28);max-height:120px;overflow-y:auto}
+/* COACH PANEL */
+#coach-panel{display:none;position:absolute;bottom:0;left:0;right:0;z-index:70;background:rgba(240,240,230,.98);border-top:2px solid rgba(30,128,64,.4);max-height:130px;overflow-y:auto;box-shadow:0 -4px 18px rgba(0,0,0,.18)}
 #coach-panel.on{display:block}
-.coach-hdr{font-family:'Cinzel',serif;font-size:7px;letter-spacing:2px;color:#27ae60;padding:5px 11px 2px;text-transform:uppercase;opacity:.78;display:flex;justify-content:space-between;align-items:center}
-#coach-log{padding:2px 11px 7px}
-.coach-entry{font-family:'IM Fell English',serif;font-style:italic;font-size:10.5px;color:var(--parch-dark);line-height:1.5;margin-bottom:3px;border-left:2px solid rgba(26,107,60,.28);padding-left:6px}
+.coach-hdr{font-family:'Cinzel',serif;font-size:8px;letter-spacing:2px;color:#1a7030;padding:6px 13px 3px;text-transform:uppercase;font-weight:700;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(30,128,64,.2)}
+#coach-log{padding:4px 13px 8px}
+.coach-entry{font-family:'IM Fell English',serif;font-style:italic;font-size:12px;color:#3a4a30;line-height:1.55;margin-bottom:4px;border-left:3px solid rgba(30,128,64,.3);padding-left:8px}
 
-#modal{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;padding:20px}
+/* MODAL */
+#modal{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.82);display:none;align-items:center;justify-content:center;padding:20px}
 #modal.on{display:flex}
-.modal-box{background:var(--ink);border:1px solid rgba(184,134,11,.32);padding:24px;max-width:380px;width:100%;box-shadow:0 0 60px rgba(184,134,11,.1)}
-.modal-title{font-family:'Cinzel',serif;font-size:16px;font-weight:700;color:var(--gold);text-align:center;margin-bottom:11px;letter-spacing:2px}
-.modal-body{font-size:11.5px;color:var(--fog);line-height:1.65;margin-bottom:14px;font-style:italic;text-align:center}
-.modal-acts{display:flex;gap:7px;justify-content:center}
-.modal-btn{background:rgba(184,134,11,.09);border:1px solid rgba(184,134,11,.32);color:var(--gold-hi);font-family:'Cinzel',serif;font-size:8.5px;padding:5px 14px;cursor:pointer;letter-spacing:1.5px;text-transform:uppercase;transition:all .2s;border-radius:1px}
-.modal-btn:hover{background:rgba(184,134,11,.2)}
+.modal-box{background:var(--panel-bg);border:2px solid var(--gold);padding:28px;max-width:400px;width:100%;box-shadow:0 0 60px rgba(0,0,0,.5);border-radius:3px}
+.modal-title{font-family:'Cinzel',serif;font-size:18px;font-weight:900;color:var(--gold);text-align:center;margin-bottom:14px;letter-spacing:2px}
+.modal-body{font-size:12.5px;color:#5a4a30;line-height:1.7;margin-bottom:18px;font-style:italic}
+.modal-acts{display:flex;gap:9px;justify-content:center}
+.modal-btn{background:rgba(200,146,10,.1);border:1.5px solid rgba(200,146,10,.45);color:var(--gold);font-family:'Cinzel',serif;font-size:9.5px;padding:6px 16px;cursor:pointer;letter-spacing:1.5px;text-transform:uppercase;transition:all .2s;border-radius:2px;font-weight:700}
+.modal-btn:hover{background:rgba(200,146,10,.22)}
 
-#outcome{position:fixed;inset:0;z-index:350;background:rgba(0,0,0,.95);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+/* OUTCOME */
+#outcome{position:fixed;inset:0;z-index:350;background:rgba(10,8,4,.97);display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px}
 #outcome.on{display:flex}
-.out-title{font-family:'Cinzel',serif;font-size:clamp(24px,5vw,56px);font-weight:900;text-align:center;letter-spacing:3px;animation:fli .8s ease forwards}
+.out-title{font-family:'Cinzel',serif;font-size:clamp(26px,6vw,64px);font-weight:900;text-align:center;letter-spacing:4px;animation:fli .8s ease forwards}
 @keyframes fli{0%{opacity:0}80%{opacity:.85}90%{opacity:.6}100%{opacity:1}}
-.out-mori{color:var(--crim-hi)}.out-dets{color:var(--gold)}
-.out-sub{font-family:'IM Fell English',serif;font-style:italic;font-size:clamp(11px,1.8vw,18px);color:var(--fog);text-align:center;padding:0 20px;max-width:460px}
-.out-acts{display:flex;gap:9px}
-::-webkit-scrollbar{width:3px}
-::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:rgba(184,134,11,.15);border-radius:2px}
+.out-mori{color:var(--crim-lt)}.out-dets{color:var(--gold-pale)}
+.out-sub{font-family:'IM Fell English',serif;font-style:italic;font-size:clamp(13px,2vw,20px);color:var(--parch-dk);text-align:center;padding:0 24px;max-width:480px;line-height:1.6}
+.out-acts{display:flex;gap:10px}
+
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:rgba(0,0,0,.05)}
+::-webkit-scrollbar-thumb{background:rgba(200,146,10,.25);border-radius:2px}
 </style>
 </head>
 <body>
@@ -234,22 +224,22 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parchmen
     <div class="mode-card" onclick="startGame('moriarty')">
       <span class="mode-icon">🎩</span>
       <div class="mode-title">Play as Moriarty</div>
-      <div class="mode-desc">Navigate unseen. Survive 24 moves.</div>
+      <div class="mode-desc">Navigate unseen through the fog. Survive 24 moves.</div>
     </div>
     <div class="mode-card" onclick="startGame('detective')">
       <span class="mode-icon">🔍</span>
       <div class="mode-title">Play as Detectives</div>
-      <div class="mode-desc">Deduce, pursue, and corner the Professor.</div>
+      <div class="mode-desc">Deduce, pursue, and corner the Napoleon of Crime.</div>
     </div>
     <div class="mode-card" onclick="startGame('coach-moriarty')">
       <span class="mode-icon">🎩📋</span>
       <div class="mode-title">Coach: Moriarty</div>
-      <div class="mode-desc">Play Moriarty with Holmes advising your moves.</div>
+      <div class="mode-desc">You play Moriarty; Holmes whispers advice in your ear.</div>
     </div>
     <div class="mode-card" onclick="startGame('coach-detective')">
       <span class="mode-icon">🔍📋</span>
       <div class="mode-title">Coach: Detectives</div>
-      <div class="mode-desc">Command the bureau with strategic guidance.</div>
+      <div class="mode-desc">Command the bureau with strategic probabilistic guidance.</div>
     </div>
   </div>
   <div class="t-rule"></div>
@@ -260,7 +250,7 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parchmen
   <div id="top-bar">
     <div class="tb-title">MORIARTY'S <span>MAZE</span></div>
     <div class="tb-center">
-      <div class="tb-move">Move <strong id="move-num">0</strong>/24</div>
+      <div class="tb-move">Move <strong id="move-num">0</strong> / 24</div>
       <div class="reveal-pips" id="reveal-pips"></div>
     </div>
     <div class="tb-actions">
@@ -290,35 +280,34 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parchmen
         <div id="move-log"></div>
       </div>
       <div class="t-legend">
-        <div class="p-lbl" style="margin-bottom:3px">Transport</div>
+        <div class="p-lbl" style="margin-bottom:4px">Transport</div>
         <div class="t-item"><div class="t-dot taxi"></div>Hansom Cab (taxi)</div>
         <div class="t-item"><div class="t-dot bus"></div>Omnibus (bus)</div>
         <div class="t-item"><div class="t-dot underground"></div>Underground</div>
-        <div class="t-item"><div class="t-dot water"></div>River (🌫 fog ticket)</div>
+        <div class="t-item"><div class="t-dot water"></div>River (needs fog)</div>
       </div>
     </div>
 
     <div id="map-area">
       <canvas id="map-canvas"></canvas>
-      <div id="fog-vignette"></div>
       <div id="tooltip">
         <span class="tt-name" id="tt-name"></span>
         <span class="tt-sub" id="tt-sub"></span>
         <div class="tt-body" id="tt-body"></div>
       </div>
       <div id="reveal-flash">⚠ Moriarty Sighted!</div>
-      <div id="zoom-hint">Scroll/Pinch · Drag to pan</div>
+      <div id="zoom-hint">Scroll / Pinch to zoom · Drag to pan</div>
       <div id="coach-panel">
         <div class="coach-hdr">
           <span>🔎 Holmes Advises</span>
-          <span id="coach-rec" style="color:var(--gold-hi);font-size:7.5px"></span>
+          <span id="coach-rec" style="color:var(--gold);font-size:9px;font-weight:700"></span>
         </div>
         <div id="coach-log"></div>
       </div>
     </div>
 
     <div id="right-panel">
-      <div class="p-sec" style="padding-bottom:4px"><div class="p-lbl">Detective Bureau</div></div>
+      <div class="p-sec" style="padding-bottom:5px"><div class="p-lbl">Detective Bureau</div></div>
       <div id="det-list"></div>
     </div>
   </div>
@@ -377,9 +366,9 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parchmen
 </div>
 <script>
 'use strict';
-/* ══════════════════════════════════════════════════════════
-   FIXED MAP DATA — canonical Scotland Yard board
-══════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
+   FIXED MAP DATA — canonical Scotland Yard (Ravensburger)
+══════════════════════════════════════════════════════════════ */
 const STATIONS_RAW=[
   [1,190,40,"taxi,bus,underground"],[2,487,20,"taxi"],[3,675,25,"taxi,bus"],
   [4,790,15,"taxi"],[5,1253,30,"taxi"],[6,1396,29,"taxi"],[7,1541,36,"taxi,bus"],
@@ -560,9 +549,9 @@ const CONNECTIONS_RAW=[
   [195,197,"taxi"],[196,197,"taxi"],[198,199,"taxi"]
 ];
 
-/* ══════════════════════════════════════════════════════════
-   GRAPH
-══════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
+   GRAPH BUILD
+══════════════════════════════════════════════════════════════ */
 const WORLD_W=1600, WORLD_H=1200, RAW_W=1593, RAW_H=1191;
 const nodes={};
 STATIONS_RAW.forEach(([id,rx,ry,t])=>{
@@ -573,14 +562,12 @@ for(let i=1;i<=199;i++) adj[i]={taxi:[],bus:[],underground:[],water:[]};
 CONNECTIONS_RAW.forEach(([a,b,t])=>{ adj[a][t].push(b); adj[b][t].push(a); });
 
 function moriMoves(nodeId){
-  // All moves available to Moriarty from nodeId (water requires fog ticket but we list them anyway)
   const r=[];
   ['taxi','bus','underground','water'].forEach(t=>
     adj[nodeId][t].forEach(nb=>r.push({node:nb,type:t}))
   );
   return r;
 }
-
 function detMoves(det){
   const r=[];
   ['taxi','bus','underground'].forEach(t=>{
@@ -589,12 +576,11 @@ function detMoves(det){
   return r;
 }
 
-/* ══════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════
    CONSTANTS
-══════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════════════════ */
 const REVEAL_MOVES=[3,8,13,18,24];
-const MAX_MOVES=24;
-const NUM_DETS=5;
+const MAX_MOVES=24, NUM_DETS=5;
 const DET_NAMES=['Sherlock Holmes','Dr Watson','Insp. Lestrade','Insp. Gregson','Wiggins'];
 const DET_SHORT=['Holmes','Watson','Lestrade','Gregson','Wiggins'];
 const DET_EMOJIS=['🔍','📖','⚖️','🗂️','🧢'];
@@ -605,193 +591,135 @@ let currentMode='moriarty';
 let G={};
 let gameOver=false;
 
-/* ══════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════
    GAME STATE
-══════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════════════════ */
 function freshGame(){
-  const belief=new Float32Array(200);
   return {
     moriNode:1, moriMoveCount:0,
     fogLeft:5, bluffLeft:2,
-    bluffLeg:0,      // 0=none, 1=first leg done (second pending)
+    bluffLeg:0,       // 0=none, 1=first leg done (second pending)
     fogThisLeg:false, // fog activated for current move leg
     ghostNode:-1, ghostSince:0,
-    moriartyLog:[],  // {type,reveal,node} — detective knowledge only
-    belief,
+    moriartyLog:[],
+    belief:new Float32Array(200),
     detectives:DET_NAMES.map((name,i)=>({
       name, short:DET_SHORT[i], emoji:DET_EMOJIS[i],
       node:DET_START[i], tickets:{...DET_START_TIX}
     })),
     phase:'moriarty',
-    coachMovRec:null,
-    coachDetRecs:null,
+    coachMovRec:null, coachDetRecs:null,
   };
 }
 
-/* ══════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════
    BELIEF MODEL
-══════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════════════════ */
 function initBelief(){
-  const detSet=new Set(G.detectives.map(d=>d.node));
+  const ds=new Set(G.detectives.map(d=>d.node));
   let count=0;
-  for(let i=1;i<=199;i++) if(!detSet.has(i)) count++;
-  for(let i=1;i<=199;i++) G.belief[i]=detSet.has(i)?0:1/count;
+  for(let i=1;i<=199;i++) if(!ds.has(i)) count++;
+  for(let i=1;i<=199;i++) G.belief[i]=ds.has(i)?0:1/count;
 }
-
 function expandBelief(logType){
-  // logType: 'taxi'|'bus'|'underground'|'water'|'fog'
   const isFog=logType==='fog';
   const types=isFog?['taxi','bus','underground','water']:[logType];
   const next=new Float32Array(200);
-  const detSet=new Set(G.detectives.map(d=>d.node));
+  const ds=new Set(G.detectives.map(d=>d.node));
   for(let src=1;src<=199;src++){
     if(G.belief[src]<=0) continue;
     const reach=new Set();
     types.forEach(t=>adj[src][t].forEach(nb=>reach.add(nb)));
-    if(reach.size===0){ next[src]+=G.belief[src]; continue; }
+    if(reach.size===0){next[src]+=G.belief[src];continue;}
     const share=G.belief[src]/reach.size;
-    reach.forEach(nb=>{ next[nb]+=share; });
+    reach.forEach(nb=>{next[nb]+=share;});
   }
-  detSet.forEach(n=>{ next[n]=0; });
+  ds.forEach(n=>{next[n]=0;});
   let sum=0; for(let i=1;i<=199;i++) sum+=next[i];
   if(sum>0) for(let i=1;i<=199;i++) next[i]/=sum;
   G.belief=next;
 }
-
 function collapseBeliefTo(nodeId){
-  G.belief=new Float32Array(200);
-  G.belief[nodeId]=1.0;
+  G.belief=new Float32Array(200); G.belief[nodeId]=1.0;
 }
-
 function pruneBeliefDetNodes(){
-  const detSet=new Set(G.detectives.map(d=>d.node));
-  detSet.forEach(n=>{ G.belief[n]=0; });
+  const ds=new Set(G.detectives.map(d=>d.node));
+  ds.forEach(n=>{G.belief[n]=0;});
   let sum=0; for(let i=1;i<=199;i++) sum+=G.belief[i];
   if(sum>0) for(let i=1;i<=199;i++) G.belief[i]/=sum;
 }
 
-/* ══════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════
    AI — MORIARTY
-══════════════════════════════════════════════════════════ */
-function scoreNode(nodeId, detPositions){
+══════════════════════════════════════════════════════════════ */
+function scoreNode(nodeId, detPos){
   const n=nodes[nodeId];
-  // Distance from nearest detective (maximise)
-  let minD=0;
-  detPositions.forEach(dp=>{
-    const d=nodes[dp];
-    const dist=Math.hypot(n.x-d.x, n.y-d.y);
-    if(minD===0||dist<minD) minD=dist;
-  });
-  // Future mobility
+  let minD=Infinity;
+  detPos.forEach(dp=>{const d=nodes[dp];const dist=Math.hypot(n.x-d.x,n.y-d.y);if(dist<minD)minD=dist;});
   const mob=adj[nodeId].taxi.length+adj[nodeId].bus.length+adj[nodeId].underground.length;
-  // Density of detectives within 2 taxi hops
   const twoHop=new Set([nodeId]);
-  adj[nodeId].taxi.forEach(a=>{ twoHop.add(a); adj[a].taxi.forEach(b=>twoHop.add(b)); });
-  let dens=0;
-  detPositions.forEach(dp=>{ if(twoHop.has(dp)) dens++; });
-  return minD*1.0 + mob*12 - dens*70;
+  adj[nodeId].taxi.forEach(a=>{twoHop.add(a);adj[a].taxi.forEach(b=>twoHop.add(b));});
+  let dens=0; detPos.forEach(dp=>{if(twoHop.has(dp))dens++;});
+  return minD*1.0+mob*12-dens*70;
 }
-
-function aiPickMoriMove(fogForced=false){
+function aiPickMoriMove(){
   const detPos=G.detectives.map(d=>d.node);
   const detSet=new Set(detPos);
   const nextMoveNum=G.moriMoveCount+1;
   const isRevealMove=REVEAL_MOVES.includes(nextMoveNum);
-
-  // Should use bluff? Best on reveal moves (first leg)
-  const useBluff=G.bluffLeft>0 && G.bluffLeg===0 && isRevealMove;
-  // Should use fog? After a reveal or when detectives very close, conserve otherwise
   const mn=nodes[G.moriNode];
-  const minDetDist=Math.min(...detPos.map(dp=>{ const d=nodes[dp]; return Math.hypot(mn.x-d.x,mn.y-d.y); }));
-  const useFog=!fogForced && G.fogLeft>0 && (isRevealMove || minDetDist<160);
-
+  const minDetDist=Math.min(...detPos.map(dp=>{const d=nodes[dp];return Math.hypot(mn.x-d.x,mn.y-d.y);}));
+  const useBluff=G.bluffLeft>0&&G.bluffLeg===0&&isRevealMove;
+  const useFog=G.fogLeft>0&&(isRevealMove||minDetDist<160);
   let candidates=moriMoves(G.moriNode).filter(m=>!detSet.has(m.node));
-  if(candidates.length===0){
-    // All adjacent nodes occupied — surrender
-    return {node:G.moriNode,type:'taxi',surrender:true};
-  }
-
-  // Filter water if no fog
-  const fogAvail=fogForced||useFog||G.fogThisLeg;
+  if(candidates.length===0) return {node:G.moriNode,type:'taxi',surrender:true};
+  const fogAvail=useFog||G.fogThisLeg;
   if(!fogAvail) candidates=candidates.filter(m=>m.type!=='water');
   if(candidates.length===0) candidates=moriMoves(G.moriNode).filter(m=>!detSet.has(m.node));
-
-  let best=candidates[0], bestScore=-Infinity;
-  candidates.forEach(m=>{
-    const s=scoreNode(m.node,detPos);
-    if(s>bestScore){ bestScore=s; best=m; }
-  });
-
-  const fogConsumed=best.type==='water'||(useFog&&!fogForced&&!G.fogThisLeg);
-  return {
-    node:best.node,
-    type:fogConsumed?'fog':best.type,
-    realType:best.type,
-    fogConsumed,
-    bluffConsumed:useBluff,
-  };
+  let best=candidates[0],bestScore=-Infinity;
+  candidates.forEach(m=>{const s=scoreNode(m.node,detPos);if(s>bestScore){bestScore=s;best=m;}});
+  const fogConsumed=best.type==='water'||(useFog&&!G.fogThisLeg);
+  return {node:best.node,type:fogConsumed?'fog':best.type,realType:best.type,fogConsumed,bluffConsumed:useBluff};
 }
 
-/* ══════════════════════════════════════════════════════════
-   AI — DETECTIVES (belief-based team strategy)
-══════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
+   AI — DETECTIVES
+══════════════════════════════════════════════════════════════ */
 function aiDetTeamMoves(){
-  // Returns [{detIdx,node,type}] using only belief knowledge
   const moves=[];
   const plannedDests=new Set(G.detectives.map(d=>d.node));
-
-  // Rank nodes by belief
   const ranked=[];
   for(let i=1;i<=199;i++) ranked.push({id:i,b:G.belief[i]});
   ranked.sort((a,b)=>b.b-a.b);
-
-  // Belief centroid
   let cx=0,cy=0,tot=0;
-  for(let i=1;i<=199;i++){ cx+=nodes[i].x*G.belief[i]; cy+=nodes[i].y*G.belief[i]; tot+=G.belief[i]; }
-  if(tot>0){ cx/=tot; cy/=tot; }
-
-  // Belief spread
+  for(let i=1;i<=199;i++){cx+=nodes[i].x*G.belief[i];cy+=nodes[i].y*G.belief[i];tot+=G.belief[i];}
+  if(tot>0){cx/=tot;cy/=tot;}
   let spread=0;
-  for(let i=1;i<=199;i++){
-    const dx=nodes[i].x-cx, dy=nodes[i].y-cy;
-    spread+=Math.sqrt(dx*dx+dy*dy)*G.belief[i];
-  }
+  for(let i=1;i<=199;i++){const dx=nodes[i].x-cx,dy=nodes[i].y-cy;spread+=Math.sqrt(dx*dx+dy*dy)*G.belief[i];}
   if(tot>0) spread/=tot;
-
-  // Assign targets: spread them out across probability cloud
   const targets=[];
   const assignedT=new Set();
-  const minSep = spread>250 ? 150 : 80; // tighter when cloud is small
-
+  const minSep=spread>250?150:80;
   for(let di=0;di<NUM_DETS;di++){
     let target=ranked[0].id;
     for(const {id} of ranked){
-      if(id===0||G.belief[id]<0.001) continue;
-      const tooClose=[...assignedT].some(t=>{
-        const tn=nodes[t],cn=nodes[id];
-        return Math.hypot(tn.x-cn.x,tn.y-cn.y)<minSep;
-      });
-      if(!tooClose){ target=id; break; }
+      if(G.belief[id]<0.001) continue;
+      const tooClose=[...assignedT].some(t=>{const tn=nodes[t],cn=nodes[id];return Math.hypot(tn.x-cn.x,tn.y-cn.y)<minSep;});
+      if(!tooClose){target=id;break;}
     }
-    assignedT.add(target);
-    targets.push(target);
+    assignedT.add(target);targets.push(target);
   }
-
   G.detectives.forEach((det,i)=>{
     const valid=detMoves(det);
-    if(!valid.length){
-      moves.push({detIdx:i,node:det.node,type:'taxi',stranded:true});
-      return;
-    }
+    if(!valid.length){moves.push({detIdx:i,node:det.node,type:'taxi',stranded:true});return;}
     const tgt=nodes[targets[i]||ranked[0].id];
-    let best=valid[0], bestScore=-Infinity;
+    let best=valid[0],bestScore=-Infinity;
     valid.forEach(m=>{
       if(plannedDests.has(m.node)&&m.node!==det.node) return;
       const mn2=nodes[m.node];
       const dist=Math.hypot(mn2.x-tgt.x,mn2.y-tgt.y);
       const bel=(G.belief[m.node]||0)*4000;
-      const score=-dist+bel;
-      if(score>bestScore){ bestScore=score; best=m; }
+      if(-dist+bel>bestScore){bestScore=-dist+bel;best=m;}
     });
     plannedDests.add(best.node);
     moves.push({detIdx:i,node:best.node,type:best.type});
@@ -799,70 +727,281 @@ function aiDetTeamMoves(){
   return moves;
 }
 
-/* ══════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════
    COACH
-══════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════════════════ */
 function coachMoriSuggest(){
-  // Full board knowledge
   const rec=aiPickMoriMove();
-  const detPos=G.detectives.map(d=>d.node);
   const mn=nodes[G.moriNode];
-  const closest=G.detectives.reduce((b,d)=>{
-    const dist=Math.hypot(nodes[d.node].x-mn.x,nodes[d.node].y-mn.y);
-    return dist<b.dist?{d,dist}:b;
-  },{d:G.detectives[0],dist:Infinity});
-
-  const lines=[];
+  const closest=G.detectives.reduce((b,d)=>{const dist=Math.hypot(nodes[d.node].x-mn.x,nodes[d.node].y-mn.y);return dist<b.dist?{d,dist}:b;},{d:G.detectives[0],dist:Infinity});
   const nextReveal=REVEAL_MOVES.find(r=>r>G.moriMoveCount);
-  lines.push(`${closest.d.short} is your nearest pursuer. Station ${rec.node} offers the best escape geometry.`);
+  const lines=[];
+  lines.push(`${closest.d.short} is your nearest pursuer. Station ${rec.node} offers the best escape.`);
   if(rec.fogConsumed) lines.push(`Heavy Fog advised — denies detectives transport intelligence.`);
-  if(rec.bluffConsumed) lines.push(`Double Bluff recommended — vacate the reveal position before detectives react.`);
-  if(nextReveal) lines.push(`Next reveal at move ${nextReveal} (${nextReveal-G.moriMoveCount} move${nextReveal-G.moriMoveCount>1?'s':''} away).`);
+  if(rec.bluffConsumed) lines.push(`Double Bluff recommended — vacate the reveal position immediately.`);
+  if(nextReveal) lines.push(`Next reveal: move ${nextReveal} (${nextReveal-G.moriMoveCount} move${nextReveal-G.moriMoveCount>1?'s':''} away).`);
   G.coachMovRec=rec;
-  return {rec, text:lines.join(' ')};
+  return {rec,text:lines.join(' ')};
 }
-
 function coachDetSuggest(){
-  // Belief knowledge only — no actual Moriarty position
   const recs=aiDetTeamMoves();
   let peakNode=1,peakVal=0;
-  for(let i=1;i<=199;i++) if(G.belief[i]>peakVal){ peakVal=G.belief[i]; peakNode=i; }
+  for(let i=1;i<=199;i++) if(G.belief[i]>peakVal){peakVal=G.belief[i];peakNode=i;}
   const lines=[];
-  lines.push(`Highest probability zone: station ${peakNode} (${(peakVal*100).toFixed(1)}%).`);
-  if(G.ghostNode>=0){
-    lines.push(`Last sighting: station ${G.ghostNode}, ${G.ghostSince} move${G.ghostSince!==1?'s':''} ago.`);
-  }
+  lines.push(`Highest probability: station ${peakNode} (${(peakVal*100).toFixed(1)}%).`);
+  if(G.ghostNode>=0) lines.push(`Last sighting station ${G.ghostNode}, ${G.ghostSince} move${G.ghostSince!==1?'s':''} ago.`);
   lines.push(`Detectives fanning out to cover escape corridors.`);
   G.coachDetRecs=recs;
-  return {recs, text:lines.join(' ')};
+  return {recs,text:lines.join(' ')};
 }
 
-/* ══════════════════════════════════════════════════════════
-   CANVAS
-══════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
+   CANVAS + RENDERING
+══════════════════════════════════════════════════════════════ */
 let canvas,ctx,hoveredNode=null;
 let transform={x:0,y:0,scale:1};
 let pointers=new Map(),lastPinchDist=null,panStart=null,didPan=false;
-const MIN_SCALE=0.22,MAX_SCALE=7;
+const MIN_SCALE=0.22,MAX_SCALE=8;
 
-const ECOL={taxi:'rgba(212,160,23,0.45)',bus:'rgba(192,57,43,0.55)',underground:'rgba(26,107,60,0.8)',water:'rgba(31,97,141,0.85)'};
-const EWID={taxi:1,bus:1.6,underground:2.2,water:2.5};
-const EDSH={taxi:[],bus:[],underground:[4,3],water:[7,3]};
+// Edge style: slightly offset parallel lines per type to avoid overlap
+const ESTYLE={
+  taxi:    {col:'rgba(200,140,20,0.75)',  w:1.5, dash:[]},
+  bus:     {col:'rgba(200,30,30,0.85)',   w:2.5, dash:[]},
+  underground:{col:'rgba(20,140,60,0.9)', w:3.0, dash:[6,4]},
+  water:   {col:'rgba(20,100,200,0.95)',  w:3.5, dash:[9,4]},
+};
+
+// Catmull-Rom spline: draw smooth curve through p0..p3, drawing segment p1→p2
+function catmullRomSegment(ctx2, p0,p1,p2,p3, steps=16){
+  ctx2.moveTo(p1.x,p1.y);
+  for(let i=1;i<=steps;i++){
+    const t=i/steps;
+    const t2=t*t, t3=t2*t;
+    const x=0.5*((2*p1.x)+(-p0.x+p2.x)*t+(2*p0.x-5*p1.x+4*p2.x-p3.x)*t2+(-p0.x+3*p1.x-3*p2.x+p3.x)*t3);
+    const y=0.5*((2*p1.y)+(-p0.y+p2.y)*t+(2*p0.y-5*p1.y+4*p2.y-p3.y)*t2+(-p0.y+3*p1.y-3*p2.y+p3.y)*t3);
+    ctx2.lineTo(x,y);
+  }
+}
+
+// Pre-compute an intermediate "bend" point for each edge
+// The bend is perpendicular offset from midpoint, amount = f(edge_length) 
+// to give natural-looking curves without clipping through other nodes
+const edgeBends=new Map(); // key:"a-b" → {mx,my} midpoint with bend applied
+
+function buildEdgeBends(){
+  CONNECTIONS_RAW.forEach(([a,b,type])=>{
+    const key=a+'-'+b;
+    if(edgeBends.has(key)) return;
+    const na=nodes[a],nb=nodes[b];
+    const mx=(na.x+nb.x)/2, my=(na.y+nb.y)/2;
+    const dx=nb.x-na.x, dy=nb.y-na.y;
+    const len=Math.sqrt(dx*dx+dy*dy);
+    // Perpendicular direction
+    const px=-dy/len, py=dx/len;
+    // Bend amount: small fraction of length, capped
+    const bendAmt=Math.min(len*0.12,40);
+    // Deterministic sign from node IDs to keep consistent
+    const sign=((a+b*7)%2===0)?1:-1;
+    edgeBends.set(key,{mx:mx+px*bendAmt*sign, my:my+py*bendAmt*sign});
+  });
+}
+
+function drawEdgeCurved(ctx2, ax,ay,bx,by,bendMx,bendMy){
+  // Catmull-Rom: phantom points outside the path for smooth ends
+  const p0={x:ax-(bendMx-ax)*0.5, y:ay-(bendMy-ay)*0.5};
+  const p1={x:ax,y:ay};
+  const p2={x:bendMx,y:bendMy};
+  const p3={x:bx,y:by};
+  const p4={x:bx+(bx-bendMx)*0.5, y:by+(by-bendMy)*0.5};
+  ctx2.beginPath();
+  catmullRomSegment(ctx2,p0,p1,p2,p3,12);
+  ctx2.lineTo(bx,by);
+  catmullRomSegment(ctx2,p1,p2,p3,p4,12);
+}
+
+function drawMap(){
+  if(!canvas||!ctx) return;
+  const W=canvas.width,H=canvas.height;
+  ctx.clearRect(0,0,W,H);
+
+  // Warm parchment-map background
+  ctx.fillStyle='#3d2e18';ctx.fillRect(0,0,W,H);
+
+  // Subtle map texture feel via gradient
+  const mapGrad=ctx.createRadialGradient(W*0.5,H*0.48,0,W*0.5,H*0.48,Math.max(W,H)*0.7);
+  mapGrad.addColorStop(0,'rgba(90,65,30,0.6)');
+  mapGrad.addColorStop(1,'rgba(30,18,6,0.4)');
+  ctx.fillStyle=mapGrad;ctx.fillRect(0,0,W,H);
+
+  // Street grid feel — fine dots
+  ctx.fillStyle='rgba(200,160,80,0.05)';
+  const gridStep=Math.round(40*transform.scale);
+  if(gridStep>5){
+    const ox=transform.x%gridStep, oy=transform.y%gridStep;
+    for(let x=ox;x<W;x+=gridStep) for(let y=oy;y<H;y+=gridStep){
+      ctx.fillRect(x-1,y-1,2,2);
+    }
+  }
+
+  // Belief heatmap (detective view only)
+  const showBelief=currentMode==='detective'||currentMode==='coach-detective';
+  if(showBelief&&G.belief){
+    let maxB=0;
+    for(let i=1;i<=199;i++) if(G.belief[i]>maxB) maxB=G.belief[i];
+    if(maxB>0){
+      for(let i=1;i<=199;i++){
+        if(G.belief[i]<0.004) continue;
+        const n=nodes[i];const[sx,sy]=w2s(n.x,n.y);
+        const rad=Math.max(12,28*transform.scale);
+        const intensity=G.belief[i]/maxB;
+        const g=ctx.createRadialGradient(sx,sy,0,sx,sy,rad);
+        g.addColorStop(0,`rgba(220,60,30,${intensity*0.50})`);
+        g.addColorStop(1,'rgba(220,60,30,0)');
+        ctx.beginPath();ctx.arc(sx,sy,rad,0,Math.PI*2);
+        ctx.fillStyle=g;ctx.fill();
+      }
+    }
+  }
+
+  // Draw edges in type order (taxi bottom, water on top)
+  const typeOrder=['taxi','bus','underground','water'];
+  typeOrder.forEach(type=>{
+    const es=ESTYLE[type];
+    ctx.strokeStyle=es.col;
+    ctx.lineWidth=es.w*Math.min(transform.scale*1.2,2.5);
+    ctx.setLineDash(es.dash.map(v=>v*Math.min(transform.scale,1.5)));
+    ctx.lineCap='round';
+
+    CONNECTIONS_RAW.forEach(([a,b,t])=>{
+      if(t!==type) return;
+      const na=nodes[a],nb=nodes[b];
+      const[ax,ay]=w2s(na.x,na.y),[bx,by]=w2s(nb.x,nb.y);
+      // Clip to canvas with margin
+      if(Math.max(ax,bx)<-60||Math.min(ax,bx)>W+60) return;
+      if(Math.max(ay,by)<-60||Math.min(ay,by)>H+60) return;
+
+      const bend=edgeBends.get(a+'-'+b)||{mx:(ax+bx)/2,my:(ay+by)/2};
+      const[bmx,bmy]=w2s(bend.mx,bend.my);
+
+      ctx.beginPath();
+      // Quadratic Bezier through the bend point
+      ctx.moveTo(ax,ay);
+      ctx.quadraticCurveTo(bmx,bmy,bx,by);
+      ctx.stroke();
+    });
+  });
+  ctx.setLineDash([]);
+
+  // Ghost token
+  if(G&&G.ghostNode>=0){
+    const n=nodes[G.ghostNode];const[sx,sy]=w2s(n.x,n.y);
+    const R=Math.max(6,11*Math.min(transform.scale,1.5));
+    // Pulsing halo
+    ctx.beginPath();ctx.arc(sx,sy,R+7,0,Math.PI*2);
+    ctx.fillStyle='rgba(180,30,30,0.14)';ctx.fill();
+    ctx.beginPath();ctx.arc(sx,sy,R+3,0,Math.PI*2);
+    ctx.fillStyle='rgba(155,28,28,0.22)';ctx.fill();
+    ctx.beginPath();ctx.arc(sx,sy,R,0,Math.PI*2);
+    ctx.fillStyle='rgba(80,20,20,0.8)';ctx.strokeStyle='rgba(220,60,60,0.7)';ctx.lineWidth=2;
+    ctx.fill();ctx.stroke();
+    if(transform.scale>0.35){
+      const fs=Math.round(Math.min(14,10*transform.scale));
+      ctx.font=`${fs}px serif`;ctx.textAlign='center';ctx.fillStyle='rgba(255,180,150,0.85)';
+      ctx.fillText('🎩',sx,sy-R-1);
+      if(G.ghostSince>0){
+        ctx.font=`bold ${Math.round(Math.min(10,7.5*transform.scale))}px 'Cinzel',serif`;
+        ctx.fillStyle='rgba(220,120,100,0.75)';
+        ctx.fillText('+'+G.ghostSince,sx,sy+R+10*Math.min(transform.scale,1.5));
+      }
+    }
+  }
+
+  // Nodes
+  const R0=Math.max(4,9*Math.min(transform.scale,1.5));
+  const moriVisible=currentMode==='moriarty'||currentMode==='coach-moriarty';
+
+  for(let i=1;i<=199;i++){
+    const n=nodes[i];const[sx,sy]=w2s(n.x,n.y);
+    if(sx<-R0*4||sx>W+R0*4||sy<-R0*4||sy>H+R0*4) continue;
+    const isHov=i===hoveredNode;
+    const isMori=G&&i===G.moriNode;
+    const dHere=G?G.detectives.filter(d=>d.node===i):[];
+    const isDet=dHere.length>0;
+
+    // Glow for hovered
+    if(isHov){
+      ctx.beginPath();ctx.arc(sx,sy,R0+8,0,Math.PI*2);
+      ctx.fillStyle='rgba(240,176,32,0.22)';ctx.fill();
+    }
+    // Node circle
+    ctx.beginPath();ctx.arc(sx,sy,R0,0,Math.PI*2);
+    if(moriVisible&&isMori){
+      ctx.fillStyle='#7a1010';ctx.strokeStyle='#e84040';ctx.lineWidth=2.5;
+    } else if(isDet){
+      ctx.fillStyle='#f0e8c0';ctx.strokeStyle='#c8920a';ctx.lineWidth=2;
+    } else if(n.types.includes('underground')){
+      ctx.fillStyle='rgba(20,120,50,0.55)';ctx.strokeStyle='rgba(50,200,100,0.8)';ctx.lineWidth=1.5;
+    } else if(n.types.includes('bus')){
+      ctx.fillStyle='rgba(180,30,30,0.35)';ctx.strokeStyle='rgba(220,80,80,0.65)';ctx.lineWidth=1.2;
+    } else {
+      ctx.fillStyle='rgba(240,210,140,0.45)';ctx.strokeStyle='rgba(210,170,80,0.7)';ctx.lineWidth=1;
+    }
+    ctx.fill();ctx.stroke();
+
+    // Detective emojis — larger and clearer
+    if(isDet&&transform.scale>0.28){
+      const fs=Math.round(Math.min(16,11*transform.scale));
+      ctx.font=`${fs}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+      dHere.forEach((d,di)=>{
+        const ox=(di-(dHere.length-1)/2)*(fs*1.15);
+        // White halo behind emoji for readability
+        ctx.fillStyle='rgba(255,255,255,0.7)';
+        ctx.fillRect(sx+ox-fs*0.55,sy-R0-fs*0.9,fs*1.1,fs*1.1);
+        ctx.fillStyle='rgba(0,0,0,0.9)';
+        ctx.fillText(d.emoji,sx+ox,sy-R0-fs*0.25);
+      });
+      ctx.textBaseline='alphabetic';
+    }
+    // Moriarty hat
+    if(moriVisible&&isMori&&transform.scale>0.28){
+      const fs=Math.round(Math.min(16,11*transform.scale));
+      ctx.font=`${fs}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillStyle='rgba(255,255,255,0.8)';
+      ctx.fillRect(sx-fs*0.55,sy-R0-fs*0.9,fs*1.1,fs*1.1);
+      ctx.fillText('🎩',sx,sy-R0-fs*0.25);
+      ctx.textBaseline='alphabetic';
+    }
+    // Station number labels — visible at all zoom levels for navigability
+    if(transform.scale>0.55){
+      const fs=Math.round(Math.min(10,7*transform.scale));
+      ctx.font=`bold ${fs}px 'Cinzel',serif`;
+      ctx.fillStyle=isHov?'#fff':n.types.includes('underground')?'rgba(100,230,150,0.9)':n.types.includes('bus')?'rgba(255,130,130,0.85)':'rgba(240,210,140,0.75)';
+      ctx.textAlign='center';ctx.textBaseline='alphabetic';
+      ctx.fillText(i,sx,sy+R0+fs+2*transform.scale);
+    }
+  }
+}
 
 function initCanvas(){
   canvas=document.getElementById('map-canvas');
   ctx=canvas.getContext('2d');
-  // Mouse
+  buildEdgeBends();
+  // Mouse events
   canvas.addEventListener('mousemove',e=>{
     const r=canvas.getBoundingClientRect();
-    if(panStart){ const dx=e.clientX-panStart.px,dy=e.clientY-panStart.py; if(Math.abs(dx)+Math.abs(dy)>4){didPan=true;canvas.classList.add('panning');} if(didPan){transform.x=panStart.tx+dx;transform.y=panStart.ty+dy;drawMap();hideTooltip();return;} } onHoverAt(e.clientX-r.left,e.clientY-r.top);
+    if(panStart){
+      const dx=e.clientX-panStart.px,dy=e.clientY-panStart.py;
+      if(Math.abs(dx)+Math.abs(dy)>4){didPan=true;canvas.classList.add('panning');}
+      if(didPan){transform.x=panStart.tx+dx;transform.y=panStart.ty+dy;drawMap();hideTooltip();return;}
+    }
+    onHoverAt(e.clientX-r.left,e.clientY-r.top);
   });
   canvas.addEventListener('mousedown',e=>{didPan=false;panStart={tx:transform.x,ty:transform.y,px:e.clientX,py:e.clientY};});
   canvas.addEventListener('mouseup',()=>{panStart=null;canvas.classList.remove('panning');});
   canvas.addEventListener('mouseleave',()=>{hoveredNode=null;hideTooltip();drawMap();});
   canvas.addEventListener('wheel',e=>{e.preventDefault();const r=canvas.getBoundingClientRect();zoomAt(e.clientX-r.left,e.clientY-r.top,e.deltaY<0?1.12:0.89);},{passive:false});
-  // Touch
-  canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});didPan=false;if(pointers.size===1) panStart={tx:transform.x,ty:transform.y,px:e.clientX,py:e.clientY};if(pointers.size===2){lastPinchDist=getPinchDist();panStart=null;}});
+  // Pointer / touch
+  canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});didPan=false;if(pointers.size===1)panStart={tx:transform.x,ty:transform.y,px:e.clientX,py:e.clientY};if(pointers.size===2){lastPinchDist=getPinchDist();panStart=null;}});
   canvas.addEventListener('pointermove',e=>{
     if(!pointers.has(e.pointerId)) return;
     pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
@@ -873,136 +1012,23 @@ function initCanvas(){
   canvas.addEventListener('pointercancel',e=>pointers.delete(e.pointerId));
   canvas.addEventListener('contextmenu',e=>e.preventDefault());
 }
-
 function getPinchDist(){const p=[...pointers.values()];return p.length<2?null:Math.hypot(p[1].x-p[0].x,p[1].y-p[0].y);}
 function zoomAt(mx,my,f){const ns=Math.max(MIN_SCALE,Math.min(MAX_SCALE,transform.scale*f));transform.x=mx-(mx-transform.x)*(ns/transform.scale);transform.y=my-(my-transform.y)*(ns/transform.scale);transform.scale=ns;drawMap();}
-function resizeCanvas(){const r=canvas.parentElement.getBoundingClientRect();canvas.width=r.width;canvas.height=r.height;if(Object.keys(nodes).length)drawMap();}
+function resizeCanvas(){const r=canvas.parentElement.getBoundingClientRect();canvas.width=r.width;canvas.height=r.height;drawMap();}
 const w2s=(x,y)=>[x*transform.scale+transform.x,y*transform.scale+transform.y];
 const s2w=(x,y)=>[(x-transform.x)/transform.scale,(y-transform.y)/transform.scale];
-
 function centreMap(){
   const r=canvas.getBoundingClientRect();
-  const s=Math.min(r.width/WORLD_W,r.height/WORLD_H)*0.94;
-  transform.scale=s;
-  transform.x=(r.width-WORLD_W*s)/2;
-  transform.y=(r.height-WORLD_H*s)/2;
+  const s=Math.min(r.width/WORLD_W,r.height/WORLD_H)*0.95;
+  transform.scale=s;transform.x=(r.width-WORLD_W*s)/2;transform.y=(r.height-WORLD_H*s)/2;
 }
 
-function drawMap(){
-  if(!canvas||!ctx) return;
-  const W=canvas.width,H=canvas.height;
-  ctx.clearRect(0,0,W,H);
-  ctx.fillStyle='#09070a';ctx.fillRect(0,0,W,H);
-
-  // Grid
-  ctx.strokeStyle='rgba(201,185,138,0.025)';ctx.lineWidth=1;
-  const gs=50*transform.scale,ox=transform.x%gs,oy=transform.y%gs;
-  for(let x=ox;x<W;x+=gs){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
-  for(let y=oy;y<H;y+=gs){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
-
-  // Belief heatmap (detective perspective only)
-  const showBelief=currentMode==='detective'||currentMode==='coach-detective';
-  if(showBelief&&G.belief){
-    let maxB=0;
-    for(let i=1;i<=199;i++) if(G.belief[i]>maxB) maxB=G.belief[i];
-    if(maxB>0){
-      for(let i=1;i<=199;i++){
-        if(G.belief[i]<0.005) continue;
-        const n=nodes[i];const[sx,sy]=w2s(n.x,n.y);
-        const rad=Math.max(10,25*transform.scale);
-        const intensity=G.belief[i]/maxB;
-        const g=ctx.createRadialGradient(sx,sy,0,sx,sy,rad);
-        g.addColorStop(0,`rgba(139,26,26,${intensity*0.38})`);
-        g.addColorStop(1,'rgba(139,26,26,0)');
-        ctx.beginPath();ctx.arc(sx,sy,rad,0,Math.PI*2);
-        ctx.fillStyle=g;ctx.fill();
-      }
-    }
-  }
-
-  // Edges
-  ['taxi','bus','underground','water'].forEach(type=>{
-    CONNECTIONS_RAW.forEach(([a,b,t])=>{
-      if(t!==type) return;
-      const na=nodes[a],nb=nodes[b];
-      const[ax,ay]=w2s(na.x,na.y),[bx,by]=w2s(nb.x,nb.y);
-      ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);
-      ctx.strokeStyle=ECOL[type];
-      ctx.lineWidth=EWID[type]*Math.min(transform.scale,1.5);
-      ctx.setLineDash(EDSH[type].map(v=>v*Math.min(transform.scale,1.5)));
-      ctx.stroke();
-    });
-  });
-  ctx.setLineDash([]);
-
-  // Ghost token
-  if(G&&G.ghostNode>=0){
-    const n=nodes[G.ghostNode];const[sx,sy]=w2s(n.x,n.y);
-    const R=Math.max(5,10*Math.min(transform.scale,1.5));
-    ctx.beginPath();ctx.arc(sx,sy,R+5,0,Math.PI*2);ctx.fillStyle='rgba(139,26,26,0.12)';ctx.fill();
-    ctx.beginPath();ctx.arc(sx,sy,R,0,Math.PI*2);
-    ctx.fillStyle='rgba(50,15,15,0.65)';ctx.strokeStyle='rgba(192,57,43,0.4)';ctx.lineWidth=1.5;
-    ctx.fill();ctx.stroke();
-    if(transform.scale>0.38){
-      const fs=Math.round(Math.min(12,9*transform.scale));
-      ctx.font=`${fs}px serif`;ctx.textAlign='center';ctx.fillStyle='rgba(192,57,43,0.6)';
-      ctx.fillText('🎩',sx,sy-R-1);
-      if(G.ghostSince>0){
-        ctx.font=`bold ${Math.round(Math.min(8,6.5*transform.scale))}px 'Cinzel',serif`;
-        ctx.fillStyle='rgba(192,57,43,0.55)';
-        ctx.fillText('+'+G.ghostSince,sx,sy+R+8*Math.min(transform.scale,1.5));
-      }
-    }
-  }
-
-  // Nodes
-  const R0=Math.max(3,7*Math.min(transform.scale,1.5));
-  const moriVisible=currentMode==='moriarty'||currentMode==='coach-moriarty';
-
-  for(let i=1;i<=199;i++){
-    const n=nodes[i];const[sx,sy]=w2s(n.x,n.y);
-    if(sx<-R0*4||sx>W+R0*4||sy<-R0*4||sy>H+R0*4) continue;
-    const isHov=i===hoveredNode;
-    const isMori=G&&i===G.moriNode;
-    const dHere=G?G.detectives.filter(d=>d.node===i):[];
-    const isDet=dHere.length>0;
-    if(isHov){ctx.beginPath();ctx.arc(sx,sy,R0+5,0,Math.PI*2);ctx.fillStyle='rgba(184,134,11,0.14)';ctx.fill();}
-    ctx.beginPath();ctx.arc(sx,sy,R0,0,Math.PI*2);
-    if(moriVisible&&isMori){ctx.fillStyle='#5c0f0f';ctx.strokeStyle='#c0392b';ctx.lineWidth=1.5;}
-    else if(isDet){ctx.fillStyle='#18182e';ctx.strokeStyle='#b8860b';ctx.lineWidth=1.5;}
-    else if(isHov){ctx.fillStyle='rgba(184,134,11,0.18)';ctx.strokeStyle='rgba(184,134,11,0.65)';ctx.lineWidth=1.5;}
-    else if(n.types.includes('underground')){ctx.fillStyle='rgba(26,107,60,0.18)';ctx.strokeStyle='rgba(26,107,60,0.55)';ctx.lineWidth=0.9;}
-    else if(n.types.includes('bus')){ctx.fillStyle='rgba(192,57,43,0.08)';ctx.strokeStyle='rgba(192,57,43,0.3)';ctx.lineWidth=0.8;}
-    else{ctx.fillStyle='rgba(201,185,138,0.05)';ctx.strokeStyle='rgba(201,185,138,0.18)';ctx.lineWidth=0.6;}
-    ctx.fill();ctx.stroke();
-    // Det emojis
-    if(dHere.length&&transform.scale>0.35){
-      const fs=Math.round(Math.min(12,9*transform.scale));
-      ctx.font=`${fs}px serif`;ctx.textAlign='center';
-      dHere.forEach((d,di)=>ctx.fillText(d.emoji,sx+(di-(dHere.length-1)/2)*(fs*1.1),sy-R0-1));
-    }
-    // Moriarty hat
-    if(moriVisible&&isMori&&transform.scale>0.35){
-      const fs=Math.round(Math.min(12,9*transform.scale));
-      ctx.font=`${fs}px serif`;ctx.textAlign='center';
-      ctx.fillText('🎩',sx,sy-R0-1.5*transform.scale);
-    }
-    // Number labels at high zoom
-    if(transform.scale>1.6){
-      ctx.font=`${Math.round(6*transform.scale)}px 'Cinzel',serif`;
-      ctx.fillStyle=isHov?'#e8d9b5':'rgba(201,185,138,0.38)';
-      ctx.textAlign='center';
-      ctx.fillText(i,sx,sy+R0+7.5*transform.scale);
-    }
-  }
-}
-
-/* ══════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════
    TOOLTIP
-══════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════════════════ */
 function onHoverAt(mx,my){
   const[wx,wy]=s2w(mx,my);
-  const thresh=(18/Math.max(transform.scale,0.3))**2;
+  const thresh=(20/Math.max(transform.scale,0.25))**2;
   let near=null,nearD=Infinity;
   for(let i=1;i<=199;i++){const n=nodes[i];const d=(n.x-wx)**2+(n.y-wy)**2;if(d<nearD){nearD=d;near=i;}}
   const prev=hoveredNode;
@@ -1011,41 +1037,39 @@ function onHoverAt(mx,my){
   else hideTooltip();
   if(hoveredNode!==prev) drawMap();
 }
-
 function showTooltip(id,sx,sy){
   const n=nodes[id];
   const dHere=G?G.detectives.filter(d=>d.node===id):[];
   document.getElementById('tt-name').textContent='Station '+id;
   document.getElementById('tt-sub').textContent=n.types.join(' · ');
-  let body='';
   const tc=adj[id];
-  if(tc.taxi.length) body+=`🚕${tc.taxi.length} `;
-  if(tc.bus.length) body+=`🚌${tc.bus.length} `;
-  if(tc.underground.length) body+=`🚇${tc.underground.length} `;
-  if(tc.water.length) body+=`⛵${tc.water.length} `;
+  let body='';
+  if(tc.taxi.length) body+=`🚕 ${tc.taxi.length}  `;
+  if(tc.bus.length) body+=`🚌 ${tc.bus.length}  `;
+  if(tc.underground.length) body+=`🚇 ${tc.underground.length}  `;
+  if(tc.water.length) body+=`⛵ ${tc.water.length}  `;
   if(dHere.length) body+=`<br>${dHere.map(d=>d.emoji+' '+d.short).join('  ')}`;
-  const showBelief=G&&G.belief&&G.belief[id]>0.005&&(currentMode==='detective'||currentMode==='coach-detective');
-  if(showBelief) body+=`<br><span style="color:rgba(192,57,43,.7)">P:${(G.belief[id]*100).toFixed(1)}%</span>`;
+  if(G&&G.belief&&G.belief[id]>0.005&&(currentMode==='detective'||currentMode==='coach-detective'))
+    body+=`<br><span style="color:#9b1c1c;font-weight:bold">P: ${(G.belief[id]*100).toFixed(1)}%</span>`;
   document.getElementById('tt-body').innerHTML=body.trim();
   const tip=document.getElementById('tooltip');
   const W=canvas.width;
-  let tx=sx+12,ty=sy-8;
-  if(tx+155>W) tx=sx-155;
-  if(ty<0) ty=3;
+  let tx=sx+13,ty=Math.max(4,sy-10);
+  if(tx+165>W) tx=sx-165;
   tip.style.left=tx+'px';tip.style.top=ty+'px';
   tip.classList.add('on');
 }
 function hideTooltip(){document.getElementById('tooltip').classList.remove('on');}
 
-/* ══════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════
    MOVE PROMPT
-══════════════════════════════════════════════════════════ */
-let promptCtx=null; // {who:'moriarty'|'detective', detIdx:number, leg:1|2}
+══════════════════════════════════════════════════════════════ */
+let promptCtx=null;
 
 function showMoriPrompt(leg=1){
   if(gameOver) return;
   promptCtx={who:'moriarty',leg};
-  const p=document.getElementById('move-prompt');p.classList.add('on');
+  document.getElementById('move-prompt').classList.add('on');
   document.getElementById('mp-title').textContent=leg===2?'🎩 Double Bluff — Second Move':'🎩 Your Move';
   document.getElementById('special-row').classList.toggle('on',leg===1);
   document.getElementById('fog-btn').disabled=G.fogLeft<=0||G.fogThisLeg;
@@ -1053,22 +1077,27 @@ function showMoriPrompt(leg=1){
   document.getElementById('bluff-btn').disabled=G.bluffLeft<=0||G.bluffLeg>0||leg===2;
   document.getElementById('bluff-btn-n').textContent=G.bluffLeft;
   document.getElementById('cc-btn').style.display=currentMode==='coach-moriarty'?'':'none';
-  buildMoriTransport();
-  resetDest();
-  if(currentMode==='coach-moriarty'){const s=coachMoriSuggest();addCoachEntry(s.text,'→ Station '+s.rec.node);}
+  buildMoriTransport();resetDest();
+  if(currentMode==='coach-moriarty'){const s=coachMoriSuggest();addCoachEntry(s.text,'Rec: Stn '+s.rec.node);}
 }
 
 function showDetPrompt(di){
   if(gameOver) return;
-  promptCtx={who:'detective',detIdx:di};
+  // Auto-skip stranded detectives
   const det=G.detectives[di];
+  const valid=detMoves(det);
+  if(!valid.length){
+    addLog(G.moriMoveCount,det.emoji,`<strong>${det.short}</strong> is stranded — no tickets available. Skipping.`);
+    advanceDet(di);
+    return;
+  }
+  promptCtx={who:'detective',detIdx:di};
   document.getElementById('move-prompt').classList.add('on');
   document.getElementById('mp-title').textContent=`${det.emoji} ${det.short} (${di+1}/5)`;
   document.getElementById('special-row').classList.remove('on');
   document.getElementById('cc-btn').style.display=currentMode==='coach-detective'?'':'none';
-  buildDetTransport(di);
-  resetDest();
-  if(currentMode==='coach-detective'){const s=coachDetSuggest();const rec=s.recs.find(r=>r.detIdx===di);addCoachEntry(s.text,rec?'→ Station '+rec.node:'');}
+  buildDetTransport(di);resetDest();
+  if(currentMode==='coach-detective'){const s=coachDetSuggest();const rec=s.recs.find(r=>r.detIdx===di);addCoachEntry(s.text,rec?'Rec: Stn '+rec.node:'');}
 }
 
 function hidePrompt(){
@@ -1079,8 +1108,7 @@ function hidePrompt(){
 
 function resetDest(){
   const ds=document.getElementById('sel-dest');
-  ds.innerHTML='<option value="">— Choose —</option>';
-  ds.disabled=true;
+  ds.innerHTML='<option value="">— Choose —</option>';ds.disabled=true;
   document.getElementById('commit-btn').disabled=true;
 }
 
@@ -1089,15 +1117,21 @@ function buildMoriTransport(){
   ts.innerHTML='<option value="">— Choose —</option>';
   const avail=new Set();
   moriMoves(G.moriNode).forEach(m=>{
-    if(m.type==='water'){ if(G.fogLeft>0||G.fogThisLeg) avail.add('water'); }
+    if(m.type==='water'){if(G.fogLeft>0||G.fogThisLeg)avail.add('water');}
     else avail.add(m.type);
   });
+  if(G.fogThisLeg){ // fog active: show all types with connections
+    ts.innerHTML='<option value="">— Choose —</option>';
+    ['taxi','bus','underground','water'].forEach(t=>{
+      if(adj[G.moriNode][t].length>0){
+        const o=document.createElement('option');o.value=t;o.textContent={taxi:'🚕 Hansom Cab',bus:'🚌 Omnibus',underground:'🚇 Underground',water:'⛵ River'}[t];ts.appendChild(o);
+      }
+    });
+    return;
+  }
   const labels={taxi:'🚕 Hansom Cab',bus:'🚌 Omnibus',underground:'🚇 Underground',water:'⛵ River (fog)'};
-  // If fog is active, all types reachable are valid options
-  const showAll=G.fogThisLeg;
   ['taxi','bus','underground','water'].forEach(t=>{
-    if(!showAll&&!avail.has(t)) return;
-    if(showAll){const hasMoves=adj[G.moriNode][t].length>0;if(!hasMoves)return;}
+    if(!avail.has(t)) return;
     const o=document.createElement('option');o.value=t;o.textContent=labels[t];ts.appendChild(o);
   });
 }
@@ -1111,64 +1145,52 @@ function buildDetTransport(di){
   ['taxi','bus','underground'].forEach(t=>{
     if(!avail.has(t)) return;
     const o=document.createElement('option');o.value=t;
-    o.textContent=`${labels[t]} (${det.tickets[t]})`;ts.appendChild(o);
+    o.textContent=`${labels[t]} (${det.tickets[t]} left)`;ts.appendChild(o);
   });
 }
 
 function onTypeChange(){
   const type=document.getElementById('sel-type').value;
-  resetDest();
-  if(!type||!promptCtx) return;
+  resetDest();if(!type||!promptCtx) return;
   const ds=document.getElementById('sel-dest');
   ds.innerHTML='<option value="">— Choose —</option>';
   let ms=[];
-  if(promptCtx.who==='moriarty'){
-    ms=moriMoves(G.moriNode).filter(m=>m.type===type);
-  } else {
-    ms=detMoves(G.detectives[promptCtx.detIdx]).filter(m=>m.type===type);
-  }
+  if(promptCtx.who==='moriarty') ms=moriMoves(G.moriNode).filter(m=>m.type===type);
+  else ms=detMoves(G.detectives[promptCtx.detIdx]).filter(m=>m.type===type);
   const seen=new Set();
   ms=ms.filter(m=>{if(seen.has(m.node))return false;seen.add(m.node);return true;});
   ms.sort((a,b)=>a.node-b.node);
-  ms.forEach(m=>{
-    const o=document.createElement('option');o.value=m.node;
-    o.textContent='Station '+m.node;ds.appendChild(o);
-  });
-  if(ms.length){
-    ds.disabled=false;
-    ds.onchange=()=>{ document.getElementById('commit-btn').disabled=!ds.value; };
-  }
+  ms.forEach(m=>{const o=document.createElement('option');o.value=m.node;o.textContent='Station '+m.node;ds.appendChild(o);});
+  if(ms.length){ds.disabled=false;ds.onchange=()=>{document.getElementById('commit-btn').disabled=!ds.value;};}
 }
 
-/* ══════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════
    SPECIAL TICKETS
-══════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════════════════ */
 function useSpecial(type){
   if(!promptCtx||promptCtx.who!=='moriarty') return;
   if(type==='fog'){
     if(G.fogLeft<=0||G.fogThisLeg) return;
     G.fogLeft--;G.fogThisLeg=true;
-    addLog(G.moriMoveCount,'🌫️','Moriarty plays <strong>Heavy Fog</strong> — transport concealed.');
-    updateSidebar();
-    document.getElementById('fog-btn').disabled=true;
+    addLog(G.moriMoveCount,'🌫','Moriarty plays <strong>Heavy Fog</strong> — transport concealed.');
+    updateSidebar();document.getElementById('fog-btn').disabled=true;
     buildMoriTransport();resetDest();
   } else if(type==='bluff'){
     if(G.bluffLeft<=0||G.bluffLeg>0) return;
-    G.bluffLeft--;G.bluffLeg=1; // flagged — awaiting first leg
+    G.bluffLeft--;G.bluffLeg=1;
     addLog(G.moriMoveCount,'⚡','Moriarty activates <strong>Double Bluff</strong> — two moves this turn!');
-    updateSidebar();
-    document.getElementById('bluff-btn').disabled=true;
+    updateSidebar();document.getElementById('bluff-btn').disabled=true;
   }
 }
 
-/* ══════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════
    COMMIT
-══════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════════════════ */
 function commitMove(){
   const type=document.getElementById('sel-type').value;
   const dest=parseInt(document.getElementById('sel-dest').value,10);
   if(!type||isNaN(dest)||!promptCtx) return;
-  if(promptCtx.who==='moriarty') doMoriMove(dest,type,false,false);
+  if(promptCtx.who==='moriarty') doMoriMove(dest,type);
   else doDetMove(promptCtx.detIdx,dest,type);
 }
 
@@ -1176,92 +1198,78 @@ function coachChoice(){
   if(!promptCtx) return;
   if(promptCtx.who==='moriarty'&&G.coachMovRec){
     const r=G.coachMovRec;
-    if(r.fogConsumed&&!G.fogThisLeg&&G.fogLeft>0){G.fogLeft--;G.fogThisLeg=true;addLog(G.moriMoveCount,'🌫️','Moriarty plays <strong>Heavy Fog</strong>.');updateSidebar();}
+    if(r.fogConsumed&&!G.fogThisLeg&&G.fogLeft>0){G.fogLeft--;G.fogThisLeg=true;addLog(G.moriMoveCount,'🌫','Moriarty plays <strong>Heavy Fog</strong>.');updateSidebar();}
     if(r.bluffConsumed&&G.bluffLeg===0&&G.bluffLeft>0){G.bluffLeft--;G.bluffLeg=1;addLog(G.moriMoveCount,'⚡','Moriarty activates <strong>Double Bluff</strong>!');updateSidebar();}
-    doMoriMove(r.node,r.realType||r.type,false,false);
+    doMoriMove(r.node,r.realType||r.type);
   } else if(promptCtx.who==='detective'&&G.coachDetRecs){
     const rec=G.coachDetRecs.find(r=>r.detIdx===promptCtx.detIdx);
     if(rec&&!rec.stranded) doDetMove(rec.detIdx,rec.node,rec.type);
   }
 }
 
-/* ══════════════════════════════════════════════════════════
-   MOVE EXECUTION — MORIARTY
-══════════════════════════════════════════════════════════ */
-function doMoriMove(dest,type,fogOverride,bluffOverride){
+/* ══════════════════════════════════════════════════════════════
+   EXECUTE — MORIARTY
+══════════════════════════════════════════════════════════════ */
+function doMoriMove(dest,type){
   if(gameOver) return;
-  const usingFog=G.fogThisLeg||fogOverride||(type==='water');
-  // Validate
+  const usingFog=G.fogThisLeg||(type==='water');
   const valid=moriMoves(G.moriNode);
   const legal=usingFog?valid.some(m=>m.node===dest):valid.some(m=>m.node===dest&&m.type===type);
   if(!legal){console.warn('Illegal Moriarty move',dest,type);return;}
 
-  G.moriNode=dest;
-  G.moriMoveCount++;
+  G.moriNode=dest;G.moriMoveCount++;
   if(G.ghostNode>=0) G.ghostSince++;
 
-  // Log type (what detectives see)
   const logType=usingFog?'fog':type;
   const isReveal=REVEAL_MOVES.includes(G.moriMoveCount);
-
-  // Update belief
   expandBelief(logType);
   G.moriartyLog.push({type:logType,reveal:isReveal,node:isReveal?dest:null});
 
   if(isReveal){
-    G.ghostNode=dest;
-    G.ghostSince=0;
-    collapseBeliefTo(dest);
-    updateGhostUI();
+    G.ghostNode=dest;G.ghostSince=0;
+    collapseBeliefTo(dest);updateGhostUI();
     addLog(G.moriMoveCount,'🎩',`<strong>REVEAL — Station ${dest}</strong>`,true);
     flashReveal();
   } else {
     const typeName={taxi:'Cab',bus:'Bus',underground:'Underground',water:'River'}[type]||type;
-    addLog(G.moriMoveCount,'🎩',`Moriarty moves by <strong>${usingFog?'🌫 Fog':''+typeName}</strong>.`);
+    addLog(G.moriMoveCount,'🎩',`Moriarty moves by <strong>${usingFog?'Heavy Fog':typeName}</strong>.`);
   }
-
-  // Reset fog flag
   G.fogThisLeg=false;
   document.getElementById('move-num').textContent=G.moriMoveCount;
-  updateRevealPips();
-  updateSidebar();
-  drawMap();
+  updateRevealPips();updateSidebar();drawMap();
 
   // Capture check
-  if(G.detectives.some(d=>d.node===G.moriNode)){
-    hidePrompt();setTimeout(()=>endGame('detectives','capture'),300);return;
-  }
-  // Game won by survival
-  if(G.moriMoveCount>=MAX_MOVES){
-    hidePrompt();setTimeout(()=>endGame('moriarty','survived'),300);return;
-  }
+  if(G.detectives.some(d=>d.node===G.moriNode)){hidePrompt();setTimeout(()=>endGame('detectives','capture'),300);return;}
+  // Survival
+  if(G.moriMoveCount>=MAX_MOVES){hidePrompt();setTimeout(()=>endGame('moriarty','survived'),300);return;}
 
-  // Double bluff: if bluffLeg===1, this was the first leg — prompt second
+  // Double bluff: first leg → prompt second
   if(G.bluffLeg===1){
-    G.bluffLeg=2;
-    hidePrompt();
+    G.bluffLeg=2;hidePrompt();
     setTimeout(()=>{
       if(currentMode==='moriarty'||currentMode==='coach-moriarty') showMoriPrompt(2);
-      else runAIMoriLeg(); // second leg for AI
+      else runAIMoriLeg();
     },350);
     return;
   }
-  // If bluffLeg===2, second leg just done — clear
   G.bluffLeg=0;
 
   // Hand to detectives
-  hidePrompt();
-  G.phase='detectives';
-  pruneBeliefDetNodes();
+  hidePrompt();G.phase='detectives';pruneBeliefDetNodes();
+  updateSidebar();
   setTimeout(()=>{
-    if(currentMode==='moriarty'){showAI('The detective bureau advances…');setTimeout(runAIDetPhase,600);}
-    else showDetPrompt(0);
+    // coach-moriarty: AI runs detectives; detective/coach-detective: human prompt
+    if(currentMode==='moriarty'||currentMode==='coach-moriarty'){
+      showAI('The detective bureau advances…');setTimeout(runAIDetPhase,600);
+    } else {
+      showDetPrompt(0);
+    }
   },200);
 }
 
-/* ══════════════════════════════════════════════════════════
-   MOVE EXECUTION — DETECTIVES
-══════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
+   EXECUTE — DETECTIVES
+══════════════════════════════════════════════════════════════ */
 function doDetMove(di,dest,type){
   if(gameOver) return;
   const det=G.detectives[di];
@@ -1270,9 +1278,7 @@ function doDetMove(di,dest,type){
   det.tickets[type]--;det.node=dest;
   addLog(G.moriMoveCount,det.emoji,`<strong>${det.short}</strong> → Station ${dest} via ${type}.`);
   updateDetPanel();drawMap();
-  // Capture?
   if(dest===G.moriNode){hidePrompt();setTimeout(()=>endGame('detectives','capture'),300);return;}
-  // Surrender check
   const adjN=moriMoves(G.moriNode).map(m=>m.node);
   const detSet=new Set(G.detectives.map(d=>d.node));
   if(adjN.length>0&&adjN.every(n=>detSet.has(n))){hidePrompt();setTimeout(()=>endGame('detectives','surrender'),300);return;}
@@ -1292,10 +1298,10 @@ function advanceDet(just){
   }
 }
 
-/* ══════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════
    AI PHASES
-══════════════════════════════════════════════════════════ */
-function runAIDetPhase(){ hideAI(); runAIOneDet(0); }
+══════════════════════════════════════════════════════════════ */
+function runAIDetPhase(){hideAI();runAIOneDet(0);}
 
 function runAIOneDet(idx){
   if(idx>=NUM_DETS){endDetPhase();return;}
@@ -1304,11 +1310,11 @@ function runAIOneDet(idx){
   const valid=detMoves(det);
   setTimeout(()=>{
     if(!valid.length){
-      addLog(G.moriMoveCount,det.emoji,`<strong>${det.short}</strong> is stranded.`);
+      addLog(G.moriMoveCount,det.emoji,`<strong>${det.short}</strong> is stranded — skipping.`);
     } else {
       const recs=aiDetTeamMoves();
       const rec=recs.find(r=>r.detIdx===idx);
-      const chosen=rec&&valid.some(m=>m.node===rec.node&&m.type===rec.type)?rec:valid[0];
+      const chosen=(rec&&!rec.stranded&&valid.some(m=>m.node===rec.node&&m.type===rec.type))?rec:valid[0];
       det.tickets[chosen.type]--;det.node=chosen.node;
       addLog(G.moriMoveCount,det.emoji,`<strong>${det.short}</strong> → Station ${chosen.node} via ${chosen.type}.`);
       updateDetPanel();drawMap();
@@ -1323,10 +1329,10 @@ function runAIOneDet(idx){
 
 function endDetPhase(){
   if(gameOver) return;
-  G.phase='moriarty';
-  pruneBeliefDetNodes();
+  G.phase='moriarty';pruneBeliefDetNodes();
   updateSidebar();drawMap();
   setTimeout(()=>{
+    // detective/coach-detective: AI Moriarty; moriarty/coach-moriarty: human prompt
     if(currentMode==='detective'||currentMode==='coach-detective') runAIMori();
     else showMoriPrompt();
   },200);
@@ -1340,25 +1346,24 @@ function runAIMori(){
     const move=aiPickMoriMove();
     if(move.surrender){endGame('detectives','surrender');return;}
     if(move.bluffConsumed&&G.bluffLeg===0){G.bluffLeft--;G.bluffLeg=1;addLog(G.moriMoveCount,'⚡','Moriarty activates <strong>Double Bluff</strong>!');updateSidebar();}
-    if(move.fogConsumed&&!G.fogThisLeg){G.fogLeft--;G.fogThisLeg=true;addLog(G.moriMoveCount,'🌫️','Moriarty uses <strong>Heavy Fog</strong>.');updateSidebar();}
-    doMoriMove(move.node,move.realType||move.type,false,false);
+    if(move.fogConsumed&&!G.fogThisLeg&&G.fogLeft>0){G.fogLeft--;G.fogThisLeg=true;addLog(G.moriMoveCount,'🌫','Moriarty uses <strong>Heavy Fog</strong>.');updateSidebar();}
+    doMoriMove(move.node,move.realType||move.type);
   },800);
 }
 
 function runAIMoriLeg(){
-  // Second leg of AI double bluff
   if(gameOver) return;
   setTimeout(()=>{
-    const move=aiPickMoriMove(true);
+    const move=aiPickMoriMove();
     if(move.surrender){endGame('detectives','surrender');return;}
-    if(move.fogConsumed&&!G.fogThisLeg&&G.fogLeft>0){G.fogLeft--;G.fogThisLeg=true;addLog(G.moriMoveCount,'🌫️','Moriarty fogs the second leg.');updateSidebar();}
-    doMoriMove(move.node,move.realType||move.type,false,false);
+    if(move.fogConsumed&&!G.fogThisLeg&&G.fogLeft>0){G.fogLeft--;G.fogThisLeg=true;addLog(G.moriMoveCount,'🌫','Moriarty fogs the second leg.');updateSidebar();}
+    doMoriMove(move.node,move.realType||move.type);
   },450);
 }
 
-/* ══════════════════════════════════════════════════════════
-   UI HELPERS
-══════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
+   UI
+══════════════════════════════════════════════════════════════ */
 function addLog(mn,icon,text,isReveal=false){
   const log=document.getElementById('move-log');
   const e=document.createElement('div');
@@ -1386,16 +1391,15 @@ function updateSidebar(){
   document.getElementById('bluff-left').textContent=G.bluffLeft;
   document.getElementById('fog-btn-n').textContent=G.fogLeft;
   document.getElementById('bluff-btn-n').textContent=G.bluffLeft;
-  document.getElementById('ph-dot').style.background=G.phase==='moriarty'?'#8b1a1a':'#b8860b';
+  document.getElementById('ph-dot').style.background=G.phase==='moriarty'?'#c03020':'#c8920a';
   document.getElementById('ph-txt').textContent=G.phase==='moriarty'?'Moriarty moves':'Detectives move';
   updateMoriStatus();updateDetPanel();updateRevealPips();
 }
 
 function updateMoriStatus(){
   document.getElementById('mori-status').innerHTML=
-    G.ghostNode>=0?`Last seen: <strong>Stn ${G.ghostNode}</strong>`:`Position: <strong>Unknown</strong>`;
+    G.ghostNode>=0?`Last seen: <strong>Station ${G.ghostNode}</strong>`:`Position: <strong>Unknown</strong>`;
 }
-
 function updateGhostUI(){
   const gi=document.getElementById('ghost-info');
   if(G.ghostNode>=0){
@@ -1403,17 +1407,16 @@ function updateGhostUI(){
     gi.textContent=G.ghostSince===0?'Just sighted here':`+${G.ghostSince} move${G.ghostSince!==1?'s':''} since sighting`;
   } else gi.style.display='none';
 }
-
 function updateDetPanel(){
   const list=document.getElementById('det-list');list.innerHTML='';
   G.detectives.forEach((det,i)=>{
     const c=document.createElement('div');
-    c.className='det-card';
-    c.innerHTML=`<div class="det-port">${det.emoji}</div><div class="det-info"><div class="det-name">${det.short}</div><div class="det-pos">Stn ${det.node}</div><div class="det-tix"><span class="taxi">🚕${det.tickets.taxi}</span><span class="bus">🚌${det.tickets.bus}</span><span class="underground">🚇${det.tickets.underground}</span></div></div>`;
+    const isActive=G.phase==='detectives'&&promptCtx&&promptCtx.who==='detective'&&promptCtx.detIdx===i;
+    c.className='det-card'+(isActive?' active':'');
+    c.innerHTML=`<div class="det-port">${det.emoji}</div><div class="det-info"><div class="det-name">${det.short}</div><div class="det-pos">Station ${det.node}</div><div class="det-tix"><span class="taxi">🚕 ${det.tickets.taxi}</span><span class="bus">🚌 ${det.tickets.bus}</span><span class="underground">🚇 ${det.tickets.underground}</span></div></div>`;
     list.appendChild(c);
   });
 }
-
 function updateRevealPips(){
   const pips=document.getElementById('reveal-pips');pips.innerHTML='';
   REVEAL_MOVES.forEach(r=>{
@@ -1426,28 +1429,24 @@ function updateRevealPips(){
   });
 }
 
-/* ══════════════════════════════════════════════════════════
-   COACH TOGGLE
-══════════════════════════════════════════════════════════ */
 function toggleCoach(){document.getElementById('coach-panel').classList.toggle('on');}
 
-/* ══════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════
    OUTCOME
-══════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════════════════ */
 function endGame(winner,reason){
   if(gameOver) return;
-  gameOver=true;
-  hidePrompt();hideAI();
+  gameOver=true;hidePrompt();hideAI();
   setTimeout(()=>{
-    const sc=document.getElementById('outcome');sc.classList.add('on');
+    document.getElementById('outcome').classList.add('on');
     if(winner==='moriarty'){
       document.getElementById('out-title').textContent='Moriarty Escapes!';
       document.getElementById('out-title').className='out-title out-mori';
-      document.getElementById('out-sub').textContent='The Napoleon of Crime vanishes into the London fog, outwitting Scotland Yard across all 24 moves. The game is yours, Professor.';
+      document.getElementById('out-sub').textContent='The Napoleon of Crime vanishes into the London fog. Twenty-four moves, and Scotland Yard never laid a hand on him.';
     } else if(reason==='surrender'){
       document.getElementById('out-title').textContent='Moriarty Surrenders';
       document.getElementById('out-title').className='out-title out-dets';
-      document.getElementById('out-sub').textContent='"You leave me no alternative, gentlemen." With detectives on every adjacent station, Moriarty hands himself in.';
+      document.getElementById('out-sub').textContent='"You leave me no alternative, gentlemen." Every adjacent station occupied — Moriarty hands himself in.';
     } else {
       document.getElementById('out-title').textContent='Captured!';
       document.getElementById('out-title').className='out-title out-dets';
@@ -1456,26 +1455,28 @@ function endGame(winner,reason){
   },400);
 }
 
-/* ══════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════
    RULES
-══════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════════════════ */
 function showRules(){
   document.getElementById('modal').classList.add('on');
   document.getElementById('modal-title').textContent='Rules of the Chase';
-  document.getElementById('modal-body').textContent='Moriarty makes 24 moves across Victorian London. Detectives win by landing on his station, or if every adjacent station is occupied (he surrenders). Moriarty wins by surviving all 24 moves. Reveals at moves 3, 8, 13, 18, 24 — the detective log highlights upcoming reveals so you can prepare. Heavy Fog (5 tickets) conceals transport type and is required for river travel. Double Bluff (2 tickets) grants two moves in one turn — ideal on reveal moves to immediately vacate. Fog and Bluff can be combined freely.';
+  document.getElementById('modal-body').innerHTML=
+    'Moriarty makes <strong>24 moves</strong> across Victorian London. Detectives win by landing on his station, or if he is completely surrounded. Moriarty wins by surviving.<br><br>'+
+    '<strong>Reveals</strong> at moves 3, 8, 13, 18, 24 — his station is shown and a ghost token placed.<br><br>'+
+    '<strong>Heavy Fog</strong> (5 tickets) — conceals transport type from detectives; required for river travel.<br><br>'+
+    '<strong>Double Bluff</strong> (2 tickets) — two moves in one turn. Ideal on reveal moves to immediately vacate.';
   document.getElementById('modal-acts').innerHTML='<button class="modal-btn" onclick="closeModal()">Understood</button>';
 }
 function closeModal(){document.getElementById('modal').classList.remove('on');}
 document.getElementById('modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
 
-/* ══════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════════
    START / BACK
-══════════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════════════════ */
 function startGame(mode){
   currentMode=mode;gameOver=false;
   G=freshGame();
-
-  // Random Moriarty start — not on a detective start node
   const detSet=new Set(DET_START);
   const pool=Object.keys(nodes).map(Number).filter(n=>!detSet.has(n));
   G.moriNode=pool[Math.floor(Math.random()*pool.length)];
@@ -1487,14 +1488,14 @@ function startGame(mode){
   document.getElementById('coach-log').innerHTML='';
   document.getElementById('move-log').innerHTML='';
   document.getElementById('move-num').textContent='0';
+  document.getElementById('ghost-info').style.display='none';
 
   const coachBtn=document.getElementById('coach-btn');
   coachBtn.style.display=(mode==='coach-moriarty'||mode==='coach-detective')?'':'none';
 
   if(!canvas) initCanvas(); else resizeCanvas();
   centreMap();
-  initBelief();
-  G.phase='moriarty';
+  initBelief();G.phase='moriarty';
 
   addLog(0,'🕵️','<strong>Game begun.</strong> Moriarty has vanished into the fog.');
   updateSidebar();updateGhostUI();drawMap();
