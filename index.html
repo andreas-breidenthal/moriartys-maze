@@ -3,1935 +3,1518 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Moriarty's Maze – Victorian London Pursuit</title>
+<title>Moriarty's Maze</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400;1,600&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
 <style>
-/* ════════════════════════════════════════════════════════
-   DESIGN TOKENS
-════════════════════════════════════════════════════════ */
 :root {
-  --ink:            #0d0b08;
-  --ink-mid:        #1a1410;
-  --parchment:      #e8d9b5;
-  --parchment-dark: #c9b98a;
-  --parchment-mid:  #d8c89e;
-  --gold:           #b8860b;
-  --gold-bright:    #d4a017;
-  --gold-pale:      #f0d060;
-  --crimson:        #8b1a1a;
-  --crimson-bright: #c0392b;
-  --fog:            #a0a89a;
-  --fog-dark:       #6e7568;
-  --cab:            #c0392b;
-  --tram:           #2471a3;
-  --underground:    #1a6b3c;
-  --river:          #1f618d;
+  --ink:#0d0b08; --ink-mid:#1a1410; --parchment:#e8d9b5; --parch-dark:#c9b98a;
+  --gold:#b8860b; --gold-hi:#d4a017; --crimson:#8b1a1a; --crim-hi:#c0392b;
+  --fog:#a0a89a; --fog-dk:#6e7568;
+  --taxi:#d4a017; --bus:#c0392b; --tube:#1a6b3c; --water:#1f618d;
 }
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parchment);touch-action:none}
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+#title-screen{
+  position:fixed;inset:0;z-index:400;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:16px;padding:20px;
+  background:var(--ink);
+  background-image:radial-gradient(ellipse at 25% 20%,rgba(184,134,11,.1) 0%,transparent 55%),
+    radial-gradient(ellipse at 75% 80%,rgba(139,26,26,.1) 0%,transparent 55%);
+}
+.t-orn{font-family:'Cinzel',serif;font-size:11px;letter-spacing:8px;text-transform:uppercase;color:var(--gold);opacity:.6}
+#title-screen h1{
+  font-family:'Cinzel',serif;font-weight:900;font-size:clamp(28px,6vw,68px);
+  color:var(--parchment);text-align:center;line-height:1;letter-spacing:2px;
+  text-shadow:0 0 40px rgba(184,134,11,.5),0 2px 4px rgba(0,0,0,.9);
+  animation:flicker 7s ease-in-out infinite;
+}
+#title-screen h1 span{color:var(--gold-hi)}
+@keyframes flicker{0%,88%,100%{opacity:1}90%{opacity:.88}95%{opacity:.82}}
+.t-sub{font-family:'IM Fell English',serif;font-style:italic;font-size:clamp(11px,1.8vw,16px);color:var(--fog);text-align:center}
+.t-rule{width:min(260px,80vw);height:1px;background:linear-gradient(to right,transparent,var(--gold),transparent)}
+.mode-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;width:min(500px,94vw)}
+.mode-card{
+  background:rgba(232,217,181,.03);border:1px solid rgba(184,134,11,.18);
+  padding:15px 12px;text-align:center;cursor:pointer;transition:all .25s;
+}
+.mode-card:hover{border-color:var(--gold);transform:translateY(-2px);box-shadow:0 8px 28px rgba(0,0,0,.6),0 0 18px rgba(184,134,11,.12)}
+.mode-icon{font-size:24px;display:block;margin-bottom:6px}
+.mode-title{font-family:'Cinzel',serif;font-size:10px;font-weight:600;color:var(--gold-hi);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px}
+.mode-desc{font-size:9.5px;color:var(--fog);line-height:1.4;font-style:italic}
+.t-foot{font-size:8px;color:var(--fog-dk);letter-spacing:3px;text-transform:uppercase;font-family:'Cinzel',serif}
 
-body {
-  font-family: 'Crimson Text', serif;
-  background: var(--ink);
-  color: var(--parchment);
-  height: 100dvh;
-  overflow: hidden;
-  touch-action: none;
-}
+#game{display:none;position:fixed;inset:0;flex-direction:column}
+#game.on{display:flex}
 
-/* ════════════════════════════════════════════════════════
-   TITLE SCREEN
-════════════════════════════════════════════════════════ */
-#title-screen {
-  position: fixed; inset: 0; z-index: 300;
-  background: var(--ink);
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  gap: 20px;
-  background-image:
-    radial-gradient(ellipse at 30% 20%, rgba(184,134,11,0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at 70% 80%, rgba(139,26,26,0.08) 0%, transparent 50%);
-  padding: 20px;
+#top-bar{
+  flex-shrink:0;height:40px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 11px;
+  background:linear-gradient(to right,var(--ink),var(--ink-mid),var(--ink));
+  border-bottom:1px solid rgba(184,134,11,.28);
 }
-.title-ornament {
-  font-size: 12px; letter-spacing: 8px; text-transform: uppercase;
-  color: var(--gold); opacity: 0.7; font-family: 'Cinzel', serif;
+.tb-title{font-family:'Cinzel',serif;font-size:13px;font-weight:700;color:var(--gold);letter-spacing:3px}
+.tb-title span{color:var(--parchment);font-weight:400}
+.tb-center{display:flex;align-items:center;gap:12px}
+.tb-move{font-family:'Cinzel',serif;font-size:9px;color:var(--fog);letter-spacing:1px}
+.tb-move strong{color:var(--gold-hi);font-size:12px}
+.reveal-pips{display:flex;gap:3px}
+.r-pip{
+  width:19px;height:19px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:7px;font-family:'Cinzel',serif;border:1px solid rgba(139,26,26,.35);
+  background:rgba(139,26,26,.12);color:var(--fog);transition:all .3s;
 }
-#title-screen h1 {
-  font-family: 'Cinzel', serif;
-  font-size: clamp(32px, 6vw, 72px);
-  font-weight: 900; color: var(--parchment);
-  text-align: center; line-height: 1; letter-spacing: 2px;
-  text-shadow: 0 0 40px rgba(184,134,11,0.4), 0 2px 4px rgba(0,0,0,0.8);
-  animation: flicker 6s ease-in-out infinite;
+.r-pip.done{background:rgba(60,60,60,.2);border-color:rgba(60,60,60,.25);color:#555}
+.r-pip.next{background:rgba(139,26,26,.45);border-color:var(--crim-hi);color:var(--crim-hi);animation:pip-p 1.3s ease-in-out infinite}
+.r-pip.now{background:var(--crimson);border-color:var(--crim-hi);color:var(--parchment)}
+@keyframes pip-p{0%,100%{opacity:1}50%{opacity:.4}}
+.tb-actions{display:flex;gap:4px}
+.tb-btn{
+  background:transparent;border:1px solid rgba(184,134,11,.22);color:var(--fog);
+  font-family:'Cinzel',serif;font-size:8px;padding:3px 7px;cursor:pointer;
+  letter-spacing:1px;text-transform:uppercase;transition:all .2s;border-radius:1px;
 }
-@keyframes flicker {
-  0%,90%,100%{opacity:1} 92%{opacity:.92} 94%{opacity:1} 96%{opacity:.88}
-}
-#title-screen h1 span { color: var(--gold-bright); }
-.title-subtitle {
-  font-family: 'IM Fell English', serif; font-style: italic;
-  font-size: clamp(12px,2vw,18px); color: var(--fog); text-align: center;
-}
-.title-divider {
-  width: min(300px, 80vw); height: 1px;
-  background: linear-gradient(to right, transparent, var(--gold), transparent);
-}
-.mode-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 12px; width: min(560px, 94vw);
-}
-.mode-card {
-  background: rgba(232,217,181,0.04);
-  border: 1px solid rgba(184,134,11,0.25);
-  padding: 18px 14px; text-align: center; cursor: pointer;
-  transition: all 0.3s; position: relative; overflow: hidden;
-}
-.mode-card:hover, .mode-card:active {
-  border-color: var(--gold); transform: translateY(-2px);
-  box-shadow: 0 8px 30px rgba(0,0,0,.5), 0 0 20px rgba(184,134,11,.15);
-}
-.mode-icon { font-size: 28px; display: block; margin-bottom: 8px; }
-.mode-title {
-  font-family: 'Cinzel', serif; font-size: 12px; font-weight: 600;
-  color: var(--gold-bright); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 5px;
-}
-.mode-desc { font-size: 11px; color: var(--fog); line-height: 1.4; font-style: italic; }
-.title-footer {
-  font-size: 10px; color: var(--fog-dark); letter-spacing: 3px; text-transform: uppercase;
-  font-family: 'Cinzel', serif;
-}
+.tb-btn:hover{border-color:var(--gold);color:var(--parchment)}
 
-/* ════════════════════════════════════════════════════════
-   GAME SHELL — three-row flex column
-════════════════════════════════════════════════════════ */
-#game-wrap {
-  display: none; position: fixed; inset: 0;
-  flex-direction: column;
-}
-#game-wrap.active { display: flex; }
+#content{flex:1;display:flex;overflow:hidden;min-height:0}
 
-/* ── TOP BAR ── */
-#top-bar {
-  flex-shrink: 0; height: 44px;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0 14px;
-  background: linear-gradient(to right, var(--ink), var(--ink-mid), var(--ink));
-  border-bottom: 1px solid rgba(184,134,11,0.3);
+#left-panel{
+  width:190px;flex-shrink:0;background:#110e0b;
+  border-right:1px solid rgba(184,134,11,.15);
+  display:flex;flex-direction:column;overflow:hidden;
 }
-.top-title {
-  font-family: 'Cinzel', serif; font-size: 15px; font-weight: 700;
-  color: var(--gold); letter-spacing: 3px;
+@media(max-width:640px){#left-panel{display:none}}
+#right-panel{
+  width:188px;flex-shrink:0;background:#110e0b;
+  border-left:1px solid rgba(184,134,11,.15);
+  display:flex;flex-direction:column;overflow:hidden;
 }
-.top-title span { color: var(--parchment); font-weight: 400; }
-.top-round {
-  font-family: 'Cinzel', serif; font-size: 11px; color: var(--fog); letter-spacing: 2px;
-}
-.top-round strong { color: var(--gold-bright); }
-.top-actions { display: flex; gap: 6px; }
-.top-btn {
-  background: transparent; border: 1px solid rgba(184,134,11,0.3);
-  color: var(--fog); font-family: 'Cinzel', serif; font-size: 9px;
-  padding: 4px 9px; cursor: pointer; letter-spacing: 1px; text-transform: uppercase;
-  transition: all 0.2s; border-radius: 2px;
-}
-.top-btn:hover { border-color: var(--gold); color: var(--parchment); }
+@media(max-width:580px){#right-panel{display:none}}
 
-/* ── MIDDLE ROW — map + side panels ── */
-#content {
-  flex: 1; display: flex; overflow: hidden; min-height: 0;
-}
+.p-sec{padding:8px 10px;border-bottom:1px solid rgba(184,134,11,.07)}
+.p-lbl{font-family:'Cinzel',serif;font-size:7px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);opacity:.6;margin-bottom:6px}
+.m-card{background:rgba(139,26,26,.07);border:1px solid rgba(139,26,26,.22);padding:7px}
+.m-portrait{width:42px;height:42px;border-radius:50%;margin:0 auto 5px;background:linear-gradient(135deg,#2a1a1a,#3d2020);border:2px solid rgba(139,26,26,.35);display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 0 16px rgba(139,26,26,.2)}
+.m-name{font-family:'Cinzel',serif;font-size:8.5px;text-align:center;color:var(--crim-hi);letter-spacing:.8px;margin-bottom:2px}
+.m-status{font-size:8.5px;color:var(--fog);text-align:center;font-style:italic}
+.m-status strong{color:var(--gold-hi)}
+.ghost-info{font-size:7.5px;color:rgba(192,57,43,.65);text-align:center;margin-top:2px;font-style:italic}
+.sp-row{display:flex;gap:3px;margin-top:5px;justify-content:center;flex-wrap:wrap}
+.sp-chip{display:flex;align-items:center;gap:2px;padding:2px 4px;border-radius:1px;font-size:7.5px;font-family:'Cinzel',serif}
+.sp-chip.fog{background:rgba(31,97,141,.13);border:1px solid rgba(31,97,141,.38);color:#5dade2}
+.sp-chip.bluff{background:rgba(184,134,11,.09);border:1px solid rgba(184,134,11,.32);color:var(--gold-hi)}
 
-/* ── LEFT PANEL ── */
-#left-panel {
-  width: 200px; flex-shrink: 0;
-  background: #110e0b;
-  border-right: 1px solid rgba(184,134,11,0.2);
-  display: flex; flex-direction: column; overflow: hidden;
-}
-@media (max-width: 640px) { #left-panel { display: none; } }
+#move-log{flex:1;overflow-y:auto;padding:6px 9px;scrollbar-width:thin;scrollbar-color:rgba(184,134,11,.12) transparent}
+.log-entry{display:flex;align-items:flex-start;gap:3px;margin-bottom:5px;font-size:9px;line-height:1.4;animation:fadeIn .22s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-2px)}to{opacity:1}}
+.log-n{font-family:'Cinzel',serif;font-size:7px;color:var(--gold);flex-shrink:0;padding-top:1px;min-width:18px}
+.log-i{font-size:9px;flex-shrink:0}
+.log-t{color:var(--fog);font-style:italic}
+.log-t strong{color:var(--parchment);font-style:normal}
+.log-entry.reveal{background:rgba(139,26,26,.1);border-left:2px solid var(--crim-hi);padding:2px 4px;margin-left:-4px}
+.log-entry.reveal .log-t{color:#e8a0a0}
 
-.panel-section {
-  padding: 10px 12px;
-  border-bottom: 1px solid rgba(184,134,11,0.1);
-}
-.panel-label {
-  font-family: 'Cinzel', serif; font-size: 8px;
-  letter-spacing: 3px; text-transform: uppercase;
-  color: var(--gold); opacity: 0.7; margin-bottom: 8px;
-}
-.moriarty-card {
-  background: rgba(139,26,26,0.1);
-  border: 1px solid rgba(139,26,26,0.3);
-  padding: 8px;
-}
-.moriarty-portrait {
-  width: 50px; height: 50px; border-radius: 50%;
-  background: linear-gradient(135deg, #2a1a1a, #3d2020);
-  border: 2px solid rgba(139,26,26,0.5);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 24px; margin: 0 auto 6px;
-  box-shadow: 0 0 20px rgba(139,26,26,0.3);
-}
-.moriarty-name {
-  font-family: 'Cinzel', serif; font-size: 10px;
-  text-align: center; color: var(--crimson-bright);
-  letter-spacing: 1px; margin-bottom: 4px;
-}
-.moriarty-info { font-size: 10px; color: var(--fog); text-align: center; font-style: italic; }
-.moriarty-info strong { color: var(--gold-bright); }
-.ticket-row { display: flex; gap: 5px; margin-top: 6px; justify-content: center; flex-wrap: wrap; }
-.ticket-chip {
-  display: flex; align-items: center; gap: 3px;
-  padding: 2px 5px; border-radius: 2px;
-  font-size: 9px; font-family: 'Cinzel', serif;
-}
-.ticket-chip.fog { background: rgba(160,168,154,0.15); border: 1px solid rgba(160,168,154,0.4); color: var(--fog); }
-.ticket-chip.bluff { background: rgba(184,134,11,0.1); border: 1px solid rgba(184,134,11,0.4); color: var(--gold-bright); }
+.t-legend{padding:6px 10px;border-top:1px solid rgba(184,134,11,.07)}
+.t-item{display:flex;align-items:center;gap:3px;font-size:7.5px;color:var(--fog);margin-bottom:2px}
+.t-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.t-dot.taxi{background:var(--taxi)}.t-dot.bus{background:var(--bus)}
+.t-dot.underground{background:var(--tube)}.t-dot.water{background:var(--water)}
 
-#move-log {
-  flex: 1; overflow-y: auto; padding: 8px 12px;
-  scrollbar-width: thin; scrollbar-color: rgba(184,134,11,0.2) transparent;
-}
-.log-entry {
-  display: flex; align-items: flex-start; gap: 5px;
-  margin-bottom: 7px; font-size: 10px; line-height: 1.4;
-  animation: fadeIn 0.3s ease;
-}
-@keyframes fadeIn { from{opacity:0;transform:translateY(-3px)} to{opacity:1} }
-.log-round { font-family: 'Cinzel', serif; font-size: 8px; color: var(--gold); flex-shrink:0; padding-top:1px; min-width:18px; }
-.log-icon { font-size: 11px; flex-shrink: 0; }
-.log-text { color: var(--fog); font-style: italic; }
-.log-text strong { color: var(--parchment); font-style: normal; }
+#map-area{flex:1;position:relative;overflow:hidden;background:#09070a}
+#map-area::before{content:'';position:absolute;inset:0;pointer-events:none;z-index:1;background:radial-gradient(ellipse at 50% 45%,rgba(201,185,138,.04) 0%,transparent 65%)}
+#map-canvas{position:absolute;inset:0;width:100%;height:100%;cursor:grab;touch-action:none}
+#map-canvas.panning{cursor:grabbing}
+#fog-vignette{position:absolute;inset:0;z-index:2;pointer-events:none;background:radial-gradient(ellipse at 50% 50%,transparent 28%,rgba(0,0,0,.42) 100%)}
 
-.transport-legend { padding: 8px 12px; border-top: 1px solid rgba(184,134,11,0.1); }
-.transport-item { display: flex; align-items: center; gap: 5px; font-size: 9px; color: var(--fog); margin-bottom: 3px; }
-.t-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-.t-dot.cab { background: var(--cab); }
-.t-dot.tram { background: var(--tram); }
-.t-dot.underground { background: var(--underground); }
-.t-dot.river { background: var(--river); }
+#tooltip{
+  position:absolute;z-index:60;background:rgba(9,7,4,.97);border:1px solid rgba(184,134,11,.38);
+  padding:5px 9px;font-family:'Crimson Text',serif;font-size:10.5px;color:var(--parchment);
+  pointer-events:none;opacity:0;transition:opacity .1s;min-width:90px;max-width:170px;
+  box-shadow:0 4px 16px rgba(0,0,0,.7);
+}
+#tooltip.on{opacity:1}
+.tt-name{font-family:'Cinzel',serif;font-size:8.5px;color:var(--gold);display:block;margin-bottom:1px}
+.tt-sub{font-size:7.5px;color:var(--fog-dk)}
+.tt-body{font-size:8.5px;color:var(--parch-dark);margin-top:2px}
 
-/* ── MAP AREA ──
-   The canvas lives here. Pan/zoom happen here.
-   NO moves are triggered by clicking the canvas.
-════════════════════════════════════════════════════════ */
-#map-area {
-  flex: 1; position: relative; overflow: hidden;
-  background: #0a0906;
-  /* touch-action none is set on the canvas element itself */
+#reveal-flash{
+  position:absolute;top:9px;left:50%;transform:translateX(-50%);z-index:80;display:none;
+  background:rgba(139,26,26,.96);border:1px solid var(--crim-hi);padding:5px 18px;
+  font-family:'Cinzel',serif;font-size:10px;color:var(--parchment);letter-spacing:2px;text-transform:uppercase;
+  box-shadow:0 0 40px rgba(139,26,26,.6);animation:rev-p 1.8s ease-in-out infinite;
 }
-#map-area::before {
-  content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
-  background:
-    radial-gradient(ellipse at 50% 40%, rgba(201,185,138,0.06) 0%, transparent 60%);
-}
-#map-canvas {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  /* Cursor shows pan-readiness, NOT move target */
-  cursor: grab;
-}
-#map-canvas.panning { cursor: grabbing; }
+@keyframes rev-p{0%,100%{box-shadow:0 0 40px rgba(139,26,26,.6)}50%{box-shadow:0 0 70px rgba(192,57,43,.9)}}
+#zoom-hint{position:absolute;bottom:5px;right:7px;z-index:20;font-family:'Cinzel',serif;font-size:7px;color:rgba(184,134,11,.22);letter-spacing:1px;pointer-events:none}
 
-/* Vignette fog overlay */
-#fog-overlay {
-  position: absolute; inset: 0; z-index: 5; pointer-events: none;
-  background: radial-gradient(ellipse at 50% 50%, transparent 25%, rgba(0,0,0,0.45) 100%);
-}
+.det-card{padding:6px 8px;border-bottom:1px solid rgba(184,134,11,.05);display:flex;gap:6px;align-items:flex-start}
+.det-card.active{background:rgba(184,134,11,.05);border-left:2px solid var(--gold)}
+.det-port{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;border:1px solid rgba(184,134,11,.15);background:linear-gradient(135deg,#1a1a2e,#2d2d44)}
+.det-info{flex:1;min-width:0}
+.det-name{font-family:'Cinzel',serif;font-size:7.5px;color:var(--parchment);margin-bottom:1px}
+.det-pos{font-size:7.5px;color:var(--fog);font-style:italic;margin-bottom:2px}
+.det-tix{display:flex;gap:2px;flex-wrap:wrap}
+.det-tix span{font-size:6.5px;padding:1px 3px;border-radius:1px;font-family:'Cinzel',serif}
+.det-tix .taxi{background:rgba(212,160,23,.15);color:var(--taxi)}
+.det-tix .bus{background:rgba(192,57,43,.15);color:#e74c3c}
+.det-tix .underground{background:rgba(26,107,60,.15);color:#27ae60}
 
-/* Node info tooltip — appears on hover/tap, not on click-to-move */
-#node-tooltip {
-  position: absolute; z-index: 50;
-  background: rgba(13,11,8,0.97);
-  border: 1px solid rgba(184,134,11,0.45);
-  padding: 7px 11px;
-  font-family: 'Crimson Text', serif; font-size: 12px; color: var(--parchment);
-  pointer-events: none;
-  opacity: 0; transition: opacity 0.12s;
-  min-width: 110px; max-width: 200px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.6);
-}
-#node-tooltip.visible { opacity: 1; }
-#node-tooltip .tt-name {
-  font-family: 'Cinzel', serif; font-size: 10px; color: var(--gold);
-  display: block; margin-bottom: 2px;
-}
-#node-tooltip .tt-region { font-size: 9px; color: var(--fog-dark); }
-#node-tooltip .tt-dets { font-size: 10px; color: var(--parchment-dark); margin-top: 3px; }
-#node-tooltip .tt-connections { font-size: 9px; color: var(--fog); margin-top: 2px; }
+#bottom-bar{flex-shrink:0;background:linear-gradient(to right,var(--ink),var(--ink-mid),var(--ink));border-top:1px solid rgba(184,134,11,.22)}
+#status-strip{display:flex;align-items:center;height:28px;padding:0 11px}
+.ph-dot{width:5px;height:5px;border-radius:50%;margin-right:5px;animation:ph-p 1.4s ease-in-out infinite}
+@keyframes ph-p{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.6)}}
+.ph-txt{font-family:'Cinzel',serif;font-size:8.5px;color:var(--parchment);letter-spacing:1px}
 
-/* Reveal banner */
-#reveal-banner {
-  position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
-  z-index: 100;
-  background: rgba(139,26,26,0.95);
-  border: 1px solid var(--crimson-bright);
-  padding: 7px 22px;
-  font-family: 'Cinzel', serif; font-size: 12px;
-  color: var(--parchment); text-align: center;
-  letter-spacing: 2px; text-transform: uppercase;
-  box-shadow: 0 0 40px rgba(139,26,26,0.5);
-  display: none; animation: pulseReveal 2s ease-in-out infinite;
-}
-@keyframes pulseReveal {
-  0%,100%{box-shadow:0 0 40px rgba(139,26,26,.5)}
-  50%{box-shadow:0 0 60px rgba(192,57,43,.8)}
-}
+#ai-bar{display:none;align-items:center;gap:6px;padding:4px 11px;font-family:'IM Fell English',serif;font-style:italic;font-size:10.5px;color:var(--fog);border-top:1px solid rgba(184,134,11,.07)}
+#ai-bar.on{display:flex}
+.think-dots span{display:inline-block;width:3px;height:3px;border-radius:50%;background:var(--gold);margin:0 1px;animation:td 1.1s ease-in-out infinite}
+.think-dots span:nth-child(2){animation-delay:.14s}
+.think-dots span:nth-child(3){animation-delay:.28s}
+@keyframes td{0%,80%,100%{transform:scale(.5);opacity:.3}40%{transform:scale(1);opacity:1}}
 
-/* Zoom hint */
-#zoom-hint {
-  position: absolute; bottom: 8px; right: 10px; z-index: 20;
-  font-family: 'Cinzel', serif; font-size: 8px; color: rgba(184,134,11,0.3);
-  letter-spacing: 1px; pointer-events: none;
-}
+#move-prompt{display:none;flex-direction:column;gap:6px;padding:8px 11px 10px;background:rgba(11,9,6,.88);border-top:1px solid rgba(184,134,11,.1)}
+#move-prompt.on{display:flex}
+.mp-title{font-family:'Cinzel',serif;font-size:8.5px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);opacity:.78}
+#special-row{display:none;gap:4px;flex-wrap:wrap}
+#special-row.on{display:flex}
+.sp-btn{background:rgba(31,97,141,.09);border:1px solid rgba(31,97,141,.32);color:#5dade2;font-family:'Cinzel',serif;font-size:7.5px;padding:3px 8px;cursor:pointer;letter-spacing:.8px;text-transform:uppercase;transition:all .2s;border-radius:1px}
+.sp-btn:hover{background:rgba(31,97,141,.2)}
+.sp-btn:disabled{opacity:.2;cursor:default}
+.sp-btn.bluff{background:rgba(184,134,11,.07);border-color:rgba(184,134,11,.32);color:var(--gold-hi)}
+.sp-btn.bluff:hover{background:rgba(184,134,11,.17)}
+.mp-controls{display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end}
+.mp-field{display:flex;flex-direction:column;gap:2px;flex:1;min-width:105px}
+.mp-field label{font-family:'Cinzel',serif;font-size:6.5px;letter-spacing:2px;text-transform:uppercase;color:var(--fog);opacity:.72}
+.mp-sel{background:rgba(9,7,4,.95);border:1px solid rgba(184,134,11,.28);color:var(--parchment);font-family:'Crimson Text',serif;font-size:11.5px;padding:4px 22px 4px 6px;border-radius:1px;cursor:pointer;width:100%;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%23b8860b'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 6px center}
+.mp-sel:focus{outline:none;border-color:var(--gold)}
+.mp-sel option{background:#1a1410;color:var(--parchment)}
+.mp-sel:disabled{opacity:.3;cursor:default}
+.mp-actions{display:flex;gap:5px}
+.mp-btn{flex:1;background:rgba(184,134,11,.09);border:1px solid rgba(184,134,11,.42);color:var(--gold-hi);font-family:'Cinzel',serif;font-size:9.5px;padding:6px 12px;cursor:pointer;letter-spacing:2px;text-transform:uppercase;transition:all .2s;border-radius:1px}
+.mp-btn:hover{background:rgba(184,134,11,.2);box-shadow:0 0 14px rgba(184,134,11,.15)}
+.mp-btn:disabled{opacity:.22;cursor:default}
+.mp-btn.cc{background:rgba(26,107,60,.09);border-color:rgba(26,107,60,.42);color:#27ae60}
+.mp-btn.cc:hover{background:rgba(26,107,60,.2)}
 
-/* ── RIGHT PANEL — detective bureau ── */
-#right-panel {
-  width: 210px; flex-shrink: 0;
-  background: #110e0b;
-  border-left: 1px solid rgba(184,134,11,0.2);
-  display: flex; flex-direction: column; overflow: hidden;
-}
-@media (max-width: 780px) { #right-panel { width: 160px; } }
-@media (max-width: 560px) { #right-panel { display: none; } }
+#coach-panel{display:none;position:absolute;bottom:0;left:0;right:0;z-index:70;background:rgba(7,5,3,.97);border-top:1px solid rgba(26,107,60,.28);max-height:120px;overflow-y:auto}
+#coach-panel.on{display:block}
+.coach-hdr{font-family:'Cinzel',serif;font-size:7px;letter-spacing:2px;color:#27ae60;padding:5px 11px 2px;text-transform:uppercase;opacity:.78;display:flex;justify-content:space-between;align-items:center}
+#coach-log{padding:2px 11px 7px}
+.coach-entry{font-family:'IM Fell English',serif;font-style:italic;font-size:10.5px;color:var(--parch-dark);line-height:1.5;margin-bottom:3px;border-left:2px solid rgba(26,107,60,.28);padding-left:6px}
 
-.detective-card {
-  padding: 8px 10px;
-  border-bottom: 1px solid rgba(184,134,11,0.07);
-  display: flex; gap: 8px; align-items: flex-start;
-  transition: background 0.2s;
-}
-.detective-card.active-turn {
-  background: rgba(184,134,11,0.07);
-  border-left: 2px solid var(--gold);
-}
-.detective-card.stranded { opacity: 0.35; }
+#modal{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;padding:20px}
+#modal.on{display:flex}
+.modal-box{background:var(--ink);border:1px solid rgba(184,134,11,.32);padding:24px;max-width:380px;width:100%;box-shadow:0 0 60px rgba(184,134,11,.1)}
+.modal-title{font-family:'Cinzel',serif;font-size:16px;font-weight:700;color:var(--gold);text-align:center;margin-bottom:11px;letter-spacing:2px}
+.modal-body{font-size:11.5px;color:var(--fog);line-height:1.65;margin-bottom:14px;font-style:italic;text-align:center}
+.modal-acts{display:flex;gap:7px;justify-content:center}
+.modal-btn{background:rgba(184,134,11,.09);border:1px solid rgba(184,134,11,.32);color:var(--gold-hi);font-family:'Cinzel',serif;font-size:8.5px;padding:5px 14px;cursor:pointer;letter-spacing:1.5px;text-transform:uppercase;transition:all .2s;border-radius:1px}
+.modal-btn:hover{background:rgba(184,134,11,.2)}
 
-.det-portrait {
-  width: 34px; height: 34px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 17px; flex-shrink: 0;
-  border: 1px solid rgba(184,134,11,0.2);
-}
-.det-portrait.holmes   { background: linear-gradient(135deg,#1a1a2e,#2d2d44); }
-.det-portrait.watson   { background: linear-gradient(135deg,#1a2e1a,#2d442d); }
-.det-portrait.lestrade { background: linear-gradient(135deg,#1a1a1a,#333); }
-.det-portrait.gregson  { background: linear-gradient(135deg,#2e1a1a,#44282e); }
-.det-portrait.wiggins  { background: linear-gradient(135deg,#1a2a2e,#2a3e44); }
-
-.det-info { flex: 1; min-width: 0; }
-.det-name {
-  font-family: 'Cinzel', serif; font-size: 9px;
-  color: var(--parchment); letter-spacing: 0.5px; margin-bottom: 1px;
-}
-.det-position { font-size: 9px; color: var(--fog); font-style: italic; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.det-tickets { display: flex; gap: 2px; flex-wrap: wrap; }
-.det-ticket {
-  font-size: 8px; padding: 1px 3px; border-radius: 1px;
-  font-family: 'Cinzel', serif; letter-spacing: 0.3px;
-}
-.det-ticket.cab        { background:rgba(192,57,43,0.2);  color:#e74c3c; }
-.det-ticket.tram       { background:rgba(36,113,163,0.2); color:#3498db; }
-.det-ticket.underground{ background:rgba(26,107,60,0.2);  color:#27ae60; }
-.det-ticket.stranded   { background:rgba(100,100,100,0.2);color:#666; }
-
-/* ════════════════════════════════════════════════════════
-   BOTTOM BAR — status strip + move prompt
-════════════════════════════════════════════════════════ */
-#bottom-bar {
-  flex-shrink: 0;
-  background: linear-gradient(to right, var(--ink), var(--ink-mid), var(--ink));
-  border-top: 1px solid rgba(184,134,11,0.3);
-}
-
-/* Status strip — always visible one-liner */
-#status-strip {
-  display: flex; align-items: center; justify-content: space-between;
-  height: 36px; padding: 0 14px; gap: 10px;
-}
-.phase-indicator { display: flex; align-items: center; gap: 7px; }
-.phase-dot {
-  width: 7px; height: 7px; border-radius: 50%;
-  background: var(--gold); animation: pulseDot 1.5s ease-in-out infinite;
-}
-@keyframes pulseDot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.7)} }
-.phase-text {
-  font-family: 'Cinzel', serif; font-size: 10px;
-  color: var(--parchment); letter-spacing: 1px;
-}
-.reveal-schedule { display: flex; gap: 5px; align-items: center; }
-.reveal-label { font-size: 9px; color: var(--fog); font-family: 'Cinzel', serif; letter-spacing: 1px; }
-.reveal-pip {
-  width: 16px; height: 16px; border-radius: 50%;
-  background: rgba(139,26,26,0.2);
-  border: 1px solid rgba(139,26,26,0.4);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 7px; font-family: 'Cinzel', serif; color: var(--fog);
-  transition: all 0.3s;
-}
-.reveal-pip.past     { background:rgba(100,100,100,0.3); border-color:rgba(100,100,100,0.4); color:#555; }
-.reveal-pip.upcoming { background:rgba(139,26,26,0.4); border-color:var(--crimson-bright); color:var(--crimson-bright); }
-.reveal-pip.current  { background:var(--crimson); border-color:var(--crimson-bright); color:var(--parchment); animation:pulseDot 1s infinite; }
-
-/* ── MOVE PROMPT PANEL ──
-   This is where ALL player actions happen.
-   Separate from the map so tapping/dragging the map is always safe.
-════════════════════════════════════════════════════════ */
-#move-prompt {
-  border-top: 1px solid rgba(184,134,11,0.15);
-  padding: 10px 14px 12px;
-  display: none;  /* shown only when it's the human player's turn */
-  flex-direction: column;
-  gap: 8px;
-  background: rgba(15,12,8,0.8);
-}
-#move-prompt.active { display: flex; }
-
-.prompt-title {
-  font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 2px;
-  text-transform: uppercase; color: var(--gold); opacity: 0.8;
-}
-
-/* Transport + destination row */
-.move-controls {
-  display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end;
-}
-.move-field { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 120px; }
-.move-field label {
-  font-family: 'Cinzel', serif; font-size: 8px; letter-spacing: 2px;
-  text-transform: uppercase; color: var(--fog); opacity: 0.8;
-}
-.move-select {
-  background: rgba(13,11,8,0.9);
-  border: 1px solid rgba(184,134,11,0.35);
-  color: var(--parchment);
-  font-family: 'Crimson Text', serif; font-size: 13px;
-  padding: 6px 8px; border-radius: 2px;
-  cursor: pointer; width: 100%;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23b8860b'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 8px center;
-  padding-right: 26px;
-}
-.move-select:focus { outline: none; border-color: var(--gold); }
-.move-select option { background: #1a1410; color: var(--parchment); }
-.move-select:disabled { opacity: 0.4; cursor: default; }
-
-/* Special ticket buttons (Moriarty only) */
-.special-tickets {
-  display: flex; gap: 6px;
-}
-.special-btn {
-  background: rgba(139,26,26,0.1);
-  border: 1px solid rgba(139,26,26,0.35);
-  color: var(--crimson-bright);
-  font-family: 'Cinzel', serif; font-size: 9px;
-  padding: 5px 10px; cursor: pointer;
-  letter-spacing: 1px; text-transform: uppercase;
-  transition: all 0.2s; border-radius: 2px;
-}
-.special-btn:hover { background: rgba(139,26,26,0.2); }
-.special-btn:disabled { opacity: 0.25; cursor: default; }
-.special-btn.bluff-btn {
-  background: rgba(184,134,11,0.08);
-  border-color: rgba(184,134,11,0.35);
-  color: var(--gold-bright);
-}
-.special-btn.bluff-btn:hover { background: rgba(184,134,11,0.18); }
-
-/* Execute move button */
-.move-actions { display: flex; gap: 8px; }
-.move-btn {
-  flex: 1;
-  background: rgba(184,134,11,0.12);
-  border: 1px solid rgba(184,134,11,0.5);
-  color: var(--gold-bright);
-  font-family: 'Cinzel', serif; font-size: 11px;
-  padding: 8px 16px; cursor: pointer;
-  letter-spacing: 2px; text-transform: uppercase;
-  transition: all 0.2s; border-radius: 2px;
-}
-.move-btn:hover { background: rgba(184,134,11,0.25); box-shadow: 0 0 20px rgba(184,134,11,0.2); }
-.move-btn:disabled { opacity: 0.3; cursor: default; }
-.move-btn.danger {
-  background: rgba(139,26,26,0.1);
-  border-color: rgba(139,26,26,0.4);
-  color: var(--crimson-bright);
-}
-.move-btn.danger:hover { background: rgba(139,26,26,0.22); }
-
-/* AI thinking indicator */
-#ai-thinking {
-  display: none; align-items: center; gap: 8px;
-  padding: 8px 14px;
-  font-family: 'IM Fell English', serif; font-style: italic;
-  font-size: 12px; color: var(--fog);
-  border-top: 1px solid rgba(184,134,11,0.1);
-}
-#ai-thinking.active { display: flex; }
-.thinking-dots span {
-  display: inline-block; width: 4px; height: 4px; border-radius: 50%;
-  background: var(--gold); margin: 0 1px;
-  animation: thinkBounce 1.2s ease-in-out infinite;
-}
-.thinking-dots span:nth-child(2){ animation-delay: 0.15s; }
-.thinking-dots span:nth-child(3){ animation-delay: 0.30s; }
-@keyframes thinkBounce { 0%,80%,100%{transform:scale(0.6);opacity:.4} 40%{transform:scale(1);opacity:1} }
-
-/* ════════════════════════════════════════════════════════
-   COACH PANEL
-════════════════════════════════════════════════════════ */
-#coach-panel {
-  display: none;
-  position: absolute; bottom: 0; left: 0; right: 0;
-  z-index: 80;
-  background: rgba(10,8,5,0.97);
-  border-top: 1px solid rgba(184,134,11,0.3);
-  padding: 10px 14px;
-  max-height: 110px; overflow-y: auto;
-}
-#coach-panel.visible { display: block; }
-.coach-label {
-  font-family: 'Cinzel', serif; font-size: 8px; letter-spacing: 2px;
-  color: var(--gold); margin-bottom: 5px; text-transform: uppercase; opacity: 0.7;
-}
-.coach-entry {
-  font-family: 'IM Fell English', serif; font-style: italic;
-  font-size: 12px; color: var(--parchment); line-height: 1.5;
-}
-.coach-entry::before { content: '"'; color: var(--gold); }
-.coach-entry::after  { content: '"'; color: var(--gold); }
-
-/* ════════════════════════════════════════════════════════
-   MODAL
-════════════════════════════════════════════════════════ */
-#modal-overlay {
-  position: fixed; inset: 0; z-index: 200;
-  background: rgba(0,0,0,0.82);
-  display: none; align-items: center; justify-content: center;
-  padding: 20px;
-}
-#modal-overlay.active { display: flex; }
-#modal-box {
-  background: var(--ink); border: 1px solid rgba(184,134,11,0.4);
-  padding: 28px; max-width: 400px; width: 100%;
-  box-shadow: 0 0 60px rgba(184,134,11,0.15);
-}
-.modal-title {
-  font-family: 'Cinzel', serif; font-size: 18px; font-weight: 700;
-  color: var(--gold); text-align: center; margin-bottom: 14px; letter-spacing: 2px;
-}
-.modal-body {
-  font-size: 13px; color: var(--fog); line-height: 1.6;
-  margin-bottom: 18px; text-align: center; font-style: italic;
-}
-.modal-actions { display: flex; gap: 10px; justify-content: center; }
-.modal-btn {
-  background: rgba(184,134,11,0.1); border: 1px solid rgba(184,134,11,0.4);
-  color: var(--gold-bright); font-family: 'Cinzel', serif; font-size: 10px;
-  padding: 7px 18px; cursor: pointer; letter-spacing: 1.5px; text-transform: uppercase;
-  transition: all 0.2s; border-radius: 2px;
-}
-.modal-btn:hover { background: rgba(184,134,11,0.22); }
-
-/* ════════════════════════════════════════════════════════
-   OUTCOME SCREEN
-════════════════════════════════════════════════════════ */
-#outcome-screen {
-  position: fixed; inset: 0; z-index: 300;
-  background: rgba(0,0,0,0.94);
-  display: none; flex-direction: column;
-  align-items: center; justify-content: center; gap: 18px;
-}
-#outcome-screen.active { display: flex; }
-.outcome-title {
-  font-family: 'Cinzel', serif;
-  font-size: clamp(28px,5vw,60px); font-weight: 900;
-  text-align: center; letter-spacing: 3px;
-  animation: flickerIn 1s ease forwards;
-}
-@keyframes flickerIn { 0%{opacity:0} 80%{opacity:.8} 90%{opacity:.6} 100%{opacity:1} }
-.outcome-moriarty-wins { color: var(--crimson-bright); }
-.outcome-detectives-win { color: var(--gold); }
-.outcome-subtitle {
-  font-family: 'IM Fell English', serif; font-style: italic;
-  font-size: clamp(13px,2vw,20px); color: var(--fog);
-  text-align: center; padding: 0 20px;
-}
-.outcome-actions { display: flex; gap: 12px; }
-
-/* ════════════════════════════════════════════════════════
-   SCROLLBARS
-════════════════════════════════════════════════════════ */
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(184,134,11,0.2); border-radius: 2px; }
-
+#outcome{position:fixed;inset:0;z-index:350;background:rgba(0,0,0,.95);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+#outcome.on{display:flex}
+.out-title{font-family:'Cinzel',serif;font-size:clamp(24px,5vw,56px);font-weight:900;text-align:center;letter-spacing:3px;animation:fli .8s ease forwards}
+@keyframes fli{0%{opacity:0}80%{opacity:.85}90%{opacity:.6}100%{opacity:1}}
+.out-mori{color:var(--crim-hi)}.out-dets{color:var(--gold)}
+.out-sub{font-family:'IM Fell English',serif;font-style:italic;font-size:clamp(11px,1.8vw,18px);color:var(--fog);text-align:center;padding:0 20px;max-width:460px}
+.out-acts{display:flex;gap:9px}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(184,134,11,.15);border-radius:2px}
 </style>
 </head>
 <body>
-
-<!-- ═══════════════════════ TITLE SCREEN ═══════════════════════ -->
 <div id="title-screen">
-  <div class="title-ornament">London, 1895</div>
+  <div class="t-orn">London · 1895</div>
   <h1>MORIARTY'S<br><span>MAZE</span></h1>
-  <div class="title-subtitle">A Hidden Movement Pursuit Across Victorian London</div>
-  <div class="title-divider"></div>
+  <div class="t-sub">A Hidden Movement Pursuit Across Victorian London</div>
+  <div class="t-rule"></div>
   <div class="mode-grid">
     <div class="mode-card" onclick="startGame('moriarty')">
       <span class="mode-icon">🎩</span>
       <div class="mode-title">Play as Moriarty</div>
-      <div class="mode-desc">Navigate London unseen. Evade five determined detectives.</div>
+      <div class="mode-desc">Navigate unseen. Survive 24 moves.</div>
     </div>
     <div class="mode-card" onclick="startGame('detective')">
       <span class="mode-icon">🔍</span>
       <div class="mode-title">Play as Detectives</div>
-      <div class="mode-desc">Deduce, pursue, and corner the Napoleon of Crime.</div>
+      <div class="mode-desc">Deduce, pursue, and corner the Professor.</div>
     </div>
-    <div class="mode-card" onclick="startGame('coach')">
-      <span class="mode-icon">📋</span>
-      <div class="mode-title">Coach Mode</div>
-      <div class="mode-desc">Observe all players with Holmesian deduction commentary.</div>
+    <div class="mode-card" onclick="startGame('coach-moriarty')">
+      <span class="mode-icon">🎩📋</span>
+      <div class="mode-title">Coach: Moriarty</div>
+      <div class="mode-desc">Play Moriarty with Holmes advising your moves.</div>
+    </div>
+    <div class="mode-card" onclick="startGame('coach-detective')">
+      <span class="mode-icon">🔍📋</span>
+      <div class="mode-title">Coach: Detectives</div>
+      <div class="mode-desc">Command the bureau with strategic guidance.</div>
     </div>
   </div>
-  <div class="title-divider"></div>
-  <div class="title-footer">Reynolds's New Map of London · 1883 · 200 Nodes</div>
+  <div class="t-rule"></div>
+  <div class="t-foot">Scotland Yard · Ravensburger · 199 Stations</div>
 </div>
 
-<!-- ═══════════════════════ GAME WRAP ═══════════════════════ -->
-<div id="game-wrap">
-
-  <!-- TOP BAR -->
+<div id="game">
   <div id="top-bar">
-    <div class="top-title">MORIARTY'S <span>MAZE</span></div>
-    <div class="top-round">Round <strong id="round-num">1</strong> of 22</div>
-    <div class="top-actions">
-      <button class="top-btn" onclick="toggleCoach()">🔎 Coach</button>
-      <button class="top-btn" onclick="showModal('rules')">Rules</button>
-      <button class="top-btn" onclick="backToTitle()">← Exit</button>
+    <div class="tb-title">MORIARTY'S <span>MAZE</span></div>
+    <div class="tb-center">
+      <div class="tb-move">Move <strong id="move-num">0</strong>/24</div>
+      <div class="reveal-pips" id="reveal-pips"></div>
+    </div>
+    <div class="tb-actions">
+      <button class="tb-btn" id="coach-btn" onclick="toggleCoach()" style="display:none">📋 Coach</button>
+      <button class="tb-btn" onclick="showRules()">Rules</button>
+      <button class="tb-btn" onclick="backToTitle()">← Exit</button>
     </div>
   </div>
 
-  <!-- CONTENT ROW -->
   <div id="content">
-
-    <!-- LEFT PANEL -->
     <div id="left-panel">
-      <div class="panel-section">
-        <div class="panel-label">The Adversary</div>
-        <div class="moriarty-card">
-          <div class="moriarty-portrait">🎩</div>
-          <div class="moriarty-name">Prof. James Moriarty</div>
-          <div class="moriarty-info" id="moriarty-status">Position: <strong>Unknown</strong></div>
-          <div class="ticket-row">
-            <div class="ticket-chip fog">🌫 <span id="fog-count">3</span></div>
-            <div class="ticket-chip bluff">⚡ <span id="bluff-count">2</span></div>
+      <div class="p-sec">
+        <div class="p-lbl">The Adversary</div>
+        <div class="m-card">
+          <div class="m-portrait">🎩</div>
+          <div class="m-name">Prof. James Moriarty</div>
+          <div class="m-status" id="mori-status">Position: <strong>Unknown</strong></div>
+          <div class="ghost-info" id="ghost-info" style="display:none"></div>
+          <div class="sp-row">
+            <div class="sp-chip fog">🌫 <span id="fog-left">5</span></div>
+            <div class="sp-chip bluff">⚡ <span id="bluff-left">2</span></div>
           </div>
         </div>
       </div>
-      <div class="panel-section" style="flex:1;display:flex;flex-direction:column;overflow:hidden;padding-bottom:0;">
-        <div class="panel-label">Movement Log</div>
+      <div class="p-sec" style="flex:1;display:flex;flex-direction:column;overflow:hidden;padding-bottom:0">
+        <div class="p-lbl">Movement Log</div>
         <div id="move-log"></div>
       </div>
-      <div class="transport-legend">
-        <div class="panel-label" style="margin-bottom:5px;">Transport</div>
-        <div class="transport-item"><div class="t-dot cab"></div> Hansom Cab</div>
-        <div class="transport-item"><div class="t-dot tram"></div> Tramway</div>
-        <div class="transport-item"><div class="t-dot underground"></div> Underground</div>
-        <div class="transport-item"><div class="t-dot river"></div> River Boat</div>
+      <div class="t-legend">
+        <div class="p-lbl" style="margin-bottom:3px">Transport</div>
+        <div class="t-item"><div class="t-dot taxi"></div>Hansom Cab (taxi)</div>
+        <div class="t-item"><div class="t-dot bus"></div>Omnibus (bus)</div>
+        <div class="t-item"><div class="t-dot underground"></div>Underground</div>
+        <div class="t-item"><div class="t-dot water"></div>River (🌫 fog ticket)</div>
       </div>
     </div>
 
-    <!-- MAP AREA — pan/zoom only, no move-click -->
     <div id="map-area">
       <canvas id="map-canvas"></canvas>
-      <div id="fog-overlay"></div>
-      <div id="node-tooltip">
+      <div id="fog-vignette"></div>
+      <div id="tooltip">
         <span class="tt-name" id="tt-name"></span>
-        <span class="tt-region" id="tt-region"></span>
-        <div class="tt-dets" id="tt-dets"></div>
-        <div class="tt-connections" id="tt-conn"></div>
+        <span class="tt-sub" id="tt-sub"></span>
+        <div class="tt-body" id="tt-body"></div>
       </div>
-      <div id="reveal-banner">⚠ Reveal Round — Moriarty Sighted!</div>
-      <div id="zoom-hint">Scroll · Pinch to zoom &nbsp;|&nbsp; Drag to pan</div>
-      <!-- Coach panel floats over map -->
+      <div id="reveal-flash">⚠ Moriarty Sighted!</div>
+      <div id="zoom-hint">Scroll/Pinch · Drag to pan</div>
       <div id="coach-panel">
-        <div class="coach-label">🔎 Holmes Advises</div>
-        <div id="coach-text"></div>
+        <div class="coach-hdr">
+          <span>🔎 Holmes Advises</span>
+          <span id="coach-rec" style="color:var(--gold-hi);font-size:7.5px"></span>
+        </div>
+        <div id="coach-log"></div>
       </div>
     </div>
 
-    <!-- RIGHT PANEL -->
     <div id="right-panel">
-      <div class="panel-section" style="padding-bottom:6px;">
-        <div class="panel-label">Detective Bureau</div>
-      </div>
-      <div id="detective-list"></div>
+      <div class="p-sec" style="padding-bottom:4px"><div class="p-lbl">Detective Bureau</div></div>
+      <div id="det-list"></div>
     </div>
+  </div>
 
-  </div><!-- /content -->
-
-  <!-- BOTTOM BAR -->
   <div id="bottom-bar">
-
-    <!-- Status strip -->
     <div id="status-strip">
-      <div class="phase-indicator">
-        <div class="phase-dot" id="phase-dot"></div>
-        <div class="phase-text" id="phase-text">—</div>
-      </div>
-      <div class="reveal-schedule" id="reveal-schedule">
-        <div class="reveal-label">Reveals:</div>
-      </div>
+      <div class="ph-dot" id="ph-dot"></div>
+      <div class="ph-txt" id="ph-txt">—</div>
     </div>
-
-    <!-- AI thinking bar -->
-    <div id="ai-thinking">
-      <div class="thinking-dots"><span></span><span></span><span></span></div>
-      <span id="thinking-text">The detectives are closing in…</span>
+    <div id="ai-bar">
+      <div class="think-dots"><span></span><span></span><span></span></div>
+      <span id="ai-msg">Thinking…</span>
     </div>
-
-    <!-- ★ MOVE PROMPT — all player decisions happen here ★ -->
     <div id="move-prompt">
-      <div class="prompt-title" id="prompt-title">Your Move</div>
-
-      <!-- Special tickets row (Moriarty only) -->
-      <div class="special-tickets" id="special-tickets" style="display:none;">
-        <button class="special-btn" id="fog-btn" onclick="useFog()">🌫 Heavy Fog (<span id="fog-count2">3</span>)</button>
-        <button class="special-btn bluff-btn" id="bluff-btn" onclick="useBluff()">⚡ Double Bluff (<span id="bluff-count2">2</span>)</button>
+      <div class="mp-title" id="mp-title">Your Move</div>
+      <div id="special-row">
+        <button class="sp-btn" id="fog-btn" onclick="useSpecial('fog')">🌫 Heavy Fog (<span id="fog-btn-n">5</span>)</button>
+        <button class="sp-btn bluff" id="bluff-btn" onclick="useSpecial('bluff')">⚡ Double Bluff (<span id="bluff-btn-n">2</span>)</button>
       </div>
-
-      <!-- Transport + Destination selects -->
-      <div class="move-controls">
-        <div class="move-field">
-          <label for="sel-transport">Transport Mode</label>
-          <select id="sel-transport" class="move-select" onchange="onTransportChange()">
-            <option value="">— Choose transport —</option>
+      <div class="mp-controls">
+        <div class="mp-field">
+          <label for="sel-type">Transport</label>
+          <select id="sel-type" class="mp-sel" onchange="onTypeChange()">
+            <option value="">— Choose —</option>
           </select>
         </div>
-        <div class="move-field">
+        <div class="mp-field">
           <label for="sel-dest">Destination</label>
-          <select id="sel-dest" class="move-select" disabled>
-            <option value="">— Choose destination —</option>
+          <select id="sel-dest" class="mp-sel" disabled>
+            <option value="">— Choose —</option>
           </select>
         </div>
       </div>
-
-      <!-- Execute / Skip buttons -->
-      <div class="move-actions">
-        <button class="move-btn" id="commit-btn" onclick="commitMove()" disabled>Move →</button>
-        <button class="move-btn danger" id="skip-btn" onclick="skipMove()" style="display:none;">Stay Put</button>
+      <div class="mp-actions">
+        <button class="mp-btn" id="commit-btn" onclick="commitMove()" disabled>Move →</button>
+        <button class="mp-btn cc" id="cc-btn" onclick="coachChoice()" style="display:none">Coach's Choice</button>
       </div>
     </div>
-
-  </div><!-- /bottom-bar -->
-
-</div><!-- /game-wrap -->
-
-<!-- MODAL -->
-<div id="modal-overlay">
-  <div id="modal-box">
-    <div class="modal-title" id="modal-title"></div>
-    <div class="modal-body"  id="modal-body"></div>
-    <div class="modal-actions" id="modal-actions"></div>
   </div>
 </div>
 
-<!-- OUTCOME -->
-<div id="outcome-screen">
-  <div class="outcome-title" id="outcome-title"></div>
-  <div class="outcome-subtitle" id="outcome-subtitle"></div>
-  <div class="outcome-actions">
+<div id="modal">
+  <div class="modal-box">
+    <div class="modal-title" id="modal-title"></div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-acts" id="modal-acts"></div>
+  </div>
+</div>
+<div id="outcome">
+  <div class="out-title" id="out-title"></div>
+  <div class="out-sub" id="out-sub"></div>
+  <div class="out-acts">
     <button class="modal-btn" onclick="backToTitle()">Return to London</button>
     <button class="modal-btn" onclick="startGame(currentMode)">Play Again</button>
   </div>
 </div>
-
 <script>
-/* ═══════════════════════════════════════════════════════════════
-   CONSTANTS & STATE
-═══════════════════════════════════════════════════════════════ */
-const MAX_ROUNDS    = 22;
-const REVEAL_ROUNDS = [3, 8, 13, 18, 22];
-const NODE_COUNT    = 200;
-// Detective ticket allowances — all detectives share same budget
-const DET_TICKET_START = { cab: 10, tram: 8, underground: 4, river: 0 };
-
-let currentMode = 'moriarty';
-let round       = 1;
-
-const DETECTIVES = [
-  { name:'Sherlock Holmes', short:'Holmes', emoji:'🔍', cls:'holmes'   },
-  { name:'Dr John Watson',  short:'Watson', emoji:'📖', cls:'watson'   },
-  { name:'Insp. Lestrade',  short:'Lestrade',emoji:'⚖️',cls:'lestrade' },
-  { name:'Insp. Gregson',   short:'Gregson',emoji:'🗂️',cls:'gregson'  },
-  { name:'Wiggins',         short:'Wiggins',emoji:'🧢',cls:'wiggins'   },
+'use strict';
+/* ══════════════════════════════════════════════════════════
+   FIXED MAP DATA — canonical Scotland Yard board
+══════════════════════════════════════════════════════════ */
+const STATIONS_RAW=[
+  [1,190,40,"taxi,bus,underground"],[2,487,20,"taxi"],[3,675,25,"taxi,bus"],
+  [4,790,15,"taxi"],[5,1253,30,"taxi"],[6,1396,29,"taxi"],[7,1541,36,"taxi,bus"],
+  [8,133,107,"taxi"],[9,250,115,"taxi"],[10,583,107,"taxi"],[11,670,123,"taxi"],
+  [12,740,107,"taxi"],[13,875,100,"taxi,bus,underground"],[14,1008,77,"taxi,bus"],
+  [15,1150,63,"taxi,bus"],[16,1282,111,"taxi"],[17,1530,155,"taxi"],
+  [18,65,163,"taxi"],[19,173,176,"taxi"],[20,314,145,"taxi"],[21,452,202,"taxi"],
+  [22,675,225,"taxi,bus"],[23,784,165,"taxi,bus"],[24,955,170,"taxi"],
+  [25,1029,191,"taxi"],[26,1140,108,"taxi"],[27,1160,175,"taxi"],
+  [28,1211,148,"taxi"],[29,1400,187,"taxi,bus"],[30,1580,176,"taxi"],
+  [31,110,215,"taxi"],[32,264,254,"taxi"],[33,390,235,"taxi"],[34,590,256,"taxi,bus"],
+  [35,712,288,"taxi"],[36,760,294,"taxi"],[37,838,223,"taxi"],[38,994,234,"taxi"],
+  [39,1065,218,"taxi"],[40,1188,268,"taxi"],[41,1240,250,"taxi,bus"],
+  [42,1536,251,"taxi,bus"],[43,37,277,"taxi"],[44,198,310,"taxi"],[45,307,332,"taxi"],
+  [46,409,299,"taxi,bus,underground"],[47,489,282,"taxi"],[48,617,338,"taxi"],
+  [49,797,341,"taxi"],[50,875,288,"taxi"],[51,1030,300,"taxi"],
+  [52,1111,278,"taxi,bus"],[53,1202,330,"taxi"],[54,1262,313,"taxi"],
+  [55,1402,310,"taxi,bus"],[56,1586,326,"taxi"],[57,87,339,"taxi"],
+  [58,243,358,"taxi,bus"],[59,275,395,"taxi"],[60,335,384,"taxi"],
+  [61,437,400,"taxi"],[62,493,381,"taxi"],[63,627,451,"taxi,bus"],
+  [64,708,436,"taxi"],[65,793,416,"taxi,bus"],[66,848,403,"taxi"],
+  [67,934,390,"taxi,bus,underground"],[68,1046,365,"taxi"],[69,1146,359,"taxi"],
+  [70,1272,381,"taxi"],[71,1383,380,"taxi"],[72,1499,389,"taxi,bus"],
+  [73,85,403,"taxi"],[74,141,468,"taxi,bus,underground"],[75,217,446,"taxi"],
+  [76,316,441,"taxi"],[77,382,491,"taxi,bus"],[78,460,481,"taxi,bus"],
+  [79,518,468,"taxi,bus,underground"],[80,653,496,"taxi"],[81,763,514,"taxi"],
+  [82,803,486,"taxi,bus"],[83,915,470,"taxi"],[84,987,434,"taxi"],
+  [85,1051,412,"taxi"],[86,1163,454,"taxi,bus"],[87,1279,482,"taxi,bus"],
+  [88,1331,496,"taxi"],[89,1374,458,"taxi,bus,underground"],[90,1456,458,"taxi"],
+  [91,1569,458,"taxi"],[92,44,520,"taxi"],[93,51,568,"taxi,bus,underground"],
+  [94,151,547,"taxi,bus"],[95,197,539,"taxi"],[96,432,574,"taxi"],
+  [97,483,555,"taxi"],[98,549,533,"taxi"],[99,613,542,"taxi"],
+  [100,725,574,"taxi,bus"],[101,840,530,"taxi"],[102,978,473,"taxi,bus"],
+  [103,1069,463,"taxi"],[104,1163,509,"taxi"],[105,1421,529,"taxi,bus"],
+  [106,1520,548,"taxi"],[107,1591,548,"taxi,bus"],[108,1393,642,"taxi,bus"],
+  [109,509,654,"taxi"],[110,584,579,"taxi"],[111,632,638,"taxi,bus,underground"],
+  [112,662,617,"taxi"],[113,771,617,"taxi"],[114,852,592,"taxi"],
+  [115,972,553,"taxi"],[116,1165,623,"taxi,bus"],[117,1294,670,"taxi"],
+  [118,1166,699,"taxi"],[119,1558,727,"taxi"],[120,42,773,"taxi"],
+  [121,96,774,"taxi"],[122,177,770,"taxi,bus"],[123,374,765,"taxi,bus"],
+  [124,492,742,"taxi,bus"],[125,695,670,"taxi"],[126,910,636,"taxi"],
+  [127,1055,671,"taxi,bus"],[128,1243,894,"taxi,bus,underground"],
+  [129,1283,714,"taxi"],[130,668,747,"taxi"],[131,724,707,"taxi"],
+  [132,851,699,"taxi"],[133,995,766,"taxi,bus"],[134,1097,731,"taxi"],
+  [135,1334,754,"taxi,bus"],[136,1522,829,"taxi"],[137,309,834,"taxi"],
+  [138,528,787,"taxi"],[139,657,794,"taxi"],[140,849,779,"taxi,bus,underground"],
+  [141,1033,791,"taxi"],[142,1165,814,"taxi,bus"],[143,1284,801,"taxi"],
+  [144,55,912,"taxi,bus"],[145,115,907,"taxi"],[146,194,902,"taxi"],
+  [147,252,886,"taxi"],[148,331,874,"taxi"],[149,399,866,"taxi"],
+  [150,478,841,"taxi"],[151,515,879,"taxi"],[152,569,837,"taxi"],
+  [153,600,884,"taxi,bus,underground"],[154,733,853,"taxi,bus"],
+  [155,779,909,"taxi"],[156,873,909,"taxi,bus"],[157,949,917,"taxi,bus"],
+  [158,1077,865,"taxi"],[159,1083,1041,"taxi"],[160,1339,913,"taxi"],
+  [161,1445,901,"taxi,bus"],[162,1593,899,"taxi"],[163,183,944,"taxi,bus,underground"],
+  [164,264,944,"taxi"],[165,417,972,"taxi,bus"],[166,576,934,"taxi"],
+  [167,700,960,"taxi"],[168,746,990,"taxi"],[169,873,974,"taxi"],
+  [170,937,983,"taxi"],[171,1416,1160,"taxi"],[172,1200,976,"taxi"],
+  [173,1367,1027,"taxi"],[174,1507,990,"taxi"],[175,1584,1043,"taxi"],
+  [176,33,1028,"taxi,bus"],[177,101,1009,"taxi"],[178,218,999,"taxi"],
+  [179,358,1016,"taxi"],[180,446,1032,"taxi,bus"],[181,533,1010,"taxi"],
+  [182,580,1023,"taxi"],[183,666,983,"taxi"],[184,807,1041,"taxi,bus"],
+  [185,911,1108,"taxi,bus,underground"],[186,1013,1088,"taxi"],
+  [187,1162,1053,"taxi,bus"],[188,1307,1057,"taxi"],[189,101,1123,"taxi"],
+  [190,176,1162,"taxi,bus"],[191,267,1086,"taxi,bus"],[192,289,1186,"taxi"],
+  [193,509,1093,"taxi"],[194,534,1128,"taxi"],[195,600,1125,"taxi"],
+  [196,700,1068,"taxi"],[197,713,1134,"taxi"],[198,1073,1191,"taxi"],
+  [199,1322,1186,"taxi,bus"]
 ];
 
-const COLORS = { cab:'#c0392b', tram:'#2471a3', underground:'#1a6b3c', river:'#1f618d' };
-const TRANSPORT_ICONS = { cab:'🚕', tram:'🚃', underground:'🚇', river:'⛵', fog:'🌫' };
+const CONNECTIONS_RAW=[
+  [108,115,"water"],[115,157,"water"],[157,194,"water"],
+  [1,46,"underground"],[13,46,"underground"],[13,67,"underground"],
+  [13,89,"underground"],[46,74,"underground"],[46,79,"underground"],
+  [67,79,"underground"],[67,89,"underground"],[67,111,"underground"],
+  [79,93,"underground"],[79,111,"underground"],[89,128,"underground"],
+  [89,140,"underground"],[111,153,"underground"],[111,163,"underground"],
+  [128,140,"underground"],[128,185,"underground"],[140,153,"underground"],
+  [153,163,"underground"],[153,185,"underground"],
+  [1,46,"bus"],[1,58,"bus"],[3,22,"bus"],[3,23,"bus"],[7,42,"bus"],
+  [13,14,"bus"],[13,23,"bus"],[13,52,"bus"],[14,15,"bus"],[15,29,"bus"],
+  [15,41,"bus"],[22,23,"bus"],[22,34,"bus"],[22,65,"bus"],[23,67,"bus"],
+  [29,41,"bus"],[29,42,"bus"],[29,55,"bus"],[34,46,"bus"],[34,63,"bus"],
+  [41,52,"bus"],[41,87,"bus"],[42,72,"bus"],[46,58,"bus"],[46,78,"bus"],
+  [52,67,"bus"],[52,86,"bus"],[55,89,"bus"],[58,74,"bus"],[58,77,"bus"],
+  [63,65,"bus"],[63,79,"bus"],[63,100,"bus"],[65,67,"bus"],[65,82,"bus"],
+  [67,82,"bus"],[67,102,"bus"],[72,105,"bus"],[72,107,"bus"],[74,94,"bus"],
+  [77,78,"bus"],[77,94,"bus"],[77,124,"bus"],[78,79,"bus"],[82,100,"bus"],
+  [82,140,"bus"],[86,87,"bus"],[86,102,"bus"],[86,116,"bus"],[87,105,"bus"],
+  [89,105,"bus"],[93,94,"bus"],[100,111,"bus"],[102,127,"bus"],[105,107,"bus"],
+  [105,108,"bus"],[107,161,"bus"],[108,116,"bus"],[108,135,"bus"],
+  [111,124,"bus"],[116,127,"bus"],[116,142,"bus"],[122,123,"bus"],
+  [122,144,"bus"],[123,124,"bus"],[123,144,"bus"],[123,165,"bus"],
+  [124,153,"bus"],[127,133,"bus"],[128,135,"bus"],[128,142,"bus"],
+  [128,161,"bus"],[128,187,"bus"],[128,199,"bus"],[133,140,"bus"],
+  [133,157,"bus"],[135,161,"bus"],[140,154,"bus"],[140,156,"bus"],
+  [142,157,"bus"],[144,163,"bus"],[153,154,"bus"],[153,180,"bus"],
+  [153,184,"bus"],[154,156,"bus"],[156,157,"bus"],[156,184,"bus"],
+  [157,185,"bus"],[161,199,"bus"],[163,176,"bus"],[163,191,"bus"],
+  [165,180,"bus"],[165,191,"bus"],[176,190,"bus"],[180,184,"bus"],
+  [180,190,"bus"],[184,185,"bus"],[185,187,"bus"],[190,191,"bus"],
+  [1,8,"taxi"],[1,9,"taxi"],[2,10,"taxi"],[2,20,"taxi"],[3,4,"taxi"],
+  [3,11,"taxi"],[3,12,"taxi"],[4,13,"taxi"],[5,15,"taxi"],[5,16,"taxi"],
+  [6,7,"taxi"],[6,29,"taxi"],[7,17,"taxi"],[8,18,"taxi"],[8,19,"taxi"],
+  [9,19,"taxi"],[9,20,"taxi"],[10,11,"taxi"],[10,21,"taxi"],[10,34,"taxi"],
+  [11,22,"taxi"],[12,23,"taxi"],[13,14,"taxi"],[13,23,"taxi"],[13,24,"taxi"],
+  [14,15,"taxi"],[14,25,"taxi"],[15,16,"taxi"],[15,26,"taxi"],[15,28,"taxi"],
+  [16,28,"taxi"],[16,29,"taxi"],[17,29,"taxi"],[17,30,"taxi"],[18,31,"taxi"],
+  [18,43,"taxi"],[19,32,"taxi"],[20,33,"taxi"],[21,33,"taxi"],[22,23,"taxi"],
+  [22,34,"taxi"],[22,35,"taxi"],[23,37,"taxi"],[24,37,"taxi"],[24,38,"taxi"],
+  [25,38,"taxi"],[25,39,"taxi"],[26,27,"taxi"],[26,39,"taxi"],[27,28,"taxi"],
+  [27,40,"taxi"],[28,41,"taxi"],[29,41,"taxi"],[29,42,"taxi"],[30,42,"taxi"],
+  [31,43,"taxi"],[31,44,"taxi"],[32,33,"taxi"],[32,44,"taxi"],[32,45,"taxi"],
+  [33,46,"taxi"],[34,47,"taxi"],[34,48,"taxi"],[35,36,"taxi"],[35,48,"taxi"],
+  [35,65,"taxi"],[36,37,"taxi"],[36,49,"taxi"],[37,50,"taxi"],[38,50,"taxi"],
+  [38,51,"taxi"],[39,51,"taxi"],[39,52,"taxi"],[40,41,"taxi"],[40,52,"taxi"],
+  [40,53,"taxi"],[41,54,"taxi"],[42,56,"taxi"],[42,72,"taxi"],[43,57,"taxi"],
+  [44,58,"taxi"],[45,46,"taxi"],[45,58,"taxi"],[45,59,"taxi"],[45,60,"taxi"],
+  [46,47,"taxi"],[46,61,"taxi"],[47,62,"taxi"],[48,62,"taxi"],[48,63,"taxi"],
+  [49,50,"taxi"],[49,66,"taxi"],[51,52,"taxi"],[51,67,"taxi"],[51,68,"taxi"],
+  [52,69,"taxi"],[53,54,"taxi"],[53,69,"taxi"],[54,55,"taxi"],[54,70,"taxi"],
+  [55,71,"taxi"],[56,91,"taxi"],[57,58,"taxi"],[57,73,"taxi"],[58,59,"taxi"],
+  [58,74,"taxi"],[58,75,"taxi"],[59,75,"taxi"],[59,76,"taxi"],[60,61,"taxi"],
+  [60,76,"taxi"],[61,62,"taxi"],[61,76,"taxi"],[61,78,"taxi"],[62,79,"taxi"],
+  [63,64,"taxi"],[63,79,"taxi"],[63,80,"taxi"],[64,65,"taxi"],[64,81,"taxi"],
+  [65,66,"taxi"],[65,82,"taxi"],[66,67,"taxi"],[66,82,"taxi"],[67,68,"taxi"],
+  [67,84,"taxi"],[68,69,"taxi"],[68,85,"taxi"],[69,86,"taxi"],[70,71,"taxi"],
+  [70,87,"taxi"],[71,72,"taxi"],[71,89,"taxi"],[72,90,"taxi"],[72,91,"taxi"],
+  [73,74,"taxi"],[73,92,"taxi"],[74,75,"taxi"],[74,92,"taxi"],[75,94,"taxi"],
+  [76,77,"taxi"],[77,78,"taxi"],[77,95,"taxi"],[77,96,"taxi"],[78,79,"taxi"],
+  [78,97,"taxi"],[79,98,"taxi"],[80,99,"taxi"],[80,100,"taxi"],[81,82,"taxi"],
+  [81,100,"taxi"],[82,101,"taxi"],[83,101,"taxi"],[83,102,"taxi"],[84,85,"taxi"],
+  [85,103,"taxi"],[86,103,"taxi"],[86,104,"taxi"],[87,88,"taxi"],[88,89,"taxi"],
+  [88,117,"taxi"],[89,105,"taxi"],[90,91,"taxi"],[90,105,"taxi"],[91,105,"taxi"],
+  [91,107,"taxi"],[92,93,"taxi"],[93,94,"taxi"],[94,95,"taxi"],[95,122,"taxi"],
+  [96,97,"taxi"],[96,109,"taxi"],[97,98,"taxi"],[97,109,"taxi"],[98,99,"taxi"],
+  [98,110,"taxi"],[99,110,"taxi"],[99,112,"taxi"],[100,101,"taxi"],
+  [100,112,"taxi"],[100,113,"taxi"],[101,114,"taxi"],[102,103,"taxi"],
+  [102,115,"taxi"],[104,116,"taxi"],[105,106,"taxi"],[105,108,"taxi"],
+  [106,107,"taxi"],[107,119,"taxi"],[108,117,"taxi"],[108,119,"taxi"],
+  [109,110,"taxi"],[109,124,"taxi"],[110,111,"taxi"],[111,112,"taxi"],
+  [111,124,"taxi"],[112,125,"taxi"],[113,114,"taxi"],[113,125,"taxi"],
+  [114,115,"taxi"],[114,126,"taxi"],[114,131,"taxi"],[114,132,"taxi"],
+  [115,126,"taxi"],[115,127,"taxi"],[116,117,"taxi"],[116,118,"taxi"],
+  [116,127,"taxi"],[117,129,"taxi"],[118,129,"taxi"],[118,134,"taxi"],
+  [118,142,"taxi"],[119,136,"taxi"],[120,121,"taxi"],[120,144,"taxi"],
+  [121,122,"taxi"],[121,145,"taxi"],[122,123,"taxi"],[122,146,"taxi"],
+  [123,124,"taxi"],[123,137,"taxi"],[123,148,"taxi"],[123,149,"taxi"],
+  [124,130,"taxi"],[124,138,"taxi"],[125,131,"taxi"],[126,127,"taxi"],
+  [126,140,"taxi"],[127,133,"taxi"],[127,134,"taxi"],[128,142,"taxi"],
+  [128,143,"taxi"],[128,160,"taxi"],[128,172,"taxi"],[128,188,"taxi"],
+  [129,135,"taxi"],[129,142,"taxi"],[129,143,"taxi"],[130,131,"taxi"],
+  [130,139,"taxi"],[132,140,"taxi"],[133,140,"taxi"],[133,141,"taxi"],
+  [134,141,"taxi"],[134,142,"taxi"],[135,136,"taxi"],[135,143,"taxi"],
+  [135,161,"taxi"],[136,162,"taxi"],[137,147,"taxi"],[138,150,"taxi"],
+  [138,152,"taxi"],[139,140,"taxi"],[139,153,"taxi"],[139,154,"taxi"],
+  [140,154,"taxi"],[140,156,"taxi"],[141,142,"taxi"],[141,158,"taxi"],
+  [142,143,"taxi"],[142,158,"taxi"],[143,160,"taxi"],[144,145,"taxi"],
+  [144,177,"taxi"],[145,146,"taxi"],[146,147,"taxi"],[146,163,"taxi"],
+  [147,164,"taxi"],[148,149,"taxi"],[148,164,"taxi"],[149,150,"taxi"],
+  [149,165,"taxi"],[150,151,"taxi"],[151,152,"taxi"],[151,165,"taxi"],
+  [151,166,"taxi"],[152,153,"taxi"],[153,154,"taxi"],[153,166,"taxi"],
+  [153,167,"taxi"],[154,155,"taxi"],[155,156,"taxi"],[155,167,"taxi"],
+  [155,168,"taxi"],[156,157,"taxi"],[156,169,"taxi"],[157,158,"taxi"],
+  [157,170,"taxi"],[158,159,"taxi"],[159,170,"taxi"],[159,172,"taxi"],
+  [159,186,"taxi"],[159,198,"taxi"],[160,161,"taxi"],[160,173,"taxi"],
+  [161,174,"taxi"],[162,175,"taxi"],[163,177,"taxi"],[164,178,"taxi"],
+  [164,179,"taxi"],[165,179,"taxi"],[165,180,"taxi"],[166,181,"taxi"],
+  [166,183,"taxi"],[167,168,"taxi"],[167,183,"taxi"],[168,184,"taxi"],
+  [169,184,"taxi"],[170,185,"taxi"],[171,173,"taxi"],[171,175,"taxi"],
+  [171,199,"taxi"],[172,187,"taxi"],[173,174,"taxi"],[173,188,"taxi"],
+  [174,175,"taxi"],[176,177,"taxi"],[176,189,"taxi"],[178,189,"taxi"],
+  [178,191,"taxi"],[179,191,"taxi"],[180,181,"taxi"],[180,193,"taxi"],
+  [181,182,"taxi"],[181,193,"taxi"],[182,183,"taxi"],[182,195,"taxi"],
+  [183,196,"taxi"],[184,185,"taxi"],[184,196,"taxi"],[184,197,"taxi"],
+  [185,186,"taxi"],[186,198,"taxi"],[187,188,"taxi"],[187,198,"taxi"],
+  [188,199,"taxi"],[189,190,"taxi"],[190,191,"taxi"],[190,192,"taxi"],
+  [191,192,"taxi"],[192,194,"taxi"],[193,194,"taxi"],[194,195,"taxi"],
+  [195,197,"taxi"],[196,197,"taxi"],[198,199,"taxi"]
+];
 
-let gameState = {
-  moriartyNode:    0,
-  moriLastRevealed: -1,
-  moriLastRevealRound: -1,
-  fogTickets:      3,
-  bluffTickets:    2,
-  fogActive:       false,   // current move uses fog (all neighbours valid)
-  bluffExtraTurn:  false,   // second move flag for double bluff
-  bluffUsedThisRound: false,
-  detectives:      [],
-  nodes:           [],
-  edges:           [],
-};
+/* ══════════════════════════════════════════════════════════
+   GRAPH
+══════════════════════════════════════════════════════════ */
+const WORLD_W=1600, WORLD_H=1200, RAW_W=1593, RAW_H=1191;
+const nodes={};
+STATIONS_RAW.forEach(([id,rx,ry,t])=>{
+  nodes[id]={id, x:(rx/RAW_W)*WORLD_W, y:(ry/RAW_H)*WORLD_H, types:t.split(',')};
+});
+const adj={};
+for(let i=1;i<=199;i++) adj[i]={taxi:[],bus:[],underground:[],water:[]};
+CONNECTIONS_RAW.forEach(([a,b,t])=>{ adj[a][t].push(b); adj[b][t].push(a); });
 
-/* ═══════════════════════════════════════════════════════════════
-   NODE GENERATION (200 nodes, geographically placed)
-═══════════════════════════════════════════════════════════════ */
-function generateNodes(W, H) {
-  const REGIONS = [
-    { name:'West End',    cx:0.25, cy:0.35, r:0.14, count:30 },
-    { name:'City',        cx:0.55, cy:0.40, r:0.11, count:28 },
-    { name:'Docklands',   cx:0.75, cy:0.45, r:0.12, count:18 },
-    { name:'Southwark',   cx:0.50, cy:0.65, r:0.12, count:22 },
-    { name:'Lambeth',     cx:0.38, cy:0.70, r:0.10, count:16 },
-    { name:'Hackney',     cx:0.65, cy:0.25, r:0.10, count:16 },
-    { name:'Islington',   cx:0.50, cy:0.22, r:0.09, count:15 },
-    { name:'Westminster', cx:0.30, cy:0.50, r:0.09, count:18 },
-    { name:'Bermondsey',  cx:0.62, cy:0.62, r:0.09, count:12 },
-    { name:'Marylebone',  cx:0.28, cy:0.25, r:0.09, count:12 },
-    { name:'Stepney',     cx:0.72, cy:0.35, r:0.08, count:13 },
-  ];
-  const NAMES = [
-    'Baker St','Victoria','Waterloo','London Bridge','Paddington','Cannon St',
-    'Charing Cross','Euston','King\'s Cross','Liverpool St','Fenchurch St',
-    'Blackfriars','Temple','Aldgate','Moorgate','Monument','Bank','Mansion Hs',
-    'Southwark','Borough','Elephant','Kennington','Oval','Stockwell','Brixton',
-    'Lambeth','Westminster','Pimlico','Sloane Sq','Chelsea','Fulham','Hammersmith',
-    'Shepherd\'s Bush','Notting Hill','Bayswater','Marble Arch','Hyde Pk Cr',
-    'Edgware Rd','Marylebone','Regent\'s Pk','Great Portland','Oxford Circus',
-    'Bond St','Green Pk','St James','Piccadilly','Leicester Sq','Covent Gdn',
-    'Holborn','Chancery Ln','Farringdon','Barbican','Old St','Shoreditch',
-    'Whitechapel','Aldgate E','Stepney','Limehouse','Poplar','Blackwall',
-    'Greenwich','Deptford','Bermondsey St','New Cross','Peckham','Camberwell',
-    'Hackney','Dalston','Stoke Newington','Highbury','Canonbury','Angel',
-    'City Rd','Clerkenwell','Smithfield','Newgate','Fleet St','Strand',
-    'Trafalgar','Whitehall','Parliament','Vauxhall','Nine Elms','Battersea',
-    'Wandsworth','Clapham','Balham','Tooting','Streatham','Norwood',
-    'Houndsditch','Bishopsgate','Spitalfields','Mile End','Bow','Stratford',
-    'West Ham','Plaistow','Barking','Ilford','Leyton','Clapton','Stoke Newington E',
-    'Finsbury Pk','Crouch End','Hornsey','Wood Green','Tottenham','Edmonton',
-    'St Pancras','Bloomsbury','Russell Sq','Tavistock','Fitzroy','Soho',
-    'Carnaby','Wardour','Berwick','Dean St','Greek St','Frith St','Shaftesbury',
-    'Haymarket','Pall Mall','St James\'s','Carlton','Reform Club','Athenaeum',
-    'Waterloo Rd','Blackfriars Rd','Borough Mkt','Tooley St','Jamaica Rd',
-    'Rotherhithe','Surrey Docks','Millwall','Isle of Dogs','Cubitt Town',
-    'Canary Wharf','West India Dk','East India Dk',
-  ];
-  const nodes = [];
-  let idx = 0;
-  for (const reg of REGIONS) {
-    for (let i = 0; i < reg.count && idx < NODE_COUNT; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const d     = Math.random() * reg.r;
-      nodes.push({
-        id:     idx,
-        x:      Math.max(30, Math.min(W-30, (reg.cx + Math.cos(angle)*d) * W)),
-        y:      Math.max(30, Math.min(H-30, (reg.cy + Math.sin(angle)*d) * H)),
-        name:   NAMES[idx] || `Node ${idx}`,
-        region: reg.name,
-      });
-      idx++;
-    }
-  }
-  while (nodes.length < NODE_COUNT) {
-    nodes.push({ id:nodes.length, x:30+Math.random()*(W-60), y:30+Math.random()*(H-60), name:`Node ${nodes.length}`, region:'Other' });
-  }
-  return nodes;
+function moriMoves(nodeId){
+  // All moves available to Moriarty from nodeId (water requires fog ticket but we list them anyway)
+  const r=[];
+  ['taxi','bus','underground','water'].forEach(t=>
+    adj[nodeId][t].forEach(nb=>r.push({node:nb,type:t}))
+  );
+  return r;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   EDGE GENERATION
-═══════════════════════════════════════════════════════════════ */
-function dist2(a, b) { return (a.x-b.x)**2 + (a.y-b.y)**2; }
+function detMoves(det){
+  const r=[];
+  ['taxi','bus','underground'].forEach(t=>{
+    if((det.tickets[t]||0)>0) adj[det.node][t].forEach(nb=>r.push({node:nb,type:t}));
+  });
+  return r;
+}
 
-function generateEdges(nodes) {
-  const edges  = [];
-  const edgeSet = new Set();
-  const addEdge = (i, j, type) => {
-    const key = i < j ? `${i}-${j}` : `${j}-${i}`;
-    if (!edgeSet.has(key)) { edgeSet.add(key); edges.push({ a:i, b:j, type }); }
+/* ══════════════════════════════════════════════════════════
+   CONSTANTS
+══════════════════════════════════════════════════════════ */
+const REVEAL_MOVES=[3,8,13,18,24];
+const MAX_MOVES=24;
+const NUM_DETS=5;
+const DET_NAMES=['Sherlock Holmes','Dr Watson','Insp. Lestrade','Insp. Gregson','Wiggins'];
+const DET_SHORT=['Holmes','Watson','Lestrade','Gregson','Wiggins'];
+const DET_EMOJIS=['🔍','📖','⚖️','🗂️','🧢'];
+const DET_START=[13,26,34,50,91];
+const DET_START_TIX={taxi:10,bus:8,underground:4};
+
+let currentMode='moriarty';
+let G={};
+let gameOver=false;
+
+/* ══════════════════════════════════════════════════════════
+   GAME STATE
+══════════════════════════════════════════════════════════ */
+function freshGame(){
+  const belief=new Float32Array(200);
+  return {
+    moriNode:1, moriMoveCount:0,
+    fogLeft:5, bluffLeft:2,
+    bluffLeg:0,      // 0=none, 1=first leg done (second pending)
+    fogThisLeg:false, // fog activated for current move leg
+    ghostNode:-1, ghostSince:0,
+    moriartyLog:[],  // {type,reveal,node} — detective knowledge only
+    belief,
+    detectives:DET_NAMES.map((name,i)=>({
+      name, short:DET_SHORT[i], emoji:DET_EMOJIS[i],
+      node:DET_START[i], tickets:{...DET_START_TIX}
+    })),
+    phase:'moriarty',
+    coachMovRec:null,
+    coachDetRecs:null,
   };
-
-  // Spanning tree (guarantees connectivity)
-  const visited = new Set([0]);
-  const unvis   = new Set(Array.from({length:NODE_COUNT},(_,i)=>i).slice(1));
-  while (unvis.size) {
-    let bDist=Infinity, bI=-1, bJ=-1;
-    for (const i of visited) for (const j of unvis) {
-      const d = dist2(nodes[i], nodes[j]);
-      if (d < bDist) { bDist=d; bI=i; bJ=j; }
-    }
-    addEdge(bI, bJ, 'cab'); visited.add(bJ); unvis.delete(bJ);
-  }
-
-  // Cab fill ~464
-  const pairs = [];
-  for (let i=0;i<NODE_COUNT;i++) for (let j=i+1;j<NODE_COUNT;j++) pairs.push([i,j,dist2(nodes[i],nodes[j])]);
-  pairs.sort((a,b)=>a[2]-b[2]);
-  for (const [i,j] of pairs) {
-    if (edges.filter(e=>e.type==='cab').length >= 464) break;
-    if (Math.sqrt(dist2(nodes[i],nodes[j])) < 180) addEdge(i,j,'cab');
-  }
-
-  // Tram ~132
-  for (let t=0; edges.filter(e=>e.type==='tram').length < 132 && t<6000; t++) {
-    const i=Math.floor(Math.random()*NODE_COUNT), j=Math.floor(Math.random()*NODE_COUNT);
-    if (i===j) continue;
-    const d=Math.sqrt(dist2(nodes[i],nodes[j]));
-    if (d>80&&d<250) addEdge(i,j,'tram');
-  }
-
-  // Underground ~26
-  for (let t=0; edges.filter(e=>e.type==='underground').length < 26 && t<4000; t++) {
-    const i=Math.floor(Math.random()*NODE_COUNT), j=Math.floor(Math.random()*NODE_COUNT);
-    if (i===j) continue;
-    if (Math.sqrt(dist2(nodes[i],nodes[j]))>200) addEdge(i,j,'underground');
-  }
-
-  // River — Thames corridor
-  const W = canvas?.width || 900, H = canvas?.height || 600;
-  const thames = nodes.filter(n => n.y/H >= 0.45 && n.y/H <= 0.58);
-  const riverTarget = edges.filter(e=>e.type==='river').length + 4;
-  for (let i=0; i<thames.length && edges.filter(e=>e.type==='river').length < riverTarget; i++) {
-    const a=thames[i], b=thames[(i+1)%thames.length];
-    if (a&&b&&a.id!==b.id) addEdge(a.id,b.id,'river');
-  }
-
-  return edges;
 }
 
-function getNeighbors(nodeId, typeFilter = null) {
-  return gameState.edges
-    .filter(e => (e.a===nodeId||e.b===nodeId) && (!typeFilter||typeFilter===e.type))
-    .map(e => ({ node: e.a===nodeId ? e.b : e.a, type: e.type }));
+/* ══════════════════════════════════════════════════════════
+   BELIEF MODEL
+══════════════════════════════════════════════════════════ */
+function initBelief(){
+  const detSet=new Set(G.detectives.map(d=>d.node));
+  let count=0;
+  for(let i=1;i<=199;i++) if(!detSet.has(i)) count++;
+  for(let i=1;i<=199;i++) G.belief[i]=detSet.has(i)?0:1/count;
 }
 
-function getMoriValidMoves() {
-  if (gameState.fogActive) {
-    // All neighbours any type
-    const all = getNeighbors(gameState.moriartyNode);
-    // dedupe by node
-    const seen = new Set();
-    return all.filter(m => { if(seen.has(m.node)) return false; seen.add(m.node); return true; });
+function expandBelief(logType){
+  // logType: 'taxi'|'bus'|'underground'|'water'|'fog'
+  const isFog=logType==='fog';
+  const types=isFog?['taxi','bus','underground','water']:[logType];
+  const next=new Float32Array(200);
+  const detSet=new Set(G.detectives.map(d=>d.node));
+  for(let src=1;src<=199;src++){
+    if(G.belief[src]<=0) continue;
+    const reach=new Set();
+    types.forEach(t=>adj[src][t].forEach(nb=>reach.add(nb)));
+    if(reach.size===0){ next[src]+=G.belief[src]; continue; }
+    const share=G.belief[src]/reach.size;
+    reach.forEach(nb=>{ next[nb]+=share; });
   }
-  return getNeighbors(gameState.moriartyNode);
+  detSet.forEach(n=>{ next[n]=0; });
+  let sum=0; for(let i=1;i<=199;i++) sum+=next[i];
+  if(sum>0) for(let i=1;i<=199;i++) next[i]/=sum;
+  G.belief=next;
 }
 
-function getDetValidMoves(detIdx) {
-  const det = gameState.detectives[detIdx];
-  return getNeighbors(det.node).filter(m => m.type !== 'river' && (det.tickets[m.type]||0) > 0);
+function collapseBeliefTo(nodeId){
+  G.belief=new Float32Array(200);
+  G.belief[nodeId]=1.0;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   CANVAS SETUP
-   Pan/zoom ONLY — no move selection on canvas click
-═══════════════════════════════════════════════════════════════ */
-let canvas, ctx;
-let hoveredNode  = null;
-let transform    = { x:0, y:0, scale:1 };
+function pruneBeliefDetNodes(){
+  const detSet=new Set(G.detectives.map(d=>d.node));
+  detSet.forEach(n=>{ G.belief[n]=0; });
+  let sum=0; for(let i=1;i<=199;i++) sum+=G.belief[i];
+  if(sum>0) for(let i=1;i<=199;i++) G.belief[i]/=sum;
+}
 
-// Pointer state for pan + pinch-zoom
-let pointers  = new Map();  // pointerId → {x,y}
-let lastPinchDist = null;
-let panStart  = null;        // {tx,ty,px,py} at pan-gesture start
-let didPan    = false;       // true if pointer moved enough to count as pan
-
-const MIN_SCALE = 0.35, MAX_SCALE = 5;
-
-function initCanvas() {
-  canvas = document.getElementById('map-canvas');
-  ctx    = canvas.getContext('2d');
-  resizeCanvas();
-
-  // ── Mouse: hover tooltip (no click-to-move) ─────────────────
-  canvas.addEventListener('mousemove', onMouseMove);
-  canvas.addEventListener('mouseleave', () => { hoveredNode=null; hideTooltip(); drawMap(); });
-
-  // ── Mouse wheel zoom ─────────────────────────────────────────
-  canvas.addEventListener('wheel', e => {
-    e.preventDefault();
-    const f   = e.deltaY < 0 ? 1.12 : 0.89;
-    const r   = canvas.getBoundingClientRect();
-    const mx  = e.clientX - r.left, my = e.clientY - r.top;
-    zoomAt(mx, my, f);
-  }, { passive:false });
-
-  // ── Mouse drag pan ───────────────────────────────────────────
-  canvas.addEventListener('mousedown', e => {
-    didPan = false;
-    panStart = { tx:transform.x, ty:transform.y, px:e.clientX, py:e.clientY };
-    canvas.classList.add('panning');
+/* ══════════════════════════════════════════════════════════
+   AI — MORIARTY
+══════════════════════════════════════════════════════════ */
+function scoreNode(nodeId, detPositions){
+  const n=nodes[nodeId];
+  // Distance from nearest detective (maximise)
+  let minD=0;
+  detPositions.forEach(dp=>{
+    const d=nodes[dp];
+    const dist=Math.hypot(n.x-d.x, n.y-d.y);
+    if(minD===0||dist<minD) minD=dist;
   });
-  canvas.addEventListener('mousemove', e => {
-    if (!panStart) return;
-    const dx = e.clientX - panStart.px, dy = e.clientY - panStart.py;
-    if (Math.abs(dx)+Math.abs(dy) > 4) didPan = true;
-    if (didPan) {
-      transform.x = panStart.tx + dx;
-      transform.y = panStart.ty + dy;
-      drawMap();
-    }
-  });
-  canvas.addEventListener('mouseup', () => { panStart=null; canvas.classList.remove('panning'); });
+  // Future mobility
+  const mob=adj[nodeId].taxi.length+adj[nodeId].bus.length+adj[nodeId].underground.length;
+  // Density of detectives within 2 taxi hops
+  const twoHop=new Set([nodeId]);
+  adj[nodeId].taxi.forEach(a=>{ twoHop.add(a); adj[a].taxi.forEach(b=>twoHop.add(b)); });
+  let dens=0;
+  detPositions.forEach(dp=>{ if(twoHop.has(dp)) dens++; });
+  return minD*1.0 + mob*12 - dens*70;
+}
 
-  // ── Touch / pointer events for mobile pan + pinch ────────────
-  canvas.addEventListener('pointerdown', e => {
-    canvas.setPointerCapture(e.pointerId);
-    pointers.set(e.pointerId, { x:e.clientX, y:e.clientY });
-    didPan = false;
-    if (pointers.size === 1) {
-      panStart = { tx:transform.x, ty:transform.y, px:e.clientX, py:e.clientY };
-    }
-    if (pointers.size === 2) {
-      lastPinchDist = getPinchDist();
-      panStart = null; // disable single-finger pan while pinching
-    }
+function aiPickMoriMove(fogForced=false){
+  const detPos=G.detectives.map(d=>d.node);
+  const detSet=new Set(detPos);
+  const nextMoveNum=G.moriMoveCount+1;
+  const isRevealMove=REVEAL_MOVES.includes(nextMoveNum);
+
+  // Should use bluff? Best on reveal moves (first leg)
+  const useBluff=G.bluffLeft>0 && G.bluffLeg===0 && isRevealMove;
+  // Should use fog? After a reveal or when detectives very close, conserve otherwise
+  const mn=nodes[G.moriNode];
+  const minDetDist=Math.min(...detPos.map(dp=>{ const d=nodes[dp]; return Math.hypot(mn.x-d.x,mn.y-d.y); }));
+  const useFog=!fogForced && G.fogLeft>0 && (isRevealMove || minDetDist<160);
+
+  let candidates=moriMoves(G.moriNode).filter(m=>!detSet.has(m.node));
+  if(candidates.length===0){
+    // All adjacent nodes occupied — surrender
+    return {node:G.moriNode,type:'taxi',surrender:true};
+  }
+
+  // Filter water if no fog
+  const fogAvail=fogForced||useFog||G.fogThisLeg;
+  if(!fogAvail) candidates=candidates.filter(m=>m.type!=='water');
+  if(candidates.length===0) candidates=moriMoves(G.moriNode).filter(m=>!detSet.has(m.node));
+
+  let best=candidates[0], bestScore=-Infinity;
+  candidates.forEach(m=>{
+    const s=scoreNode(m.node,detPos);
+    if(s>bestScore){ bestScore=s; best=m; }
   });
 
-  canvas.addEventListener('pointermove', e => {
-    if (!pointers.has(e.pointerId)) return;
-    pointers.set(e.pointerId, { x:e.clientX, y:e.clientY });
+  const fogConsumed=best.type==='water'||(useFog&&!fogForced&&!G.fogThisLeg);
+  return {
+    node:best.node,
+    type:fogConsumed?'fog':best.type,
+    realType:best.type,
+    fogConsumed,
+    bluffConsumed:useBluff,
+  };
+}
 
-    if (pointers.size === 1 && panStart) {
-      // Single-finger pan
-      const dx = e.clientX - panStart.px, dy = e.clientY - panStart.py;
-      if (Math.abs(dx)+Math.abs(dy) > 5) { didPan = true; canvas.classList.add('panning'); }
-      if (didPan) {
-        transform.x = panStart.tx + dx;
-        transform.y = panStart.ty + dy;
-        drawMap();
-        hideTooltip();
-      }
-    } else if (pointers.size === 2) {
-      // Pinch zoom
-      const newDist = getPinchDist();
-      if (lastPinchDist && newDist) {
-        const f = newDist / lastPinchDist;
-        const [p1, p2] = [...pointers.values()];
-        const cx = (p1.x+p2.x)/2, cy = (p1.y+p2.y)/2;
-        const r  = canvas.getBoundingClientRect();
-        zoomAt(cx-r.left, cy-r.top, f);
-      }
-      lastPinchDist = newDist;
+/* ══════════════════════════════════════════════════════════
+   AI — DETECTIVES (belief-based team strategy)
+══════════════════════════════════════════════════════════ */
+function aiDetTeamMoves(){
+  // Returns [{detIdx,node,type}] using only belief knowledge
+  const moves=[];
+  const plannedDests=new Set(G.detectives.map(d=>d.node));
+
+  // Rank nodes by belief
+  const ranked=[];
+  for(let i=1;i<=199;i++) ranked.push({id:i,b:G.belief[i]});
+  ranked.sort((a,b)=>b.b-a.b);
+
+  // Belief centroid
+  let cx=0,cy=0,tot=0;
+  for(let i=1;i<=199;i++){ cx+=nodes[i].x*G.belief[i]; cy+=nodes[i].y*G.belief[i]; tot+=G.belief[i]; }
+  if(tot>0){ cx/=tot; cy/=tot; }
+
+  // Belief spread
+  let spread=0;
+  for(let i=1;i<=199;i++){
+    const dx=nodes[i].x-cx, dy=nodes[i].y-cy;
+    spread+=Math.sqrt(dx*dx+dy*dy)*G.belief[i];
+  }
+  if(tot>0) spread/=tot;
+
+  // Assign targets: spread them out across probability cloud
+  const targets=[];
+  const assignedT=new Set();
+  const minSep = spread>250 ? 150 : 80; // tighter when cloud is small
+
+  for(let di=0;di<NUM_DETS;di++){
+    let target=ranked[0].id;
+    for(const {id} of ranked){
+      if(id===0||G.belief[id]<0.001) continue;
+      const tooClose=[...assignedT].some(t=>{
+        const tn=nodes[t],cn=nodes[id];
+        return Math.hypot(tn.x-cn.x,tn.y-cn.y)<minSep;
+      });
+      if(!tooClose){ target=id; break; }
     }
+    assignedT.add(target);
+    targets.push(target);
+  }
 
-    // Hover tooltip on single stationary touch
-    if (pointers.size === 1 && !didPan) {
-      const r  = canvas.getBoundingClientRect();
-      onHoverAt(e.clientX - r.left, e.clientY - r.top);
+  G.detectives.forEach((det,i)=>{
+    const valid=detMoves(det);
+    if(!valid.length){
+      moves.push({detIdx:i,node:det.node,type:'taxi',stranded:true});
+      return;
     }
+    const tgt=nodes[targets[i]||ranked[0].id];
+    let best=valid[0], bestScore=-Infinity;
+    valid.forEach(m=>{
+      if(plannedDests.has(m.node)&&m.node!==det.node) return;
+      const mn2=nodes[m.node];
+      const dist=Math.hypot(mn2.x-tgt.x,mn2.y-tgt.y);
+      const bel=(G.belief[m.node]||0)*4000;
+      const score=-dist+bel;
+      if(score>bestScore){ bestScore=score; best=m; }
+    });
+    plannedDests.add(best.node);
+    moves.push({detIdx:i,node:best.node,type:best.type});
   });
+  return moves;
+}
 
-  canvas.addEventListener('pointerup', e => {
-    pointers.delete(e.pointerId);
-    if (pointers.size < 2) lastPinchDist = null;
-    if (pointers.size === 0) { panStart=null; canvas.classList.remove('panning'); }
+/* ══════════════════════════════════════════════════════════
+   COACH
+══════════════════════════════════════════════════════════ */
+function coachMoriSuggest(){
+  // Full board knowledge
+  const rec=aiPickMoriMove();
+  const detPos=G.detectives.map(d=>d.node);
+  const mn=nodes[G.moriNode];
+  const closest=G.detectives.reduce((b,d)=>{
+    const dist=Math.hypot(nodes[d.node].x-mn.x,nodes[d.node].y-mn.y);
+    return dist<b.dist?{d,dist}:b;
+  },{d:G.detectives[0],dist:Infinity});
+
+  const lines=[];
+  const nextReveal=REVEAL_MOVES.find(r=>r>G.moriMoveCount);
+  lines.push(`${closest.d.short} is your nearest pursuer. Station ${rec.node} offers the best escape geometry.`);
+  if(rec.fogConsumed) lines.push(`Heavy Fog advised — denies detectives transport intelligence.`);
+  if(rec.bluffConsumed) lines.push(`Double Bluff recommended — vacate the reveal position before detectives react.`);
+  if(nextReveal) lines.push(`Next reveal at move ${nextReveal} (${nextReveal-G.moriMoveCount} move${nextReveal-G.moriMoveCount>1?'s':''} away).`);
+  G.coachMovRec=rec;
+  return {rec, text:lines.join(' ')};
+}
+
+function coachDetSuggest(){
+  // Belief knowledge only — no actual Moriarty position
+  const recs=aiDetTeamMoves();
+  let peakNode=1,peakVal=0;
+  for(let i=1;i<=199;i++) if(G.belief[i]>peakVal){ peakVal=G.belief[i]; peakNode=i; }
+  const lines=[];
+  lines.push(`Highest probability zone: station ${peakNode} (${(peakVal*100).toFixed(1)}%).`);
+  if(G.ghostNode>=0){
+    lines.push(`Last sighting: station ${G.ghostNode}, ${G.ghostSince} move${G.ghostSince!==1?'s':''} ago.`);
+  }
+  lines.push(`Detectives fanning out to cover escape corridors.`);
+  G.coachDetRecs=recs;
+  return {recs, text:lines.join(' ')};
+}
+
+/* ══════════════════════════════════════════════════════════
+   CANVAS
+══════════════════════════════════════════════════════════ */
+let canvas,ctx,hoveredNode=null;
+let transform={x:0,y:0,scale:1};
+let pointers=new Map(),lastPinchDist=null,panStart=null,didPan=false;
+const MIN_SCALE=0.22,MAX_SCALE=7;
+
+const ECOL={taxi:'rgba(212,160,23,0.45)',bus:'rgba(192,57,43,0.55)',underground:'rgba(26,107,60,0.8)',water:'rgba(31,97,141,0.85)'};
+const EWID={taxi:1,bus:1.6,underground:2.2,water:2.5};
+const EDSH={taxi:[],bus:[],underground:[4,3],water:[7,3]};
+
+function initCanvas(){
+  canvas=document.getElementById('map-canvas');
+  ctx=canvas.getContext('2d');
+  // Mouse
+  canvas.addEventListener('mousemove',e=>{
+    const r=canvas.getBoundingClientRect();
+    if(panStart){ const dx=e.clientX-panStart.px,dy=e.clientY-panStart.py; if(Math.abs(dx)+Math.abs(dy)>4){didPan=true;canvas.classList.add('panning');} if(didPan){transform.x=panStart.tx+dx;transform.y=panStart.ty+dy;drawMap();hideTooltip();return;} } onHoverAt(e.clientX-r.left,e.clientY-r.top);
   });
-  canvas.addEventListener('pointercancel', e => { pointers.delete(e.pointerId); });
-  canvas.addEventListener('contextmenu', e => e.preventDefault());
+  canvas.addEventListener('mousedown',e=>{didPan=false;panStart={tx:transform.x,ty:transform.y,px:e.clientX,py:e.clientY};});
+  canvas.addEventListener('mouseup',()=>{panStart=null;canvas.classList.remove('panning');});
+  canvas.addEventListener('mouseleave',()=>{hoveredNode=null;hideTooltip();drawMap();});
+  canvas.addEventListener('wheel',e=>{e.preventDefault();const r=canvas.getBoundingClientRect();zoomAt(e.clientX-r.left,e.clientY-r.top,e.deltaY<0?1.12:0.89);},{passive:false});
+  // Touch
+  canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});didPan=false;if(pointers.size===1) panStart={tx:transform.x,ty:transform.y,px:e.clientX,py:e.clientY};if(pointers.size===2){lastPinchDist=getPinchDist();panStart=null;}});
+  canvas.addEventListener('pointermove',e=>{
+    if(!pointers.has(e.pointerId)) return;
+    pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(pointers.size===1&&panStart){const dx=e.clientX-panStart.px,dy=e.clientY-panStart.py;if(Math.abs(dx)+Math.abs(dy)>5){didPan=true;canvas.classList.add('panning');}if(didPan){transform.x=panStart.tx+dx;transform.y=panStart.ty+dy;drawMap();hideTooltip();return;}const r=canvas.getBoundingClientRect();onHoverAt(e.clientX-r.left,e.clientY-r.top);}
+    else if(pointers.size===2){const nd=getPinchDist();if(lastPinchDist&&nd){const pts=[...pointers.values()];const r=canvas.getBoundingClientRect();zoomAt((pts[0].x+pts[1].x)/2-r.left,(pts[0].y+pts[1].y)/2-r.top,nd/lastPinchDist);}lastPinchDist=getPinchDist();}
+  });
+  canvas.addEventListener('pointerup',e=>{pointers.delete(e.pointerId);if(pointers.size<2)lastPinchDist=null;if(pointers.size===0){panStart=null;canvas.classList.remove('panning');}});
+  canvas.addEventListener('pointercancel',e=>pointers.delete(e.pointerId));
+  canvas.addEventListener('contextmenu',e=>e.preventDefault());
 }
 
-function getPinchDist() {
-  const pts = [...pointers.values()];
-  if (pts.length < 2) return null;
-  return Math.hypot(pts[1].x-pts[0].x, pts[1].y-pts[0].y);
+function getPinchDist(){const p=[...pointers.values()];return p.length<2?null:Math.hypot(p[1].x-p[0].x,p[1].y-p[0].y);}
+function zoomAt(mx,my,f){const ns=Math.max(MIN_SCALE,Math.min(MAX_SCALE,transform.scale*f));transform.x=mx-(mx-transform.x)*(ns/transform.scale);transform.y=my-(my-transform.y)*(ns/transform.scale);transform.scale=ns;drawMap();}
+function resizeCanvas(){const r=canvas.parentElement.getBoundingClientRect();canvas.width=r.width;canvas.height=r.height;if(Object.keys(nodes).length)drawMap();}
+const w2s=(x,y)=>[x*transform.scale+transform.x,y*transform.scale+transform.y];
+const s2w=(x,y)=>[(x-transform.x)/transform.scale,(y-transform.y)/transform.scale];
+
+function centreMap(){
+  const r=canvas.getBoundingClientRect();
+  const s=Math.min(r.width/WORLD_W,r.height/WORLD_H)*0.94;
+  transform.scale=s;
+  transform.x=(r.width-WORLD_W*s)/2;
+  transform.y=(r.height-WORLD_H*s)/2;
 }
 
-function zoomAt(mx, my, f) {
-  transform.scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, transform.scale * f));
-  transform.x = mx - (mx - transform.x) * f;
-  transform.y = my - (my - transform.y) * f;
-  drawMap();
-}
-
-function resizeCanvas() {
-  const rect = canvas.parentElement.getBoundingClientRect();
-  canvas.width  = rect.width;
-  canvas.height = rect.height;
-  if (gameState.nodes.length) drawMap();
-}
-
-const worldToScreen = (x,y) => [x*transform.scale+transform.x, y*transform.scale+transform.y];
-const screenToWorld = (x,y) => [(x-transform.x)/transform.scale, (y-transform.y)/transform.scale];
-
-/* ═══════════════════════════════════════════════════════════════
-   MAP RENDERING
-═══════════════════════════════════════════════════════════════ */
-function drawMap() {
-  if (!canvas || !ctx) return;
-  const W = canvas.width, H = canvas.height;
+function drawMap(){
+  if(!canvas||!ctx) return;
+  const W=canvas.width,H=canvas.height;
   ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#09070a';ctx.fillRect(0,0,W,H);
 
-  // Background
-  ctx.fillStyle = '#100d09';
-  ctx.fillRect(0,0,W,H);
+  // Grid
+  ctx.strokeStyle='rgba(201,185,138,0.025)';ctx.lineWidth=1;
+  const gs=50*transform.scale,ox=transform.x%gs,oy=transform.y%gs;
+  for(let x=ox;x<W;x+=gs){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=oy;y<H;y+=gs){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
 
-  // Subtle grid (map paper feel)
-  ctx.strokeStyle = 'rgba(201,185,138,0.04)';
-  ctx.lineWidth   = 1;
-  const gs = 40*transform.scale;
-  const ox = transform.x % gs, oy = transform.y % gs;
-  for (let x=ox; x<W; x+=gs) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
-  for (let y=oy; y<H; y+=gs) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+  // Belief heatmap (detective perspective only)
+  const showBelief=currentMode==='detective'||currentMode==='coach-detective';
+  if(showBelief&&G.belief){
+    let maxB=0;
+    for(let i=1;i<=199;i++) if(G.belief[i]>maxB) maxB=G.belief[i];
+    if(maxB>0){
+      for(let i=1;i<=199;i++){
+        if(G.belief[i]<0.005) continue;
+        const n=nodes[i];const[sx,sy]=w2s(n.x,n.y);
+        const rad=Math.max(10,25*transform.scale);
+        const intensity=G.belief[i]/maxB;
+        const g=ctx.createRadialGradient(sx,sy,0,sx,sy,rad);
+        g.addColorStop(0,`rgba(139,26,26,${intensity*0.38})`);
+        g.addColorStop(1,'rgba(139,26,26,0)');
+        ctx.beginPath();ctx.arc(sx,sy,rad,0,Math.PI*2);
+        ctx.fillStyle=g;ctx.fill();
+      }
+    }
+  }
 
   // Edges
-  for (const edge of gameState.edges) {
-    const a = gameState.nodes[edge.a], b = gameState.nodes[edge.b];
-    const [ax,ay] = worldToScreen(a.x,a.y);
-    const [bx,by] = worldToScreen(b.x,b.y);
-
-    const alphas = { cab:0.18, tram:0.30, underground:0.45, river:0.55 };
-    const widths = { cab:1.0,  tram:1.8,  underground:2.5,  river:2.5  };
-    const alpha  = alphas[edge.type] || 0.2;
-    const hex    = Math.round(alpha*255).toString(16).padStart(2,'0');
-
-    ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by);
-    ctx.strokeStyle = (COLORS[edge.type]||'#888') + hex;
-    ctx.lineWidth   = (widths[edge.type]||1) * transform.scale;
-    ctx.setLineDash(
-      edge.type==='underground' ? [6*transform.scale,4*transform.scale] :
-      edge.type==='river'       ? [8*transform.scale,3*transform.scale] : []
-    );
-    ctx.stroke();
-  }
+  ['taxi','bus','underground','water'].forEach(type=>{
+    CONNECTIONS_RAW.forEach(([a,b,t])=>{
+      if(t!==type) return;
+      const na=nodes[a],nb=nodes[b];
+      const[ax,ay]=w2s(na.x,na.y),[bx,by]=w2s(nb.x,nb.y);
+      ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);
+      ctx.strokeStyle=ECOL[type];
+      ctx.lineWidth=EWID[type]*Math.min(transform.scale,1.5);
+      ctx.setLineDash(EDSH[type].map(v=>v*Math.min(transform.scale,1.5)));
+      ctx.stroke();
+    });
+  });
   ctx.setLineDash([]);
 
+  // Ghost token
+  if(G&&G.ghostNode>=0){
+    const n=nodes[G.ghostNode];const[sx,sy]=w2s(n.x,n.y);
+    const R=Math.max(5,10*Math.min(transform.scale,1.5));
+    ctx.beginPath();ctx.arc(sx,sy,R+5,0,Math.PI*2);ctx.fillStyle='rgba(139,26,26,0.12)';ctx.fill();
+    ctx.beginPath();ctx.arc(sx,sy,R,0,Math.PI*2);
+    ctx.fillStyle='rgba(50,15,15,0.65)';ctx.strokeStyle='rgba(192,57,43,0.4)';ctx.lineWidth=1.5;
+    ctx.fill();ctx.stroke();
+    if(transform.scale>0.38){
+      const fs=Math.round(Math.min(12,9*transform.scale));
+      ctx.font=`${fs}px serif`;ctx.textAlign='center';ctx.fillStyle='rgba(192,57,43,0.6)';
+      ctx.fillText('🎩',sx,sy-R-1);
+      if(G.ghostSince>0){
+        ctx.font=`bold ${Math.round(Math.min(8,6.5*transform.scale))}px 'Cinzel',serif`;
+        ctx.fillStyle='rgba(192,57,43,0.55)';
+        ctx.fillText('+'+G.ghostSince,sx,sy+R+8*Math.min(transform.scale,1.5));
+      }
+    }
+  }
+
   // Nodes
-  const R = Math.max(3, 7 * Math.min(transform.scale, 1.5));
-  const isMoriMode  = currentMode === 'moriarty';
-  const isRevRound  = REVEAL_ROUNDS.includes(round);
+  const R0=Math.max(3,7*Math.min(transform.scale,1.5));
+  const moriVisible=currentMode==='moriarty'||currentMode==='coach-moriarty';
 
-  for (const node of gameState.nodes) {
-    const [sx,sy] = worldToScreen(node.x,node.y);
-    if (sx < -R*2 || sx > canvas.width+R*2 || sy < -R*2 || sy > canvas.height+R*2) continue;
-
-    const isHovered  = node.id === hoveredNode;
-    const isDet      = gameState.detectives.some(d => d.node===node.id);
-    const isMori     = node.id === gameState.moriartyNode;
-    const isMoriShow = isMoriMode || (isRevRound && isMori);
-
-    // Glow for special nodes
-    if (isHovered) {
-      ctx.beginPath(); ctx.arc(sx,sy,R+5,0,Math.PI*2);
-      ctx.fillStyle = 'rgba(184,134,11,0.18)'; ctx.fill();
+  for(let i=1;i<=199;i++){
+    const n=nodes[i];const[sx,sy]=w2s(n.x,n.y);
+    if(sx<-R0*4||sx>W+R0*4||sy<-R0*4||sy>H+R0*4) continue;
+    const isHov=i===hoveredNode;
+    const isMori=G&&i===G.moriNode;
+    const dHere=G?G.detectives.filter(d=>d.node===i):[];
+    const isDet=dHere.length>0;
+    if(isHov){ctx.beginPath();ctx.arc(sx,sy,R0+5,0,Math.PI*2);ctx.fillStyle='rgba(184,134,11,0.14)';ctx.fill();}
+    ctx.beginPath();ctx.arc(sx,sy,R0,0,Math.PI*2);
+    if(moriVisible&&isMori){ctx.fillStyle='#5c0f0f';ctx.strokeStyle='#c0392b';ctx.lineWidth=1.5;}
+    else if(isDet){ctx.fillStyle='#18182e';ctx.strokeStyle='#b8860b';ctx.lineWidth=1.5;}
+    else if(isHov){ctx.fillStyle='rgba(184,134,11,0.18)';ctx.strokeStyle='rgba(184,134,11,0.65)';ctx.lineWidth=1.5;}
+    else if(n.types.includes('underground')){ctx.fillStyle='rgba(26,107,60,0.18)';ctx.strokeStyle='rgba(26,107,60,0.55)';ctx.lineWidth=0.9;}
+    else if(n.types.includes('bus')){ctx.fillStyle='rgba(192,57,43,0.08)';ctx.strokeStyle='rgba(192,57,43,0.3)';ctx.lineWidth=0.8;}
+    else{ctx.fillStyle='rgba(201,185,138,0.05)';ctx.strokeStyle='rgba(201,185,138,0.18)';ctx.lineWidth=0.6;}
+    ctx.fill();ctx.stroke();
+    // Det emojis
+    if(dHere.length&&transform.scale>0.35){
+      const fs=Math.round(Math.min(12,9*transform.scale));
+      ctx.font=`${fs}px serif`;ctx.textAlign='center';
+      dHere.forEach((d,di)=>ctx.fillText(d.emoji,sx+(di-(dHere.length-1)/2)*(fs*1.1),sy-R0-1));
     }
-    if (isMoriShow && isMori) {
-      ctx.beginPath(); ctx.arc(sx,sy,R+6,0,Math.PI*2);
-      ctx.fillStyle = 'rgba(192,57,43,0.2)'; ctx.fill();
-    }
-
-    // Node circle
-    ctx.beginPath(); ctx.arc(sx,sy,R,0,Math.PI*2);
-    if (isMoriShow && isMori) {
-      ctx.fillStyle   = '#8b1a1a';
-      ctx.strokeStyle = '#c0392b';
-      ctx.lineWidth   = 1.5;
-    } else if (isDet) {
-      ctx.fillStyle   = '#1a1a2a';
-      ctx.strokeStyle = '#b8860b';
-      ctx.lineWidth   = 1.5;
-    } else if (isHovered) {
-      ctx.fillStyle   = 'rgba(184,134,11,0.25)';
-      ctx.strokeStyle = 'rgba(184,134,11,0.7)';
-      ctx.lineWidth   = 1.5;
-    } else {
-      ctx.fillStyle   = 'rgba(201,185,138,0.08)';
-      ctx.strokeStyle = 'rgba(201,185,138,0.25)';
-      ctx.lineWidth   = 1;
-    }
-    ctx.fill(); ctx.stroke();
-
-    // Detective emoji markers
-    const detsHere = gameState.detectives.filter(d => d.node===node.id);
-    if (detsHere.length && transform.scale > 0.5) {
-      const fs = Math.round(Math.min(14, 11*transform.scale));
-      ctx.font      = `${fs}px serif`;
-      ctx.textAlign = 'center';
-      detsHere.forEach((d,i) => {
-        ctx.fillText(d.emoji, sx + (i-(detsHere.length-1)/2)*(fs*1.1), sy - R - 2);
-      });
-    }
-
     // Moriarty hat
-    if (isMoriShow && isMori && transform.scale > 0.5) {
-      ctx.font = `${Math.round(14*transform.scale)}px serif`;
-      ctx.textAlign = 'center';
-      ctx.fillText('🎩', sx, sy - R - 3*transform.scale);
+    if(moriVisible&&isMori&&transform.scale>0.35){
+      const fs=Math.round(Math.min(12,9*transform.scale));
+      ctx.font=`${fs}px serif`;ctx.textAlign='center';
+      ctx.fillText('🎩',sx,sy-R0-1.5*transform.scale);
     }
-
-    // Labels at high zoom
-    if (transform.scale > 1.3) {
-      ctx.font      = `${Math.round(7*transform.scale)}px 'Crimson Text',serif`;
-      ctx.fillStyle = isHovered ? '#e8d9b5' : 'rgba(201,185,138,0.45)';
-      ctx.textAlign = 'center';
-      ctx.fillText(node.name, sx, sy + R + 9*transform.scale);
+    // Number labels at high zoom
+    if(transform.scale>1.6){
+      ctx.font=`${Math.round(6*transform.scale)}px 'Cinzel',serif`;
+      ctx.fillStyle=isHov?'#e8d9b5':'rgba(201,185,138,0.38)';
+      ctx.textAlign='center';
+      ctx.fillText(i,sx,sy+R0+7.5*transform.scale);
     }
   }
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   HOVER / TOOLTIP  (information only — no move trigger)
-═══════════════════════════════════════════════════════════════ */
-function onMouseMove(e) {
-  const r  = canvas.getBoundingClientRect();
-  onHoverAt(e.clientX - r.left, e.clientY - r.top);
+/* ══════════════════════════════════════════════════════════
+   TOOLTIP
+══════════════════════════════════════════════════════════ */
+function onHoverAt(mx,my){
+  const[wx,wy]=s2w(mx,my);
+  const thresh=(18/Math.max(transform.scale,0.3))**2;
+  let near=null,nearD=Infinity;
+  for(let i=1;i<=199;i++){const n=nodes[i];const d=(n.x-wx)**2+(n.y-wy)**2;if(d<nearD){nearD=d;near=i;}}
+  const prev=hoveredNode;
+  hoveredNode=nearD<thresh?near:null;
+  if(hoveredNode!==null) showTooltip(hoveredNode,mx,my);
+  else hideTooltip();
+  if(hoveredNode!==prev) drawMap();
 }
 
-function onHoverAt(mx, my) {
-  const [wx,wy]  = screenToWorld(mx,my);
-  const thresh   = (22 / transform.scale) ** 2;
-  let nearest = null, nearDist = Infinity;
-  for (const n of gameState.nodes) {
-    const d = (n.x-wx)**2 + (n.y-wy)**2;
-    if (d < nearDist) { nearDist=d; nearest=n.id; }
-  }
-  const prevHovered = hoveredNode;
-  hoveredNode = nearDist < thresh ? nearest : null;
+function showTooltip(id,sx,sy){
+  const n=nodes[id];
+  const dHere=G?G.detectives.filter(d=>d.node===id):[];
+  document.getElementById('tt-name').textContent='Station '+id;
+  document.getElementById('tt-sub').textContent=n.types.join(' · ');
+  let body='';
+  const tc=adj[id];
+  if(tc.taxi.length) body+=`🚕${tc.taxi.length} `;
+  if(tc.bus.length) body+=`🚌${tc.bus.length} `;
+  if(tc.underground.length) body+=`🚇${tc.underground.length} `;
+  if(tc.water.length) body+=`⛵${tc.water.length} `;
+  if(dHere.length) body+=`<br>${dHere.map(d=>d.emoji+' '+d.short).join('  ')}`;
+  const showBelief=G&&G.belief&&G.belief[id]>0.005&&(currentMode==='detective'||currentMode==='coach-detective');
+  if(showBelief) body+=`<br><span style="color:rgba(192,57,43,.7)">P:${(G.belief[id]*100).toFixed(1)}%</span>`;
+  document.getElementById('tt-body').innerHTML=body.trim();
+  const tip=document.getElementById('tooltip');
+  const W=canvas.width;
+  let tx=sx+12,ty=sy-8;
+  if(tx+155>W) tx=sx-155;
+  if(ty<0) ty=3;
+  tip.style.left=tx+'px';tip.style.top=ty+'px';
+  tip.classList.add('on');
+}
+function hideTooltip(){document.getElementById('tooltip').classList.remove('on');}
 
-  if (hoveredNode !== null) {
-    showTooltip(hoveredNode, mx, my);
-  } else {
-    hideTooltip();
-  }
-  if (hoveredNode !== prevHovered) drawMap();
+/* ══════════════════════════════════════════════════════════
+   MOVE PROMPT
+══════════════════════════════════════════════════════════ */
+let promptCtx=null; // {who:'moriarty'|'detective', detIdx:number, leg:1|2}
+
+function showMoriPrompt(leg=1){
+  if(gameOver) return;
+  promptCtx={who:'moriarty',leg};
+  const p=document.getElementById('move-prompt');p.classList.add('on');
+  document.getElementById('mp-title').textContent=leg===2?'🎩 Double Bluff — Second Move':'🎩 Your Move';
+  document.getElementById('special-row').classList.toggle('on',leg===1);
+  document.getElementById('fog-btn').disabled=G.fogLeft<=0||G.fogThisLeg;
+  document.getElementById('fog-btn-n').textContent=G.fogLeft;
+  document.getElementById('bluff-btn').disabled=G.bluffLeft<=0||G.bluffLeg>0||leg===2;
+  document.getElementById('bluff-btn-n').textContent=G.bluffLeft;
+  document.getElementById('cc-btn').style.display=currentMode==='coach-moriarty'?'':'none';
+  buildMoriTransport();
+  resetDest();
+  if(currentMode==='coach-moriarty'){const s=coachMoriSuggest();addCoachEntry(s.text,'→ Station '+s.rec.node);}
 }
 
-function showTooltip(nodeId, sx, sy) {
-  const node  = gameState.nodes[nodeId];
-  const dets  = gameState.detectives.filter(d => d.node===nodeId);
-  const conns = gameState.edges.filter(e => e.a===nodeId||e.b===nodeId);
-  const byType = {};
-  conns.forEach(e => { byType[e.type]=(byType[e.type]||0)+1; });
-
-  document.getElementById('tt-name').textContent   = node.name;
-  document.getElementById('tt-region').textContent = node.region ? `· ${node.region}` : '';
-  document.getElementById('tt-dets').textContent   = dets.length ? dets.map(d=>d.emoji+' '+d.short).join('  ') : '';
-  document.getElementById('tt-conn').textContent   =
-    Object.entries(byType).map(([t,c])=>`${TRANSPORT_ICONS[t]||''}${c}`).join('  ');
-
-  const tip = document.getElementById('node-tooltip');
-  // Position: keep inside viewport
-  const W = canvas.width, H = canvas.height;
-  let tx = sx+14, ty = sy-10;
-  const tipW = 130;
-  if (tx+tipW > W) tx = sx-tipW-8;
-  if (ty < 0) ty = 4;
-  tip.style.left = tx+'px';
-  tip.style.top  = ty+'px';
-  tip.classList.add('visible');
+function showDetPrompt(di){
+  if(gameOver) return;
+  promptCtx={who:'detective',detIdx:di};
+  const det=G.detectives[di];
+  document.getElementById('move-prompt').classList.add('on');
+  document.getElementById('mp-title').textContent=`${det.emoji} ${det.short} (${di+1}/5)`;
+  document.getElementById('special-row').classList.remove('on');
+  document.getElementById('cc-btn').style.display=currentMode==='coach-detective'?'':'none';
+  buildDetTransport(di);
+  resetDest();
+  if(currentMode==='coach-detective'){const s=coachDetSuggest();const rec=s.recs.find(r=>r.detIdx===di);addCoachEntry(s.text,rec?'→ Station '+rec.node:'');}
 }
 
-function hideTooltip() {
-  document.getElementById('node-tooltip').classList.remove('visible');
+function hidePrompt(){
+  document.getElementById('move-prompt').classList.remove('on');
+  promptCtx=null;resetDest();
+  document.getElementById('sel-type').innerHTML='<option value="">— Choose —</option>';
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   MOVE PROMPT — the only place moves are made
-   Completely separate from the canvas.
-═══════════════════════════════════════════════════════════════ */
-
-/** Show the move prompt for the human Moriarty player */
-function showMoriartyPrompt() {
-  const prompt = document.getElementById('move-prompt');
-  prompt.classList.add('active');
-  document.getElementById('prompt-title').textContent = '🎩 Your Move — Choose Transport & Destination';
-  document.getElementById('special-tickets').style.display = 'flex';
-  document.getElementById('skip-btn').style.display = 'inline-flex';
-  // Restore default commit handler for Moriarty
-  document.getElementById('commit-btn').onclick = commitMove;
-  updateSpecialTicketButtons();
-  populateTransportDropdown('moriarty');
+function resetDest(){
+  const ds=document.getElementById('sel-dest');
+  ds.innerHTML='<option value="">— Choose —</option>';
+  ds.disabled=true;
+  document.getElementById('commit-btn').disabled=true;
 }
 
-/** Show the move prompt for the human Detectives player */
-function showDetectiveMovePrompt(detIdx) {
-  const det    = gameState.detectives[detIdx];
-  const moves  = getDetValidMoves(detIdx);
-  const prompt = document.getElementById('move-prompt');
-
-  prompt.classList.add('active');
-  document.getElementById('special-tickets').style.display = 'none';
-  document.getElementById('skip-btn').style.display = 'none';
-  document.getElementById('prompt-title').textContent =
-    `${det.emoji} ${det.short}'s Move (${detIdx+1}/5)`;
-
-  // Populate transport: only types available to this detective
-  const tSel = document.getElementById('sel-transport');
-  tSel.innerHTML = '<option value="">— Choose transport —</option>';
-
-  if (moves.length === 0) {
-    const opt = document.createElement('option');
-    opt.value = ''; opt.textContent = '— Stranded — no valid moves';
-    tSel.appendChild(opt);
-    // Auto-skip stranded detective after brief pause
-    setTimeout(() => {
-      addLog(`R${round}`, det.emoji, `<strong>${det.short}</strong> is stranded — no valid moves.`);
-      advanceDetective(detIdx);
-    }, 800);
-    return;
-  }
-
-  const types = [...new Set(moves.map(m => m.type))].sort();
-  const icons = { cab:'🚕', tram:'🚃', underground:'🚇', river:'⛵' };
-  const names = { cab:'Hansom Cab', tram:'Tramway', underground:'Underground', river:'River Boat' };
-
-  // Override commit button for this detective
-  document.getElementById('commit-btn').onclick = () => {
-    const type   = document.getElementById('sel-transport').value;
-    const destId = parseInt(document.getElementById('sel-dest').value, 10);
-    if (!type || isNaN(destId)) return;
-    det.tickets[type]--;
-    det.node = destId;
-    addLog(`R${round}`, det.emoji,
-      `<strong>${det.short}</strong> → ${gameState.nodes[destId].name} via ${type}.`);
-    if (det.node === gameState.moriartyNode) {
-      addLog(`R${round}`, '🔓', `<strong>${det.name} captures Moriarty!</strong>`);
-      hidePrompt(); updateDetectivePanel(); drawMap();
-      setTimeout(() => triggerOutcome('detectives'), 500);
-      return;
-    }
-    updateDetectivePanel(); drawMap();
-    advanceDetective(detIdx);
-  };
-
-  const makeTransportOptions = () => {
-    tSel.innerHTML = '<option value="">— Choose transport —</option>';
-    types.forEach(t => {
-      const opt = document.createElement('option');
-      opt.value = t;
-      const rem = det.tickets[t];
-      opt.textContent = `${icons[t]||''} ${names[t]||t} (${rem} left)`;
-      tSel.appendChild(opt);
-    });
-  };
-
-  const makeDestOptions = (type) => {
-    const dSel = document.getElementById('sel-dest');
-    dSel.innerHTML = '<option value="">— Choose destination —</option>';
-    dSel.disabled  = true;
-    document.getElementById('commit-btn').disabled = true;
-    if (!type) return;
-    const filtered = moves
-      .filter(m => m.type === type)
-      .sort((a,b) => gameState.nodes[a.node].name.localeCompare(gameState.nodes[b.node].name));
-    filtered.forEach(m => {
-      const opt = document.createElement('option');
-      opt.value = m.node;
-      opt.textContent = gameState.nodes[m.node].name;
-      dSel.appendChild(opt);
-    });
-    dSel.disabled = false;
-    dSel.onchange = () => {
-      document.getElementById('commit-btn').disabled = !dSel.value;
-    };
-  };
-
-  makeTransportOptions();
-  tSel.onchange = () => makeDestOptions(tSel.value);
-  document.getElementById('sel-dest').disabled   = true;
-  document.getElementById('commit-btn').disabled = true;
-}
-
-/** Hide the move prompt */
-function hidePrompt() {
-  document.getElementById('move-prompt').classList.remove('active');
-  resetDropdowns();
-}
-
-function resetDropdowns() {
-  const tSel = document.getElementById('sel-transport');
-  const dSel = document.getElementById('sel-dest');
-  tSel.innerHTML = '<option value="">— Choose transport —</option>';
-  dSel.innerHTML = '<option value="">— Choose destination —</option>';
-  dSel.disabled  = true;
-  document.getElementById('commit-btn').disabled = true;
-}
-
-/** Called when transport dropdown changes — populates destination list */
-function onTransportChange() {
-  const tSel  = document.getElementById('sel-transport');
-  const dSel  = document.getElementById('sel-dest');
-  const type  = tSel.value;
-
-  dSel.innerHTML = '<option value="">— Choose destination —</option>';
-  dSel.disabled  = true;
-  document.getElementById('commit-btn').disabled = true;
-
-  if (!type) return;
-
-  const moves = getMoriValidMoves().filter(m => type === 'fog' || m.type === type);
-  // Deduplicate by node (fog may have same node via multiple types)
-  const seen = new Set();
-  const unique = moves.filter(m => { if(seen.has(m.node)) return false; seen.add(m.node); return true; });
-
-  if (unique.length === 0) {
-    const opt = document.createElement('option');
-    opt.value = ''; opt.textContent = '— No routes available —';
-    dSel.appendChild(opt);
-    return;
-  }
-
-  unique
-    .sort((a,b) => gameState.nodes[a.node].name.localeCompare(gameState.nodes[b.node].name))
-    .forEach(m => {
-      const opt = document.createElement('option');
-      opt.value = m.node;
-      opt.textContent = gameState.nodes[m.node].name + (m.node === gameState.moriLastRevealed ? ' ★' : '');
-      dSel.appendChild(opt);
-    });
-
-  dSel.disabled = false;
-  dSel.onchange = () => {
-    document.getElementById('commit-btn').disabled = !dSel.value;
-  };
-  // Enable commit if something already selected (e.g. after fog auto-select)
-  document.getElementById('commit-btn').disabled = !dSel.value;
-}
-
-/** Populate the transport dropdown with available types for Moriarty */
-function populateTransportDropdown(who) {
-  const sel   = document.getElementById('sel-transport');
-  sel.innerHTML = '<option value="">— Choose transport —</option>';
-
-  let moves;
-  if (who === 'moriarty') {
-    moves = getNeighbors(gameState.moriartyNode);
-  }
-
-  // Gather available types
-  const types = [...new Set(moves.map(m => m.type))].sort();
-
-  // Always offer Fog as an option if tickets remain
-  if (gameState.fogTickets > 0 && !gameState.fogActive) {
-    const opt = document.createElement('option');
-    opt.value = 'fog';
-    opt.textContent = `🌫 Heavy Fog (any route) — ${gameState.fogTickets} left`;
-    sel.appendChild(opt);
-  }
-
-  types.forEach(t => {
-    const opt = document.createElement('option');
-    opt.value = t;
-    const icons = { cab:'🚕', tram:'🚃', underground:'🚇', river:'⛵' };
-    const names = { cab:'Hansom Cab', tram:'Tramway', underground:'Underground', river:'River Boat' };
-    opt.textContent = `${icons[t]||''} ${names[t]||t}`;
-    sel.appendChild(opt);
+function buildMoriTransport(){
+  const ts=document.getElementById('sel-type');
+  ts.innerHTML='<option value="">— Choose —</option>';
+  const avail=new Set();
+  moriMoves(G.moriNode).forEach(m=>{
+    if(m.type==='water'){ if(G.fogLeft>0||G.fogThisLeg) avail.add('water'); }
+    else avail.add(m.type);
   });
+  const labels={taxi:'🚕 Hansom Cab',bus:'🚌 Omnibus',underground:'🚇 Underground',water:'⛵ River (fog)'};
+  // If fog is active, all types reachable are valid options
+  const showAll=G.fogThisLeg;
+  ['taxi','bus','underground','water'].forEach(t=>{
+    if(!showAll&&!avail.has(t)) return;
+    if(showAll){const hasMoves=adj[G.moriNode][t].length>0;if(!hasMoves)return;}
+    const o=document.createElement('option');o.value=t;o.textContent=labels[t];ts.appendChild(o);
+  });
+}
 
-  if (types.length === 0 && gameState.fogTickets === 0) {
-    const opt = document.createElement('option');
-    opt.value = ''; opt.textContent = '— Cornered! No moves —';
-    sel.appendChild(opt);
+function buildDetTransport(di){
+  const ts=document.getElementById('sel-type');
+  ts.innerHTML='<option value="">— Choose —</option>';
+  const det=G.detectives[di];
+  const avail=new Set(detMoves(det).map(m=>m.type));
+  const labels={taxi:'🚕 Hansom Cab',bus:'🚌 Omnibus',underground:'🚇 Underground'};
+  ['taxi','bus','underground'].forEach(t=>{
+    if(!avail.has(t)) return;
+    const o=document.createElement('option');o.value=t;
+    o.textContent=`${labels[t]} (${det.tickets[t]})`;ts.appendChild(o);
+  });
+}
+
+function onTypeChange(){
+  const type=document.getElementById('sel-type').value;
+  resetDest();
+  if(!type||!promptCtx) return;
+  const ds=document.getElementById('sel-dest');
+  ds.innerHTML='<option value="">— Choose —</option>';
+  let ms=[];
+  if(promptCtx.who==='moriarty'){
+    ms=moriMoves(G.moriNode).filter(m=>m.type===type);
+  } else {
+    ms=detMoves(G.detectives[promptCtx.detIdx]).filter(m=>m.type===type);
+  }
+  const seen=new Set();
+  ms=ms.filter(m=>{if(seen.has(m.node))return false;seen.add(m.node);return true;});
+  ms.sort((a,b)=>a.node-b.node);
+  ms.forEach(m=>{
+    const o=document.createElement('option');o.value=m.node;
+    o.textContent='Station '+m.node;ds.appendChild(o);
+  });
+  if(ms.length){
+    ds.disabled=false;
+    ds.onchange=()=>{ document.getElementById('commit-btn').disabled=!ds.value; };
   }
 }
 
-function updateSpecialTicketButtons() {
-  const fogBtn   = document.getElementById('fog-btn');
-  const bluffBtn = document.getElementById('bluff-btn');
-  document.getElementById('fog-count2').textContent   = gameState.fogTickets;
-  document.getElementById('bluff-count2').textContent = gameState.bluffTickets;
-  fogBtn.disabled   = gameState.fogTickets   <= 0 || gameState.fogActive;
-  bluffBtn.disabled = gameState.bluffTickets <= 0 || gameState.bluffUsedThisRound;
-}
-
-/** Special ticket: Heavy Fog — sets fogActive, repopulates transport as 'any' */
-function useFog() {
-  if (gameState.fogTickets <= 0) return;
-  gameState.fogActive = true;
-  gameState.fogTickets--;
-  document.getElementById('fog-count').textContent  = gameState.fogTickets;
-  updateSpecialTicketButtons();
-  addLog(`R${round}`, '🌫️', `Moriarty uses <strong>Heavy Fog</strong> — all routes obscured!`);
-  // Refresh dropdowns to reflect fog
-  populateTransportDropdown('moriarty');
-  resetDropdowns();
-  // Inject fog option at top
-  const sel = document.getElementById('sel-transport');
-  sel.innerHTML = '';
-  const fogOpt = document.createElement('option');
-  fogOpt.value = 'fog'; fogOpt.textContent = '🌫 Heavy Fog — any route';
-  sel.appendChild(fogOpt);
-  // Force selection & populate destinations
-  sel.value = 'fog';
-  onTransportChange();
-  updateSpecialTicketButtons();
-}
-
-/** Special ticket: Double Bluff — flag extra turn, do not consume turn yet */
-function useBluff() {
-  if (gameState.bluffTickets <= 0 || gameState.bluffUsedThisRound) return;
-  gameState.bluffExtraTurn  = true;
-  gameState.bluffUsedThisRound = true;
-  gameState.bluffTickets--;
-  document.getElementById('bluff-count').textContent  = gameState.bluffTickets;
-  document.getElementById('bluff-count2').textContent = gameState.bluffTickets;
-  addLog(`R${round}`, '⚡', `Moriarty plays a <strong>Double Bluff</strong> — two moves this round!`);
-  updateSpecialTicketButtons();
-}
-
-/** Player pressed Move → — validate and execute */
-function commitMove() {
-  const tSel = document.getElementById('sel-transport');
-  const dSel = document.getElementById('sel-dest');
-  const type   = tSel.value;
-  const destId = parseInt(dSel.value, 10);
-
-  if (!type || isNaN(destId)) return;
-
-  if (currentMode === 'moriarty') {
-    executeMoriartyMove(destId, type);
+/* ══════════════════════════════════════════════════════════
+   SPECIAL TICKETS
+══════════════════════════════════════════════════════════ */
+function useSpecial(type){
+  if(!promptCtx||promptCtx.who!=='moriarty') return;
+  if(type==='fog'){
+    if(G.fogLeft<=0||G.fogThisLeg) return;
+    G.fogLeft--;G.fogThisLeg=true;
+    addLog(G.moriMoveCount,'🌫️','Moriarty plays <strong>Heavy Fog</strong> — transport concealed.');
+    updateSidebar();
+    document.getElementById('fog-btn').disabled=true;
+    buildMoriTransport();resetDest();
+  } else if(type==='bluff'){
+    if(G.bluffLeft<=0||G.bluffLeg>0) return;
+    G.bluffLeft--;G.bluffLeg=1; // flagged — awaiting first leg
+    addLog(G.moriMoveCount,'⚡','Moriarty activates <strong>Double Bluff</strong> — two moves this turn!');
+    updateSidebar();
+    document.getElementById('bluff-btn').disabled=true;
   }
 }
 
-/** Player pressed Stay Put */
-function skipMove() {
-  if (currentMode !== 'moriarty') return;
-  addLog(`R${round}`, '🎩', `Moriarty lies in wait…`);
-  hidePrompt();
-  afterMoriartyPhase();
+/* ══════════════════════════════════════════════════════════
+   COMMIT
+══════════════════════════════════════════════════════════ */
+function commitMove(){
+  const type=document.getElementById('sel-type').value;
+  const dest=parseInt(document.getElementById('sel-dest').value,10);
+  if(!type||isNaN(dest)||!promptCtx) return;
+  if(promptCtx.who==='moriarty') doMoriMove(dest,type,false,false);
+  else doDetMove(promptCtx.detIdx,dest,type);
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   MOVE EXECUTION
-═══════════════════════════════════════════════════════════════ */
-function executeMoriartyMove(nodeId, type) {
-  // Validate the move is legal
-  const valid = getMoriValidMoves();
-  const fogMode = type === 'fog' || gameState.fogActive;
-  const legal   = fogMode
-    ? valid.some(m => m.node === nodeId)
-    : valid.some(m => m.node === nodeId && m.type === type);
-  if (!legal) return;
+function coachChoice(){
+  if(!promptCtx) return;
+  if(promptCtx.who==='moriarty'&&G.coachMovRec){
+    const r=G.coachMovRec;
+    if(r.fogConsumed&&!G.fogThisLeg&&G.fogLeft>0){G.fogLeft--;G.fogThisLeg=true;addLog(G.moriMoveCount,'🌫️','Moriarty plays <strong>Heavy Fog</strong>.');updateSidebar();}
+    if(r.bluffConsumed&&G.bluffLeg===0&&G.bluffLeft>0){G.bluffLeft--;G.bluffLeg=1;addLog(G.moriMoveCount,'⚡','Moriarty activates <strong>Double Bluff</strong>!');updateSidebar();}
+    doMoriMove(r.node,r.realType||r.type,false,false);
+  } else if(promptCtx.who==='detective'&&G.coachDetRecs){
+    const rec=G.coachDetRecs.find(r=>r.detIdx===promptCtx.detIdx);
+    if(rec&&!rec.stranded) doDetMove(rec.detIdx,rec.node,rec.type);
+  }
+}
 
-  gameState.moriartyNode = nodeId;
-  const displayType = gameState.fogActive ? 'fog' : type;
-  addLog(`R${round}`, '🎩', `Moriarty moves by <strong>${displayType}</strong>.`);
+/* ══════════════════════════════════════════════════════════
+   MOVE EXECUTION — MORIARTY
+══════════════════════════════════════════════════════════ */
+function doMoriMove(dest,type,fogOverride,bluffOverride){
+  if(gameOver) return;
+  const usingFog=G.fogThisLeg||fogOverride||(type==='water');
+  // Validate
+  const valid=moriMoves(G.moriNode);
+  const legal=usingFog?valid.some(m=>m.node===dest):valid.some(m=>m.node===dest&&m.type===type);
+  if(!legal){console.warn('Illegal Moriarty move',dest,type);return;}
 
-  if (REVEAL_ROUNDS.includes(round)) {
-    gameState.moriLastRevealed      = nodeId;
-    gameState.moriLastRevealRound   = round;
-    showRevealBanner();
-    updateMoriartyStatus();
+  G.moriNode=dest;
+  G.moriMoveCount++;
+  if(G.ghostNode>=0) G.ghostSince++;
+
+  // Log type (what detectives see)
+  const logType=usingFog?'fog':type;
+  const isReveal=REVEAL_MOVES.includes(G.moriMoveCount);
+
+  // Update belief
+  expandBelief(logType);
+  G.moriartyLog.push({type:logType,reveal:isReveal,node:isReveal?dest:null});
+
+  if(isReveal){
+    G.ghostNode=dest;
+    G.ghostSince=0;
+    collapseBeliefTo(dest);
+    updateGhostUI();
+    addLog(G.moriMoveCount,'🎩',`<strong>REVEAL — Station ${dest}</strong>`,true);
+    flashReveal();
+  } else {
+    const typeName={taxi:'Cab',bus:'Bus',underground:'Underground',water:'River'}[type]||type;
+    addLog(G.moriMoveCount,'🎩',`Moriarty moves by <strong>${usingFog?'🌫 Fog':''+typeName}</strong>.`);
   }
 
-  checkWin();
+  // Reset fog flag
+  G.fogThisLeg=false;
+  document.getElementById('move-num').textContent=G.moriMoveCount;
+  updateRevealPips();
+  updateSidebar();
+  drawMap();
 
-  // Double Bluff: first move done — queue the second move prompt
-  if (gameState.bluffExtraTurn) {
-    gameState.bluffExtraTurn = false;   // clear flag so second move doesn't loop
-    gameState.fogActive      = false;
-    addLog(`R${round}`, '⚡', `Double Bluff: Moriarty moves again!`);
-    // Rebuild prompt for the second move (Fog and Bluff buttons disabled)
-    resetDropdowns();
-    populateTransportDropdown('moriarty');
-    updateSpecialTicketButtons();
-    // Keep prompt visible — player makes their second selection
+  // Capture check
+  if(G.detectives.some(d=>d.node===G.moriNode)){
+    hidePrompt();setTimeout(()=>endGame('detectives','capture'),300);return;
+  }
+  // Game won by survival
+  if(G.moriMoveCount>=MAX_MOVES){
+    hidePrompt();setTimeout(()=>endGame('moriarty','survived'),300);return;
+  }
+
+  // Double bluff: if bluffLeg===1, this was the first leg — prompt second
+  if(G.bluffLeg===1){
+    G.bluffLeg=2;
+    hidePrompt();
+    setTimeout(()=>{
+      if(currentMode==='moriarty'||currentMode==='coach-moriarty') showMoriPrompt(2);
+      else runAIMoriLeg(); // second leg for AI
+    },350);
     return;
   }
+  // If bluffLeg===2, second leg just done — clear
+  G.bluffLeg=0;
 
-  gameState.fogActive = false;
+  // Hand to detectives
   hidePrompt();
-  afterMoriartyPhase();
+  G.phase='detectives';
+  pruneBeliefDetNodes();
+  setTimeout(()=>{
+    if(currentMode==='moriarty'){showAI('The detective bureau advances…');setTimeout(runAIDetPhase,600);}
+    else showDetPrompt(0);
+  },200);
 }
 
-function afterMoriartyPhase() {
-  updateUI();
-  drawMap();
-  if (currentMode === 'detective') {
-    hideAIThinking();
-    setTimeout(runDetectivePhase, 400);
-  } else {
-    showAIThinking('The detective bureau advances…');
-    setTimeout(runDetectivePhase, 700);
-  }
-}
-
-/** Advance to the next detective's turn, or end the round if all done */
-function advanceDetective(justFinished) {
+/* ══════════════════════════════════════════════════════════
+   MOVE EXECUTION — DETECTIVES
+══════════════════════════════════════════════════════════ */
+function doDetMove(di,dest,type){
+  if(gameOver) return;
+  const det=G.detectives[di];
+  const valid=detMoves(det);
+  if(!valid.some(m=>m.node===dest&&m.type===type)){console.warn('Illegal det move',di,dest,type);return;}
+  det.tickets[type]--;det.node=dest;
+  addLog(G.moriMoveCount,det.emoji,`<strong>${det.short}</strong> → Station ${dest} via ${type}.`);
+  updateDetPanel();drawMap();
+  // Capture?
+  if(dest===G.moriNode){hidePrompt();setTimeout(()=>endGame('detectives','capture'),300);return;}
+  // Surrender check
+  const adjN=moriMoves(G.moriNode).map(m=>m.node);
+  const detSet=new Set(G.detectives.map(d=>d.node));
+  if(adjN.length>0&&adjN.every(n=>detSet.has(n))){hidePrompt();setTimeout(()=>endGame('detectives','surrender'),300);return;}
   hidePrompt();
-  const next = justFinished + 1;
-  if (next < 5) {
-    // Small pause then show next detective's prompt (or run AI)
-    setTimeout(() => {
-      if (currentMode === 'detective') {
-        showDetectiveMovePrompt(next);
-      } else {
-        runOneAIDetective(next);
-      }
-    }, 300);
+  advanceDet(di);
+}
+
+function advanceDet(just){
+  const next=just+1;
+  if(next<NUM_DETS){
+    setTimeout(()=>{
+      if(currentMode==='detective'||currentMode==='coach-detective') showDetPrompt(next);
+      else runAIOneDet(next);
+    },220);
   } else {
-    endRound();
+    endDetPhase();
   }
 }
 
-/** Run all 5 detective AI moves sequentially (coach / moriarty modes) */
-function runDetectivePhase() {
-  if (currentMode === 'detective') {
-    // Human controls detectives — show prompt for first detective
-    showDetectiveMovePrompt(0);
-  } else {
-    // AI controls all detectives
-    runOneAIDetective(0);
-  }
-}
+/* ══════════════════════════════════════════════════════════
+   AI PHASES
+══════════════════════════════════════════════════════════ */
+function runAIDetPhase(){ hideAI(); runAIOneDet(0); }
 
-/** Run a single AI detective move, then call advanceDetective */
-function runOneAIDetective(idx) {
-  if (idx >= 5) { endRound(); return; }
-  const det   = gameState.detectives[idx];
-  const moves = getDetValidMoves(idx);
-
-  setTimeout(() => {
-    if (!moves.length) {
-      addLog(`R${round}`, det.emoji, `<strong>${det.short}</strong> is stranded.`);
+function runAIOneDet(idx){
+  if(idx>=NUM_DETS){endDetPhase();return;}
+  if(gameOver) return;
+  const det=G.detectives[idx];
+  const valid=detMoves(det);
+  setTimeout(()=>{
+    if(!valid.length){
+      addLog(G.moriMoveCount,det.emoji,`<strong>${det.short}</strong> is stranded.`);
     } else {
-      const targetIdx = gameState.moriLastRevealed >= 0
-        ? gameState.moriLastRevealed : gameState.moriartyNode;
-      const target = gameState.nodes[targetIdx];
-      let best = moves[0], bestDist = Infinity;
-      for (const mv of moves) {
-        const n = gameState.nodes[mv.node];
-        const d = (n.x-target.x)**2 + (n.y-target.y)**2;
-        if (d < bestDist) { bestDist=d; best=mv; }
-      }
-      det.tickets[best.type]--;
-      det.node = best.node;
-      addLog(`R${round}`, det.emoji,
-        `<strong>${det.short}</strong> → ${gameState.nodes[best.node].name} via ${best.type}.`);
-
-      // Capture check
-      if (det.node === gameState.moriartyNode) {
-        addLog(`R${round}`, '🔓', `<strong>${det.name} captures Moriarty!</strong>`);
-        updateDetectivePanel(); drawMap();
-        setTimeout(() => triggerOutcome('detectives'), 500);
-        return;
-      }
+      const recs=aiDetTeamMoves();
+      const rec=recs.find(r=>r.detIdx===idx);
+      const chosen=rec&&valid.some(m=>m.node===rec.node&&m.type===rec.type)?rec:valid[0];
+      det.tickets[chosen.type]--;det.node=chosen.node;
+      addLog(G.moriMoveCount,det.emoji,`<strong>${det.short}</strong> → Station ${chosen.node} via ${chosen.type}.`);
+      updateDetPanel();drawMap();
+      if(chosen.node===G.moriNode){setTimeout(()=>endGame('detectives','capture'),300);return;}
+      const adjN=moriMoves(G.moriNode).map(m=>m.node);
+      const detSet=new Set(G.detectives.map(d=>d.node));
+      if(adjN.length>0&&adjN.every(n=>detSet.has(n))){setTimeout(()=>endGame('detectives','surrender'),300);return;}
     }
-    updateDetectivePanel();
-    drawMap();
-    advanceDetective(idx);
-  }, 350);
+    runAIOneDet(idx+1);
+  },320);
 }
 
-function endRound() {
-  hideAIThinking();
-  round++;
-  document.getElementById('round-num').textContent = round;
-  if (round > MAX_ROUNDS) { triggerOutcome('moriarty'); return; }
-  gameState.bluffUsedThisRound = false;
-  gameState.fogActive          = false;
-  updateUI();
-  drawMap();
-
-  if (currentMode === 'moriarty') {
-    // Check if Moriarty is trapped before showing the prompt
-    if (getMoriValidMoves().length === 0) {
-      addLog(`R${round}`, '🕸️', `Moriarty is <strong>cornered</strong> — nowhere to run!`);
-      triggerOutcome('detectives');
-      return;
-    }
-    showMoriartyPrompt();
-  } else if (currentMode === 'detective' || currentMode === 'coach') {
-    showAIThinking('Moriarty plots his escape…');
-    setTimeout(aiMoriartyMove, 900);
-  }
+function endDetPhase(){
+  if(gameOver) return;
+  G.phase='moriarty';
+  pruneBeliefDetNodes();
+  updateSidebar();drawMap();
+  setTimeout(()=>{
+    if(currentMode==='detective'||currentMode==='coach-detective') runAIMori();
+    else showMoriPrompt();
+  },200);
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   AI — MORIARTY (used in detective & coach modes)
-═══════════════════════════════════════════════════════════════ */
-function aiMoriartyMove() {
-  const moves = getMoriValidMoves();
-  if (!moves.length) { triggerOutcome('detectives'); return; }
-
-  // Maximise minimum distance to detectives
-  let best = moves[0], bestScore = -1;
-  for (const mv of moves) {
-    const n = gameState.nodes[mv.node];
-    const minDist = Math.min(...gameState.detectives.map(d => {
-      const dn = gameState.nodes[d.node];
-      return (n.x-dn.x)**2 + (n.y-dn.y)**2;
-    }));
-    if (minDist > bestScore) { bestScore=minDist; best=mv; }
-  }
-
-  gameState.moriartyNode = best.node;
-  addLog(`R${round}`, '🎩', `Moriarty moves by <strong>${best.type}</strong>.`);
-
-  if (REVEAL_ROUNDS.includes(round)) {
-    gameState.moriLastRevealed    = best.node;
-    gameState.moriLastRevealRound = round;
-    showRevealBanner();
-    updateMoriartyStatus();
-  }
-
-  checkWin();
-  hideAIThinking();
-
-  // Detectives move
-  showAIThinking('The detective bureau advances…');
-  setTimeout(runDetectivePhase, 600);
-
-  if (currentMode === 'coach') provideCoachTip();
+function runAIMori(){
+  if(gameOver) return;
+  showAI('Moriarty plots his next move…');
+  setTimeout(()=>{
+    hideAI();
+    const move=aiPickMoriMove();
+    if(move.surrender){endGame('detectives','surrender');return;}
+    if(move.bluffConsumed&&G.bluffLeg===0){G.bluffLeft--;G.bluffLeg=1;addLog(G.moriMoveCount,'⚡','Moriarty activates <strong>Double Bluff</strong>!');updateSidebar();}
+    if(move.fogConsumed&&!G.fogThisLeg){G.fogLeft--;G.fogThisLeg=true;addLog(G.moriMoveCount,'🌫️','Moriarty uses <strong>Heavy Fog</strong>.');updateSidebar();}
+    doMoriMove(move.node,move.realType||move.type,false,false);
+  },800);
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   WIN / CAPTURE CHECKS
-═══════════════════════════════════════════════════════════════ */
-// checkCapture is now handled inline in runDetectivePhase to prevent
-// endRound from firing after a capture. This stub kept for safety only.
-function checkCapture() {
-  const caught = gameState.detectives.find(d => d.node === gameState.moriartyNode);
-  if (caught) {
-    addLog(`R${round}`, '🔓', `<strong>${caught.name} captures Moriarty!</strong>`);
-    setTimeout(() => triggerOutcome('detectives'), 500);
-  }
+function runAIMoriLeg(){
+  // Second leg of AI double bluff
+  if(gameOver) return;
+  setTimeout(()=>{
+    const move=aiPickMoriMove(true);
+    if(move.surrender){endGame('detectives','surrender');return;}
+    if(move.fogConsumed&&!G.fogThisLeg&&G.fogLeft>0){G.fogLeft--;G.fogThisLeg=true;addLog(G.moriMoveCount,'🌫️','Moriarty fogs the second leg.');updateSidebar();}
+    doMoriMove(move.node,move.realType||move.type,false,false);
+  },450);
 }
 
-// Called before Moriarty moves to check if he's boxed in
-function checkWin() {
-  if (!getMoriValidMoves().length) {
-    addLog(`R${round}`, '🕸️', `Moriarty is cornered — nowhere to run!`);
-    setTimeout(() => triggerOutcome('detectives'), 500);
-  }
+/* ══════════════════════════════════════════════════════════
+   UI HELPERS
+══════════════════════════════════════════════════════════ */
+function addLog(mn,icon,text,isReveal=false){
+  const log=document.getElementById('move-log');
+  const e=document.createElement('div');
+  e.className='log-entry'+(isReveal?' reveal':'');
+  e.innerHTML=`<div class="log-n">${mn>0?'M'+mn:'–'}</div><div class="log-i">${icon}</div><div class="log-t">${text}</div>`;
+  log.appendChild(e);log.scrollTop=log.scrollHeight;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   UI UPDATES
-═══════════════════════════════════════════════════════════════ */
-function updateUI() {
-  let phaseText, dotColor;
-  if (currentMode === 'moriarty') {
-    phaseText = 'Your Turn — Moriarty';
-    dotColor  = '#8b1a1a';
-  } else if (currentMode === 'detective') {
-    phaseText = 'Detectives Pursuing…';
-    dotColor  = '#b8860b';
-  } else {
-    phaseText = 'Coach Mode — Observing';
-    dotColor  = '#6e7568';
-  }
-  document.getElementById('phase-text').textContent          = phaseText;
-  document.getElementById('phase-dot').style.background      = dotColor;
-
-  // Reveal pips
-  const sched = document.getElementById('reveal-schedule');
-  sched.innerHTML = '<div class="reveal-label">Reveals:</div>';
-  for (const r of REVEAL_ROUNDS) {
-    const pip = document.createElement('div');
-    pip.className = 'reveal-pip ' + (r < round ? 'past' : r === round ? 'current' : 'upcoming');
-    pip.textContent = r;
-    sched.appendChild(pip);
-  }
-  updateDetectivePanel();
+function addCoachEntry(text,rec){
+  const log=document.getElementById('coach-log');
+  const e=document.createElement('div');e.className='coach-entry';e.textContent=text;
+  log.appendChild(e);log.scrollTop=log.scrollHeight;
+  document.getElementById('coach-rec').textContent=rec||'';
 }
 
-function updateMoriartyStatus() {
-  const el   = document.getElementById('moriarty-status');
-  const name = gameState.nodes[gameState.moriLastRevealed]?.name;
-  el.innerHTML = name
-    ? `Last seen: <strong>${name}</strong>`
-    : `Position: <strong>Unknown</strong>`;
+function flashReveal(){
+  const el=document.getElementById('reveal-flash');el.style.display='block';
+  setTimeout(()=>el.style.display='none',3500);
+}
+function showAI(msg){document.getElementById('ai-msg').textContent=msg;document.getElementById('ai-bar').classList.add('on');}
+function hideAI(){document.getElementById('ai-bar').classList.remove('on');}
+
+function updateSidebar(){
+  document.getElementById('fog-left').textContent=G.fogLeft;
+  document.getElementById('bluff-left').textContent=G.bluffLeft;
+  document.getElementById('fog-btn-n').textContent=G.fogLeft;
+  document.getElementById('bluff-btn-n').textContent=G.bluffLeft;
+  document.getElementById('ph-dot').style.background=G.phase==='moriarty'?'#8b1a1a':'#b8860b';
+  document.getElementById('ph-txt').textContent=G.phase==='moriarty'?'Moriarty moves':'Detectives move';
+  updateMoriStatus();updateDetPanel();updateRevealPips();
 }
 
-function updateDetectivePanel() {
-  const list = document.getElementById('detective-list');
-  list.innerHTML = '';
-  gameState.detectives.forEach((det, i) => {
-    const card = document.createElement('div');
-    const isStranded = getDetValidMoves(i).length === 0 && round > 1;
-    card.className = 'detective-card' + (isStranded ? ' stranded' : '');
-    card.innerHTML = `
-      <div class="det-portrait ${det.cls}">${det.emoji}</div>
-      <div class="det-info">
-        <div class="det-name">${det.short}</div>
-        <div class="det-position">${gameState.nodes[det.node]?.name||'—'}</div>
-        <div class="det-tickets">
-          <span class="det-ticket cab">🚕${det.tickets.cab}</span>
-          <span class="det-ticket tram">🚃${det.tickets.tram}</span>
-          <span class="det-ticket underground">🚇${det.tickets.underground}</span>
-        </div>
-      </div>`;
-    list.appendChild(card);
+function updateMoriStatus(){
+  document.getElementById('mori-status').innerHTML=
+    G.ghostNode>=0?`Last seen: <strong>Stn ${G.ghostNode}</strong>`:`Position: <strong>Unknown</strong>`;
+}
+
+function updateGhostUI(){
+  const gi=document.getElementById('ghost-info');
+  if(G.ghostNode>=0){
+    gi.style.display='block';
+    gi.textContent=G.ghostSince===0?'Just sighted here':`+${G.ghostSince} move${G.ghostSince!==1?'s':''} since sighting`;
+  } else gi.style.display='none';
+}
+
+function updateDetPanel(){
+  const list=document.getElementById('det-list');list.innerHTML='';
+  G.detectives.forEach((det,i)=>{
+    const c=document.createElement('div');
+    c.className='det-card';
+    c.innerHTML=`<div class="det-port">${det.emoji}</div><div class="det-info"><div class="det-name">${det.short}</div><div class="det-pos">Stn ${det.node}</div><div class="det-tix"><span class="taxi">🚕${det.tickets.taxi}</span><span class="bus">🚌${det.tickets.bus}</span><span class="underground">🚇${det.tickets.underground}</span></div></div>`;
+    list.appendChild(c);
   });
 }
 
-function addLog(rnd, icon, text) {
-  const log   = document.getElementById('move-log');
-  const entry = document.createElement('div');
-  entry.className = 'log-entry';
-  entry.innerHTML = `<div class="log-round">${rnd}</div><div class="log-icon">${icon}</div><div class="log-text">${text}</div>`;
-  log.appendChild(entry);
-  log.scrollTop = log.scrollHeight;
+function updateRevealPips(){
+  const pips=document.getElementById('reveal-pips');pips.innerHTML='';
+  REVEAL_MOVES.forEach(r=>{
+    const p=document.createElement('div');
+    const done=G.moriMoveCount>r;
+    const now=G.moriMoveCount===r;
+    const next=!done&&!now&&REVEAL_MOVES.find(m=>m>G.moriMoveCount)===r;
+    p.className='r-pip'+(done?' done':now?' now':next?' next':'');
+    p.textContent=r;pips.appendChild(p);
+  });
 }
 
-function showRevealBanner() {
-  const b = document.getElementById('reveal-banner');
-  b.style.display = 'block';
-  setTimeout(() => { b.style.display='none'; }, 3500);
-}
+/* ══════════════════════════════════════════════════════════
+   COACH TOGGLE
+══════════════════════════════════════════════════════════ */
+function toggleCoach(){document.getElementById('coach-panel').classList.toggle('on');}
 
-function showAIThinking(msg) {
-  const el = document.getElementById('ai-thinking');
-  document.getElementById('thinking-text').textContent = msg;
-  el.classList.add('active');
-}
-function hideAIThinking() {
-  document.getElementById('ai-thinking').classList.remove('active');
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   GAME INIT
-═══════════════════════════════════════════════════════════════ */
-function startGame(mode) {
-  currentMode = mode;
-  round       = 1;
-
-  document.getElementById('title-screen').style.display = 'none';
-  document.getElementById('outcome-screen').classList.remove('active');
-  document.getElementById('game-wrap').classList.add('active');
-
-  if (!canvas) initCanvas();
-  resizeCanvas();
-
-  const W = canvas.width, H = canvas.height;
-
-  // Generate world
-  gameState.nodes = generateNodes(W, H);
-  gameState.edges = generateEdges(gameState.nodes);
-
-  // Moriarty
-  gameState.moriartyNode        = Math.floor(Math.random()*NODE_COUNT);
-  gameState.moriLastRevealed    = -1;
-  gameState.moriLastRevealRound = -1;
-  gameState.fogTickets          = 3;
-  gameState.bluffTickets        = 2;
-  gameState.fogActive           = false;
-  gameState.bluffExtraTurn      = false;
-  gameState.bluffUsedThisRound  = false;
-
-  // Detectives
-  const startNodes = [12, 40, 70, 110, 160];
-  gameState.detectives = DETECTIVES.map((d,i) => ({
-    ...d, node: startNodes[i], tickets: { ...DET_TICKET_START }
-  }));
-
-  // UI reset
-  document.getElementById('fog-count').textContent   = '3';
-  document.getElementById('fog-count2').textContent  = '3';
-  document.getElementById('bluff-count').textContent = '2';
-  document.getElementById('bluff-count2').textContent= '2';
-  document.getElementById('round-num').textContent   = '1';
-  document.getElementById('move-log').innerHTML      = '';
-  document.getElementById('coach-panel').classList.remove('visible');
-  hideAIThinking();
-  hidePrompt();
-
-  addLog('–', '🕵️', `<strong>Game begun.</strong> Moriarty has vanished into the London fog.`);
-
-  // Centre map
-  transform = { x: W*0.05, y: H*0.05, scale: 0.9 };
-
-  updateUI();
-  updateMoriartyStatus();
-  updateDetectivePanel();
-  drawMap();
-
-  if (mode === 'moriarty') {
-    showMoriartyPrompt();
-  } else if (mode === 'detective') {
-    // AI Moriarty moves first, then human detectives get their prompts
-    showAIThinking('Moriarty vanishes into the fog…');
-    setTimeout(aiMoriartyMove, 1200);
-  } else {
-    // Coach: watch everything unfold automatically
-    showAIThinking('The game is afoot…');
-    setTimeout(aiMoriartyMove, 1200);
-  }
-}
-
-function backToTitle() {
-  hidePrompt(); hideAIThinking();
-  document.getElementById('title-screen').style.display = 'flex';
-  document.getElementById('game-wrap').classList.remove('active');
-  document.getElementById('outcome-screen').classList.remove('active');
-}
-
-/* ═══════════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════
    OUTCOME
-═══════════════════════════════════════════════════════════════ */
-function triggerOutcome(winner) {
-  hidePrompt(); hideAIThinking();
-  const screen = document.getElementById('outcome-screen');
-  screen.classList.add('active');
-  if (winner === 'moriarty') {
-    document.getElementById('outcome-title').textContent   = 'Moriarty Escapes!';
-    document.getElementById('outcome-title').className     = 'outcome-title outcome-moriarty-wins';
-    document.getElementById('outcome-subtitle').textContent= 'The Napoleon of Crime vanishes once more into the London fog. The game is yours, Professor.';
+══════════════════════════════════════════════════════════ */
+function endGame(winner,reason){
+  if(gameOver) return;
+  gameOver=true;
+  hidePrompt();hideAI();
+  setTimeout(()=>{
+    const sc=document.getElementById('outcome');sc.classList.add('on');
+    if(winner==='moriarty'){
+      document.getElementById('out-title').textContent='Moriarty Escapes!';
+      document.getElementById('out-title').className='out-title out-mori';
+      document.getElementById('out-sub').textContent='The Napoleon of Crime vanishes into the London fog, outwitting Scotland Yard across all 24 moves. The game is yours, Professor.';
+    } else if(reason==='surrender'){
+      document.getElementById('out-title').textContent='Moriarty Surrenders';
+      document.getElementById('out-title').className='out-title out-dets';
+      document.getElementById('out-sub').textContent='"You leave me no alternative, gentlemen." With detectives on every adjacent station, Moriarty hands himself in.';
+    } else {
+      document.getElementById('out-title').textContent='Captured!';
+      document.getElementById('out-title').className='out-title out-dets';
+      document.getElementById('out-sub').textContent='Holmes closes the trap. The game is over, Professor Moriarty. Scotland Yard prevails.';
+    }
+  },400);
+}
+
+/* ══════════════════════════════════════════════════════════
+   RULES
+══════════════════════════════════════════════════════════ */
+function showRules(){
+  document.getElementById('modal').classList.add('on');
+  document.getElementById('modal-title').textContent='Rules of the Chase';
+  document.getElementById('modal-body').textContent='Moriarty makes 24 moves across Victorian London. Detectives win by landing on his station, or if every adjacent station is occupied (he surrenders). Moriarty wins by surviving all 24 moves. Reveals at moves 3, 8, 13, 18, 24 — the detective log highlights upcoming reveals so you can prepare. Heavy Fog (5 tickets) conceals transport type and is required for river travel. Double Bluff (2 tickets) grants two moves in one turn — ideal on reveal moves to immediately vacate. Fog and Bluff can be combined freely.';
+  document.getElementById('modal-acts').innerHTML='<button class="modal-btn" onclick="closeModal()">Understood</button>';
+}
+function closeModal(){document.getElementById('modal').classList.remove('on');}
+document.getElementById('modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
+
+/* ══════════════════════════════════════════════════════════
+   START / BACK
+══════════════════════════════════════════════════════════ */
+function startGame(mode){
+  currentMode=mode;gameOver=false;
+  G=freshGame();
+
+  // Random Moriarty start — not on a detective start node
+  const detSet=new Set(DET_START);
+  const pool=Object.keys(nodes).map(Number).filter(n=>!detSet.has(n));
+  G.moriNode=pool[Math.floor(Math.random()*pool.length)];
+
+  document.getElementById('title-screen').style.display='none';
+  document.getElementById('outcome').classList.remove('on');
+  document.getElementById('game').classList.add('on');
+  document.getElementById('coach-panel').classList.remove('on');
+  document.getElementById('coach-log').innerHTML='';
+  document.getElementById('move-log').innerHTML='';
+  document.getElementById('move-num').textContent='0';
+
+  const coachBtn=document.getElementById('coach-btn');
+  coachBtn.style.display=(mode==='coach-moriarty'||mode==='coach-detective')?'':'none';
+
+  if(!canvas) initCanvas(); else resizeCanvas();
+  centreMap();
+  initBelief();
+  G.phase='moriarty';
+
+  addLog(0,'🕵️','<strong>Game begun.</strong> Moriarty has vanished into the fog.');
+  updateSidebar();updateGhostUI();drawMap();
+
+  if(mode==='moriarty'||mode==='coach-moriarty'){
+    showMoriPrompt();
   } else {
-    document.getElementById('outcome-title').textContent   = 'Captured!';
-    document.getElementById('outcome-title').className     = 'outcome-title outcome-detectives-win';
-    document.getElementById('outcome-subtitle').textContent= 'Holmes closes the trap. "You have been most helpful, Moriarty," he remarked with a thin smile.';
+    showAI('Moriarty vanishes into the fog…');
+    setTimeout(runAIMori,1200);
   }
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   COACH
-═══════════════════════════════════════════════════════════════ */
-function toggleCoach() {
-  const p = document.getElementById('coach-panel');
-  p.classList.toggle('visible');
-  if (p.classList.contains('visible')) provideCoachTip();
-}
-function provideCoachTip() {
-  const tips = [
-    `Moriarty was last sighted near ${gameState.nodes[gameState.moriLastRevealed]?.name||'an unknown locality'}. Holmes deduces he will seek the Underground if pressed.`,
-    `The fog of London thickens. Three possible escape corridors remain. Cut off the eastern flank first.`,
-    `Watson should advance northward — Moriarty cannot double back without crossing a detective's path.`,
-    `Elementary: the professor always avoids the river when his tickets run low. Watch the cab routes.`,
-    `Lestrade and Gregson should fan outward. Holmes alone can anticipate Moriarty's next gambit.`,
-  ];
-  document.getElementById('coach-text').innerHTML =
-    `<div class="coach-entry">${tips[round % tips.length]}</div>`;
+function backToTitle(){
+  gameOver=true;hidePrompt();hideAI();
+  document.getElementById('title-screen').style.display='flex';
+  document.getElementById('game').classList.remove('on');
+  document.getElementById('outcome').classList.remove('on');
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   MODAL
-═══════════════════════════════════════════════════════════════ */
-const RULES_TEXT = `Moriarty moves secretly each round using Hansom Cab, Tramway, Underground, or River Boat connections. Five detectives pursue him. Moriarty wins by surviving all 22 rounds. Detectives win by landing on his node or trapping him. Moriarty's position is revealed on rounds 3, 8, 13, 18, and 22. Heavy Fog conceals your transport type. Double Bluff grants two moves in one round. To move: select transport, select destination, press Move.`;
-
-function showModal(type) {
-  document.getElementById('modal-overlay').classList.add('active');
-  if (type === 'rules') {
-    document.getElementById('modal-title').textContent = 'Rules of the Chase';
-    document.getElementById('modal-body').textContent  = RULES_TEXT;
-    document.getElementById('modal-actions').innerHTML =
-      `<button class="modal-btn" onclick="closeModal()">Understood</button>`;
-  }
-}
-function closeModal() { document.getElementById('modal-overlay').classList.remove('active'); }
-document.getElementById('modal-overlay').addEventListener('click', e => {
-  if (e.target === e.currentTarget) closeModal();
-});
-
-/* ═══════════════════════════════════════════════════════════════
-   RESIZE
-═══════════════════════════════════════════════════════════════ */
-window.addEventListener('resize', () => { if (canvas) resizeCanvas(); });
+window.addEventListener('resize',()=>{if(canvas)resizeCanvas();});
 </script>
 </body>
 </html>
