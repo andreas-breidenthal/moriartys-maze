@@ -722,7 +722,7 @@ let gameOver=false;
 ══════════════════════════════════════════════════════════════ */
 function freshGame(){
   return {
-    moriNode:1,moriMoveCount:0,posHistory:[],
+    moriNode:1,moriMoveCount:0,posHistory:[],moriTarget:null,
     fogLeft:5,bluffLeft:2,
     bluffLeg:0,        // 0=none, 1=first leg in progress, 2=second leg in progress
     fogThisLeg:false,
@@ -830,113 +830,104 @@ function pruneBeliefDetNodes(){
    AI — MORIARTY
    Never moves to a detective-occupied node
 ══════════════════════════════════════════════════════════════ */
-/* BFS hop-distance using only land transport (taxi/bus/underground). */
+/* BFS hop-distance using only land transport. */
 function landHopDist(a,b){
-  if(a===b) return 0;
-  const visited=new Set([a]);
-  let frontier=[a],dist=0;
-  while(frontier.length){
-    dist++;const next=[];
-    for(const n of frontier) for(const t of ['taxi','bus','underground'])
-      for(const nb of adj[n][t]){if(nb===b)return dist;if(!visited.has(nb)){visited.add(nb);next.push(nb);}}
-    frontier=next;if(dist>30)return 99;
+  if(a===b)return 0;
+  const vis=new Set([a]);let fr=[a],d=0;
+  while(fr.length){
+    d++;const nx=[];
+    for(const n of fr)for(const t of ['taxi','bus','underground'])
+      for(const nb of adj[n][t]){if(nb===b)return d;if(!vis.has(nb)){vis.add(nb);nx.push(nb);}}
+    fr=nx;if(d>30)return 99;
   }
   return 99;
 }
 
-/* Hops to nearest underground station (land only). */
+/* Hops to nearest underground station. */
 function hopsToUnderground(nodeId){
-  if(nodes[nodeId].types&&nodes[nodeId].types.includes('underground')) return 0;
-  const visited=new Set([nodeId]);let frontier=[nodeId],dist=0;
-  while(frontier.length){
-    dist++;const next=[];
-    for(const n of frontier) for(const t of ['taxi','bus','underground'])
+  if(nodes[nodeId].types&&nodes[nodeId].types.includes('underground'))return 0;
+  const vis=new Set([nodeId]);let fr=[nodeId],d=0;
+  while(fr.length){
+    d++;const nx=[];
+    for(const n of fr)for(const t of ['taxi','bus','underground'])
       for(const nb of adj[n][t]){
-        if(nodes[nb].types&&nodes[nb].types.includes('underground'))return dist;
-        if(!visited.has(nb)){visited.add(nb);next.push(nb);}
+        if(nodes[nb].types&&nodes[nb].types.includes('underground'))return d;
+        if(!vis.has(nb)){vis.add(nb);nx.push(nb);}
       }
-    frontier=next;if(dist>8)return 99;
+    fr=nx;if(d>10)return 99;
   }
   return 99;
 }
 
-/* Score a node for immediate safety and mobility.
-   Hard rule: never land within 1 land-hop of a detective. */
-function scoreNode(nodeId, detPos){
-  for(const dp of detPos) if(landHopDist(nodeId,dp)<=1) return -10000;
+/* Static quality of a node as a safe haven.
+   High score = many exits, near underground, away from detectives. */
+function havenScore(nodeId, detPos){
+  for(const dp of detPos)if(landHopDist(nodeId,dp)<=1)return -10000;
   const mob=adj[nodeId].taxi.length+adj[nodeId].bus.length+adj[nodeId].underground.length;
-  if(mob===0) return -5000;
+  if(mob===0)return -5000;
   const nbrs=new Set();
   ['taxi','bus','underground'].forEach(t=>adj[nodeId][t].forEach(n=>nbrs.add(n)));
-  const futMob=nbrs.size===0?0:
-    [...nbrs].reduce((s,n)=>s+adj[n].taxi.length+adj[n].bus.length+adj[n].underground.length,0)/nbrs.size;
-  const deadEndPenalty=mob<=2?-300:0;
-  const ugBonus=Math.max(0,200-hopsToUnderground(nodeId)*40);
-  let dangerPenalty=0;
-  for(const dp of detPos) if(landHopDist(nodeId,dp)===2) dangerPenalty-=50;
-  return mob*20+futMob*12+ugBonus+dangerPenalty+deadEndPenalty;
+  const futMob=[...nbrs].reduce((s,n)=>s+adj[n].taxi.length+adj[n].bus.length+adj[n].underground.length,0)/(nbrs.size||1);
+  const ugBonus=Math.max(0,160-hopsToUnderground(nodeId)*35);
+  const deadEnd=mob<=2?-400:0;
+  let danger=0;
+  for(const dp of detPos){const h=landHopDist(nodeId,dp);if(h<=2)danger-=80;else if(h<=3)danger-=20;}
+  return mob*18+futMob*10+ugBonus+danger+deadEnd;
 }
 
-/* Deep escape-route search: BFS up to maxDepth moves ahead.
-   Each depth step, detectives advance ONE hop toward Moriarty (worst case).
-   This means Moriarty plans around a closing net, not a static one.
-   Anti-oscillation: recently visited nodes are penalised. */
-function escapeRouteScore(fromNode, detPos, maxDepth){
-  const recentlyVisited=new Set(G.posHistory||[]);
+/* scoreNode: used for immediate-move safety check only. */
+function scoreNode(nodeId,detPos){return havenScore(nodeId,detPos);}
 
-  // State: {node, detPos (array), penalty}
-  // Advance detective positions each step using BFS toward current mori position
-  function advanceDets(dPos, targetNode){
-    return dPos.map(dp=>{
-      if(dp===targetNode) return dp;
-      // Move one step toward targetNode
-      let best=dp,bestDist=landHopDist(dp,targetNode);
-      for(const t of ['taxi','bus','underground']){
-        for(const nb of adj[dp][t]){
-          const d=landHopDist(nb,targetNode);
-          if(d<bestDist){bestDist=d;best=nb;}
-        }
-      }
-      return best;
-    });
-  }
-
-  const stateKey=(node,depth)=>node*100+depth;
-  const visited=new Map();
-  let frontier=[{node:fromNode,dPos:detPos,penalty:0}];
-  let bestScore=-Infinity;
-
-  for(let depth=0;depth<maxDepth;depth++){
+/* Find the best haven reachable within maxHops land moves.
+   Returns {node, dist} or null. */
+function findBestHaven(fromNode, detPos, maxHops){
+  const vis=new Set([fromNode]);
+  let frontier=[fromNode];
+  let bestNode=null,bestScore=-Infinity;
+  for(let d=0;d<=maxHops;d++){
+    for(const n of frontier){
+      const s=havenScore(n,detPos);
+      if(s>bestScore){bestScore=s;bestNode=n;}
+    }
+    if(d===maxHops)break;
     const next=[];
-    for(const {node,dPos,penalty} of frontier){
-      const advDPos=advanceDets(dPos,node); // detectives close in
-      const dSet=new Set(advDPos);
-      const nbrs=[];
-      ['taxi','bus','underground'].forEach(t=>adj[node][t].forEach(n=>{
-        if(!dSet.has(n)) nbrs.push(n);
-      }));
-      for(const nb of nbrs){
-        const minHops=Math.min(...advDPos.map(dp=>landHopDist(nb,dp)));
-        const transitPenalty=minHops<=1?600:minHops===2?100:0;
-        // Anti-oscillation: penalise nodes we've been at recently
-        const revisitPenalty=recentlyVisited.has(nb)?250:0;
-        const totalPenalty=penalty+transitPenalty+revisitPenalty;
-        const key=stateKey(nb,depth);
-        const prev=visited.get(key);
-        if(prev!==undefined&&prev<=totalPenalty) continue;
-        visited.set(key,totalPenalty);
-        const nodeScore=scoreNode(nb,advDPos);
-        if(nodeScore>-10000){
-          const adjusted=nodeScore-totalPenalty;
-          if(adjusted>bestScore) bestScore=adjusted;
+    for(const n of frontier)for(const t of ['taxi','bus','underground'])
+      for(const nb of adj[n][t])if(!vis.has(nb)){vis.add(nb);next.push(nb);}
+    frontier=next;
+  }
+  return bestNode?{node:bestNode,score:bestScore}:null;
+}
+
+/* Find next step on shortest land path from `from` toward `to`.
+   Returns node id of the next step, or null. */
+function nextStepToward(from, to, detPos){
+  if(from===to)return null;
+  const detSet=new Set(detPos);
+  const vis=new Set([from]);
+  const parent=new Map([[from,null]]);
+  let frontier=[from];
+  let found=false;
+  while(frontier.length&&!found){
+    const next=[];
+    for(const n of frontier){
+      for(const t of ['taxi','bus','underground']){
+        for(const nb of adj[n][t]){
+          if(vis.has(nb))continue;
+          vis.add(nb);parent.set(nb,n);
+          if(nb===to){found=true;break;}
+          next.push(nb);
         }
-        next.push({node:nb,dPos:advDPos,penalty:totalPenalty});
+        if(found)break;
       }
+      if(found)break;
     }
     frontier=next;
-    if(!frontier.length) break;
   }
-  return bestScore===-Infinity?scoreNode(fromNode,detPos):bestScore;
+  if(!found)return null;
+  // Walk back from `to` to find the step after `from`
+  let cur=to;
+  while(parent.get(cur)!==from)cur=parent.get(cur);
+  return cur;
 }
 
 function aiPickMoriMove(){
@@ -948,56 +939,89 @@ function aiPickMoriMove(){
   const FOG_BANNED  =new Set([1,2,3,8,13,18,24]);
   const BLUFF_BANNED=new Set([1,2,3,7,8,12,13,17,18]);
 
-  // Candidates: not detective-occupied
-  let candidates=moriMoves(G.moriNode).filter(m=>!detSet.has(m.node));
-  if(!candidates.length) return {node:G.moriNode,type:'taxi',surrender:true};
-  if(!G.fogThisLeg) candidates=candidates.filter(m=>m.type!=='water');
-  if(!candidates.length) candidates=moriMoves(G.moriNode).filter(m=>!detSet.has(m.node));
+  // ── TARGET SELECTION ──
+  // Pick or re-evaluate the target haven every move.
+  // Invalidate if: target is gone, target is now dangerous, or we reached it.
+  const targetInvalid=!G.moriTarget
+    ||G.moriTarget===G.moriNode
+    ||havenScore(G.moriTarget,detPos)<-1000
+    ||landHopDist(G.moriTarget,detPos.reduce((a,dp)=>landHopDist(dp,G.moriTarget)<landHopDist(dp,a)?dp:a,detPos[0]))<=2;
 
-  // Score: immediate + deep escape route (4 moves, detectives advancing)
-  let best=candidates[0],bestScore=-Infinity;
-  candidates.forEach(m=>{
-    const imm=scoreNode(m.node,detPos);
-    if(imm<=-10000) return;
-    const revisitPenalty=recentlyVisited.has(m.node)?300:0;
-    const escape=escapeRouteScore(m.node,detPos,4);
-    const total=imm*0.35+escape*0.65-revisitPenalty;
-    if(total>bestScore){bestScore=total;best=m;}
-  });
+  if(targetInvalid){
+    const haven=findBestHaven(G.moriNode,detPos,8);
+    G.moriTarget=haven?haven.node:null;
+  }
 
+  // ── NEXT STEP ──
+  // Try to follow the path to target. If blocked, fall back to best immediate move.
+  let best=null;
+
+  if(G.moriTarget){
+    const nextStep=nextStepToward(G.moriNode,G.moriTarget,detPos);
+    if(nextStep&&!detSet.has(nextStep)){
+      // Find what move type gets us to nextStep
+      const matchingMoves=moriMoves(G.moriNode).filter(m=>m.node===nextStep&&!detSet.has(m.node));
+      if(matchingMoves.length){
+        // Only use this step if it's safe (not adjacent to detective)
+        if(havenScore(nextStep,detPos)>-1000&&!recentlyVisited.has(nextStep)){
+          best=matchingMoves[0];
+        }
+      }
+    }
+  }
+
+  // Fallback: score all candidates if we have no committed step
+  if(!best){
+    let candidates=moriMoves(G.moriNode).filter(m=>!detSet.has(m.node));
+    if(!G.fogThisLeg)candidates=candidates.filter(m=>m.type!=='water');
+    if(!candidates.length)candidates=moriMoves(G.moriNode).filter(m=>!detSet.has(m.node));
+    if(!candidates.length)return{node:G.moriNode,type:'taxi',surrender:true};
+
+    let bestScore=-Infinity;
+    candidates.forEach(m=>{
+      const s=havenScore(m.node,detPos);
+      if(s<=-10000)return;
+      const revisit=recentlyVisited.has(m.node)?400:0;
+      // Prefer nodes that are on the path toward the target
+      const towardTarget=G.moriTarget?Math.max(0,(landHopDist(G.moriNode,G.moriTarget)-landHopDist(m.node,G.moriTarget))*50):0;
+      const total=s+towardTarget-revisit;
+      if(total>bestScore){bestScore=total;best=m;}
+    });
+  }
+
+  if(!best)return{node:G.moriNode,type:'taxi',surrender:true};
+
+  // ── SPECIAL MOVES ──
   const minDestHops=Math.min(...detPos.map(dp=>landHopDist(dp,best.node)));
   const detVeryClose=minDestHops<=2;
 
-  // Fog: only if meaningful (dest has >1 transport type) and detectives very close
   const destTransportTypes=new Set(moriMoves(best.node).filter(m=>m.type!=='water').map(m=>m.type));
   const fogMeaningful=destTransportTypes.size>1;
   const fogEligible=G.fogLeft>0&&!G.fogThisLeg&&!FOG_BANNED.has(nextMove)&&detVeryClose&&fogMeaningful;
 
-  // Bluff: not banned, not just used one, detectives very close
   const justUsedBluff=G.bluffLeg===0&&G.bluffPairStart===G.moriMoveCount-1;
   const bluffEligible=G.bluffLeft>0&&G.bluffLeg===0&&!BLUFF_BANNED.has(nextMove)&&detVeryClose&&!justUsedBluff;
 
-  // Never both on same move — bluff wins
   const bluffWanted=bluffEligible;
   const fogWanted=fogEligible&&!bluffWanted;
 
-  // If fog active or wanted, reconsider water routes
   let finalBest=best;
   if(fogWanted||G.fogThisLeg){
     const withWater=moriMoves(G.moriNode).filter(m=>!detSet.has(m.node));
     let wb=best,ws=-Infinity;
     withWater.forEach(m=>{
-      const imm=scoreNode(m.node,detPos);
-      if(imm<=-10000) return;
-      const revisitPenalty=recentlyVisited.has(m.node)?300:0;
-      const total=imm*0.35+escapeRouteScore(m.node,detPos,4)*0.65-revisitPenalty;
+      const s=havenScore(m.node,detPos);
+      if(s<=-10000)return;
+      const revisit=recentlyVisited.has(m.node)?400:0;
+      const towardTarget=G.moriTarget?Math.max(0,(landHopDist(G.moriNode,G.moriTarget)-landHopDist(m.node,G.moriTarget))*50):0;
+      const total=s+towardTarget-revisit;
       if(total>ws){ws=total;wb=m;}
     });
     finalBest=wb;
   }
 
   const fogConsumed=finalBest.type==='water'||(fogWanted&&!G.fogThisLeg);
-  return {
+  return{
     node:finalBest.node,
     type:fogConsumed?'fog':finalBest.type,
     realType:finalBest.type,
