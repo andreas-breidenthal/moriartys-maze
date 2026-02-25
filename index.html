@@ -173,7 +173,7 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
 /* Detective key */
 .det-row{display:flex;gap:6px;align-items:center;padding:3px 2px;border-radius:2px;transition:background .15s}
 .det-row.active-det{background:rgba(176,120,8,.12);border-left:3px solid var(--gold);padding-left:4px}
-.det-emoji{font-size:16px;flex-shrink:0;width:22px;text-align:center}
+.det-emoji{font-size:16px;flex-shrink:0;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:50%;text-align:center}
 .det-meta{flex:1;min-width:0}
 .det-name-sm{font-family:'Cinzel',serif;font-size:11px;font-weight:700;color:var(--parch-text);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -380,7 +380,7 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
       </div>
       <div id="ticket-strip"></div>
       <div class="t-legend">
-        <div class="t-item"><span style="font-size:9px">🐴</span> Cab</div>
+        <div class="t-item"><span style="font-size:9px">🐴</span> Hansom</div>
         <div class="t-item"><span style="font-size:9px">🚃</span> Omnibus</div>
         <div class="t-item"><span style="font-size:9px">🚂</span> Underground</div>
         <div class="t-item"><span style="font-size:9px">🌫</span> Fog/River</div>
@@ -1728,7 +1728,7 @@ function updateDetPanel(){
     const c=document.createElement('div');
     c.className='det-row'+(isActive?' active-det':'');
     c.style.borderLeft=isActive?`3px solid ${det.colour}`:'';
-    c.innerHTML=`<div class="det-emoji" style="color:${det.colour}">${det.emoji}</div>
+    c.innerHTML=`<div class="det-emoji" style="background:rgba(${det.colour.match(/\d+/g).join(',')},0.18);box-shadow:0 0 7px ${det.colour}88">${det.emoji}</div>
       <div class="det-meta">
         <div class="det-name-sm">${det.short}</div>
         <div class="det-pos-sm">Stn ${det.node}</div>
