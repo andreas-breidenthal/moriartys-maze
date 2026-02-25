@@ -241,11 +241,11 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
 @keyframes td{0%,80%,100%{transform:scale(.5);opacity:.3}40%{transform:scale(1);opacity:1}}
 
 /* Move prompt — left side, square panel */
-#move-prompt{display:none;flex-direction:column;gap:7px;
+#move-prompt{display:flex;flex-direction:column;gap:7px;
   width:280px;flex-shrink:0;
   padding:10px 12px 12px;
   background:var(--panel-bg);border-right:1px solid var(--panel-bdr)}
-#move-prompt.on{display:flex}
+#move-prompt.on{display:flex} /* always shown */
 @media(max-width:500px){#move-prompt{width:100%}}
 .mp-title{font-family:'Cinzel',serif;font-size:10px;letter-spacing:2px;
   text-transform:uppercase;color:var(--gold);font-weight:700}
@@ -824,8 +824,9 @@ function pruneBeliefDetNodes(){
    AI — MORIARTY
    Never moves to a detective-occupied node
 ══════════════════════════════════════════════════════════════ */
-/* BFS hop-distance using all transport types */
-function moriHopDist(a,b){
+/* BFS hop-distance using only land transport (taxi/bus/underground).
+   Used for safety checks — water requires fog so is not a reliable escape route. */
+function landHopDist(a,b){
   if(a===b) return 0;
   const visited=new Set([a]);
   let frontier=[a],dist=0;
@@ -833,7 +834,7 @@ function moriHopDist(a,b){
     dist++;
     const next=[];
     for(const n of frontier){
-      for(const t of ['taxi','bus','underground','water']){
+      for(const t of ['taxi','bus','underground']){
         for(const nb of adj[n][t]){
           if(nb===b) return dist;
           if(!visited.has(nb)){visited.add(nb);next.push(nb);}
@@ -846,46 +847,176 @@ function moriHopDist(a,b){
   return 99;
 }
 
-/* Score a candidate node.
-   Stay 2+ hops from all detectives, maximise escape routes, avoid dead ends. */
+/* How many hops does it take to reach ANY underground station from nodeId? */
+function hopsToUnderground(nodeId){
+  if(nodes[nodeId].types.includes('underground')) return 0;
+  const visited=new Set([nodeId]);
+  let frontier=[nodeId],dist=0;
+  while(frontier.length){
+    dist++;
+    const next=[];
+    for(const n of frontier){
+      for(const t of ['taxi','bus','underground']){
+        for(const nb of adj[n][t]){
+          if(nodes[nb].types.includes('underground')) return dist;
+          if(!visited.has(nb)){visited.add(nb);next.push(nb);}
+        }
+      }
+    }
+    frontier=next;
+    if(dist>8) return 99;
+  }
+  return 99;
+}
+
+/* Score a candidate destination node for Moriarty.
+   Hard rule: never land 1 land-hop from any detective.
+   Otherwise: reward mobility and escape options, not raw distance.
+   Moriarty is invisible — being 2+ hops away is safe enough.
+   Willingness to pass near detectives is fine if it opens better escape. */
 function scoreNode(nodeId,detPos){
-  const hops=detPos.map(dp=>moriHopDist(nodeId,dp));
-  const minHops=Math.min(...hops);
-  if(minHops<=1) return -10000;
-  const mob=adj[nodeId].taxi.length+adj[nodeId].bus.length
-           +adj[nodeId].underground.length+adj[nodeId].water.length;
-  const neighbours=[];
-  ['taxi','bus','underground','water'].forEach(t=>adj[nodeId][t].forEach(n=>neighbours.push(n)));
-  const uniqueNbrs=[...new Set(neighbours)];
-  const futMob=uniqueNbrs.length===0?0:
-    uniqueNbrs.reduce((s,n)=>s+adj[n].taxi.length+adj[n].bus.length+adj[n].underground.length,0)/uniqueNbrs.length;
-  const deadEndPenalty=mob<=2?-200:0;
-  const safeDist=Math.min(minHops,5);
-  return safeDist*80+mob*15+futMob*8+deadEndPenalty;
+  // Hard constraint: do not land on a node adjacent (1 land hop) to any detective
+  for(const dp of detPos){
+    if(landHopDist(nodeId,dp)<=1) return -10000;
+  }
+
+  // Land mobility out of this node
+  const mob=adj[nodeId].taxi.length+adj[nodeId].bus.length+adj[nodeId].underground.length;
+
+  // Dead-end penalty: <=2 land exits is a trap
+  const deadEndPenalty=mob<=2?-300:0;
+
+  // Future mobility: average land connections of reachable neighbours
+  const nbrs=new Set();
+  ['taxi','bus','underground'].forEach(t=>adj[nodeId][t].forEach(n=>nbrs.add(n)));
+  const futMob=nbrs.size===0?0:
+    [...nbrs].reduce((s,n)=>s+adj[n].taxi.length+adj[n].bus.length+adj[n].underground.length,0)/nbrs.size;
+
+  // Bonus for being at or near an underground station (best escape tool)
+  const undergroundBonus=(200-hopsToUnderground(nodeId)*40);
+
+  // Mild penalty for each detective that is 2 land hops away (they could reach us next turn)
+  let dangerPenalty=0;
+  for(const dp of detPos){
+    if(landHopDist(nodeId,dp)===2) dangerPenalty-=60;
+  }
+
+  return mob*20 + futMob*12 + undergroundBonus + dangerPenalty + deadEndPenalty;
+}
+
+/* BFS to find best escape route — returns score of best reachable safe node
+   within maxDepth moves, penalising paths that pass through danger zones.
+   This lets Moriarty route THROUGH tight spots toward open territory. */
+function escapeRouteScore(fromNode, detPos, maxDepth){
+  // BFS/beam search: track (node, accumulated_path_penalty)
+  // We want the best safe node reachable, accepting some danger en route
+  const detSet=new Set(detPos);
+  const visited=new Map(); // node -> best score seen
+  let frontier=[{node:fromNode,penalty:0}];
+  let bestScore=-Infinity;
+
+  for(let depth=0;depth<maxDepth;depth++){
+    const next=[];
+    for(const {node,penalty} of frontier){
+      const nbrs=[];
+      ['taxi','bus','underground'].forEach(t=>adj[node][t].forEach(n=>{
+        if(!detSet.has(n)) nbrs.push(n);
+      }));
+      for(const nb of nbrs){
+        // Penalty for being adjacent to a detective (dangerous transit)
+        const minHopsHere=Math.min(...detPos.map(dp=>landHopDist(nb,dp)));
+        const transitPenalty=minHopsHere<=1?500:minHopsHere===2?80:0;
+        const totalPenalty=penalty+transitPenalty;
+        const prev=visited.get(nb);
+        if(prev!==undefined&&prev<=totalPenalty) continue;
+        visited.set(nb,totalPenalty);
+        // Score this node as a destination
+        const nodeScore=scoreNode(nb,detPos);
+        if(nodeScore>-10000){
+          const adjusted=nodeScore-totalPenalty;
+          if(adjusted>bestScore) bestScore=adjusted;
+        }
+        next.push({node:nb,penalty:totalPenalty});
+      }
+    }
+    frontier=next;
+    if(!frontier.length) break;
+  }
+  return bestScore===-Infinity?scoreNode(fromNode,detPos):bestScore;
 }
 
 function aiPickMoriMove(){
   const detPos=G.detectives.map(d=>d.node);
   const detSet=new Set(detPos);
-  const justRevealed=REVEAL_MOVES.includes(G.moriMoveCount);
-  const minDetHops=Math.min(...detPos.map(dp=>moriHopDist(G.moriNode,dp)));
-  const detClose=minDetHops<=3;
-  const postRevealEscape=justRevealed&&minDetHops<=4;
-  // Fog: use AFTER reveals when detectives are close, or when very close (escape)
-  // Never waste on a reveal move itself
-  const useFog=G.fogLeft>0&&!G.fogThisLeg&&(postRevealEscape||detClose);
-  // Bluff: use when cornered or just after reveal with detectives close
-  const cornered=minDetHops<=2;
-  const useBluff=G.bluffLeft>0&&G.bluffLeg===0&&(cornered||(justRevealed&&detClose));
+  const nextMove=G.moriMoveCount+1;
+
+  const FOG_BANNED  =new Set([1,2,3,8,13,18,24]);
+  const BLUFF_BANNED=new Set([1,2,3,7,8,12,13,17,18]);
+
+  // Candidates: not detective-occupied
   let candidates=moriMoves(G.moriNode).filter(m=>!detSet.has(m.node));
   if(!candidates.length) return {node:G.moriNode,type:'taxi',surrender:true};
-  const fogAvail=useFog||G.fogThisLeg;
-  if(!fogAvail) candidates=candidates.filter(m=>m.type!=='water');
+  if(!G.fogThisLeg) candidates=candidates.filter(m=>m.type!=='water');
   if(!candidates.length) candidates=moriMoves(G.moriNode).filter(m=>!detSet.has(m.node));
+
+  // Score each candidate: immediate safety + escape route quality (3 moves deep)
   let best=candidates[0],bestScore=-Infinity;
-  candidates.forEach(m=>{const s=scoreNode(m.node,detPos);if(s>bestScore){bestScore=s;best=m;}});
-  const fogConsumed=best.type==='water'||(useFog&&!G.fogThisLeg);
-  return {node:best.node,type:fogConsumed?'fog':best.type,realType:best.type,fogConsumed,bluffConsumed:useBluff};
+  candidates.forEach(m=>{
+    const imm=scoreNode(m.node,detPos);
+    if(imm<=-10000) return; // never land adjacent to detective
+    const escape=escapeRouteScore(m.node,detPos,3);
+    const total=imm*0.4+escape*0.6; // weight escape route heavily
+    if(total>bestScore){bestScore=total;best=m;}
+  });
+
+  // Closest detective to destination (land hops)
+  const minDestHops=Math.min(...detPos.map(dp=>landHopDist(dp,best.node)));
+  const detVeryClose=minDestHops<=2;  // within 2 hops = genuinely threatened
+
+  // ── FOG rules ──
+  // Eligible: not banned, not already used this leg, detectives very close at dest
+  // Extra check: fog only meaningful if dest has >1 transport type
+  // (if cab-only, fog hides nothing useful)
+  const destTransportTypes=new Set(
+    moriMoves(best.node).filter(m=>m.type!=='water').map(m=>m.type)
+  );
+  const fogMeaningful=destTransportTypes.size>1;
+  const fogEligible=G.fogLeft>0&&!G.fogThisLeg&&!FOG_BANNED.has(nextMove)
+                    &&detVeryClose&&fogMeaningful;
+
+  // ── BLUFF rules ──
+  // Eligible: not banned, not already in bluff, detectives very close
+  // Do NOT use two bluffs contiguously — check we haven't just finished one
+  const justUsedBluff=G.moriMoveCount>0&&G.bluffLeg===0&&G.bluffPairStart===G.moriMoveCount-1;
+  const bluffEligible=G.bluffLeft>0&&G.bluffLeg===0&&!BLUFF_BANNED.has(nextMove)
+                      &&detVeryClose&&!justUsedBluff;
+
+  // Never use both fog and bluff on same move — bluff takes priority (more powerful)
+  const bluffWanted=bluffEligible;
+  const fogWanted=fogEligible&&!bluffWanted;
+
+  // If fog active this leg or wanted, reconsider water routes
+  let finalBest=best;
+  if(fogWanted||G.fogThisLeg){
+    const withWater=moriMoves(G.moriNode).filter(m=>!detSet.has(m.node));
+    let wb=best,ws=-Infinity;
+    withWater.forEach(m=>{
+      const imm=scoreNode(m.node,detPos);
+      if(imm<=-10000) return;
+      const total=imm*0.4+escapeRouteScore(m.node,detPos,3)*0.6;
+      if(total>ws){ws=total;wb=m;}
+    });
+    finalBest=wb;
+  }
+
+  const fogConsumed=finalBest.type==='water'||(fogWanted&&!G.fogThisLeg);
+  return {
+    node:finalBest.node,
+    type:fogConsumed?'fog':finalBest.type,
+    realType:finalBest.type,
+    fogConsumed,
+    bluffConsumed:bluffWanted
+  };
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -1069,16 +1200,14 @@ function drawMap(){
     ctx.beginPath();ctx.arc(sx,sy,R,0,Math.PI*2);
     ctx.fillStyle='rgba(100,30,30,.7)';ctx.strokeStyle='rgba(200,50,50,.6)';ctx.lineWidth=2;
     ctx.fill();ctx.stroke();
-    if(transform.scale>.28){
-      const fs=Math.round(Math.min(14,10*transform.scale));
-      ctx.font=`${fs}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
-      ctx.fillText('🎩',sx,sy-R-fs*.6);
-      ctx.textBaseline='alphabetic';
-      if(G.ghostSince>0){
-        ctx.font=`bold ${Math.round(Math.min(9,7*transform.scale))}px 'Cinzel',serif`;
-        ctx.fillStyle='rgba(180,60,50,.85)';
-        ctx.fillText('+'+G.ghostSince,sx,sy+R+9*Math.min(transform.scale,1.5));
-      }
+    const fs=Math.round(Math.max(8,Math.min(14,10*transform.scale)));
+    ctx.font=`${fs}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('🎩',sx,sy-R-fs*.6);
+    ctx.textBaseline='alphabetic';
+    if(G.ghostSince>0){
+      ctx.font=`bold ${Math.round(Math.max(7,Math.min(9,7*transform.scale)))}px 'Cinzel',serif`;
+      ctx.fillStyle='rgba(180,60,50,.85)';
+      ctx.fillText('+'+G.ghostSince,sx,sy+R+9*Math.min(transform.scale,1.5));
     }
   }
 
@@ -1125,37 +1254,33 @@ function drawMap(){
     ctx.fillText(i,sx,sy);
     ctx.textBaseline='alphabetic';
 
-    // Detective glows + emojis — drawn ABOVE the node circle
-    if(isDet&&transform.scale>.22){
+    // Detective glows + emojis — always drawn regardless of zoom
+    if(isDet){
       dHere.forEach((d,di)=>{
         const col=d.colour;
         const ox=(di-(dHere.length-1)/2)*(R0*2.5);
-        // Glow ring around node for this detective
+        // Glow ring
         if(di===0){
           ctx.beginPath();ctx.arc(sx,sy,R0+3.5,0,Math.PI*2);
           ctx.strokeStyle=col;ctx.lineWidth=3;ctx.stroke();
-          // Outer soft glow
           ctx.beginPath();ctx.arc(sx,sy,R0+6,0,Math.PI*2);
           ctx.strokeStyle=col.replace(')',',0.35)').replace('rgb','rgba');
           ctx.lineWidth=5;ctx.stroke();
         }
-        if(transform.scale>.3){
-          const fs=Math.round(Math.min(16,12*transform.scale));
-          ctx.font=`${fs}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
-          // Coloured backing pill
-          const bx2=sx+ox,by2=sy-R0-fs*.7;
-          ctx.beginPath();
-          ctx.roundRect?ctx.roundRect(bx2-fs*.6,by2-fs*.55,fs*1.2,fs*1.1,3):ctx.rect(bx2-fs*.6,by2-fs*.55,fs*1.2,fs*1.1);
-          ctx.fillStyle=col;ctx.globalAlpha=.9;ctx.fill();ctx.globalAlpha=1;
-          ctx.fillStyle='#fff';
-          ctx.fillText(d.emoji,bx2,by2);
-          ctx.textBaseline='alphabetic';
-        }
+        const fs=Math.round(Math.max(8,Math.min(16,12*transform.scale)));
+        ctx.font=`${fs}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+        const bx2=sx+ox,by2=sy-R0-fs*.7;
+        ctx.beginPath();
+        ctx.roundRect?ctx.roundRect(bx2-fs*.6,by2-fs*.55,fs*1.2,fs*1.1,3):ctx.rect(bx2-fs*.6,by2-fs*.55,fs*1.2,fs*1.1);
+        ctx.fillStyle=col;ctx.globalAlpha=.9;ctx.fill();ctx.globalAlpha=1;
+        ctx.fillStyle='#fff';
+        ctx.fillText(d.emoji,bx2,by2);
+        ctx.textBaseline='alphabetic';
       });
     }
 
     // Moriarty hat (moriarty-visible modes only)
-    if(moriVisible&&isMori&&transform.scale>.22){
+    if(moriVisible&&isMori){
       const fs=Math.round(Math.min(16,12*transform.scale));
       ctx.font=`${fs}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
       // Bright red glow ring
@@ -1259,6 +1384,7 @@ function showMoriPrompt(leg=1){
   if(gameOver) return;
   promptCtx={who:'moriarty',leg};
   document.getElementById('move-prompt').classList.add('on');
+  document.getElementById('sel-type').disabled=false;
   document.getElementById('mp-title').textContent=leg===2?'🎩 Double Bluff — 2nd Move':'🎩 Your Move';
   document.getElementById('special-row').classList.toggle('on',leg===1);
   document.getElementById('fog-btn').disabled=G.fogLeft<=0||G.fogThisLeg;
@@ -1281,6 +1407,7 @@ function showDetPrompt(di){
   }
   promptCtx={who:'detective',detIdx:di};
   document.getElementById('move-prompt').classList.add('on');
+  document.getElementById('sel-type').disabled=false;
   document.getElementById('mp-title').textContent=`${det.emoji} ${det.short} (${di+1}/5)`;
   document.getElementById('special-row').classList.remove('on');
   document.getElementById('cc-btn').style.display=currentMode==='coach-detective'?'':'none';
@@ -1289,9 +1416,14 @@ function showDetPrompt(di){
 }
 
 function hidePrompt(){
-  document.getElementById('move-prompt').classList.remove('on');
-  promptCtx=null;resetDest();
-  document.getElementById('sel-type').innerHTML='<option value="">— Choose —</option>';
+  // Keep prompt box visible always — just clear and disable it so map doesn't resize
+  promptCtx=null;
+  document.getElementById('mp-title').textContent='—';
+  document.getElementById('special-row').classList.remove('on');
+  document.getElementById('sel-type').innerHTML='<option value="">— —</option>';
+  document.getElementById('sel-type').disabled=true;
+  resetDest();
+  document.getElementById('cc-btn').style.display='none';
 }
 function resetDest(){
   const ds=document.getElementById('sel-dest');
@@ -1659,9 +1791,12 @@ document.getElementById('modal').addEventListener('click',e=>{if(e.target===e.cu
 function startGame(mode){
   currentMode=mode;gameOver=false;
   G=freshGame();
-  const detSet=new Set(DET_START);
-  const pool=Object.keys(nodes).map(Number).filter(n=>!detSet.has(n));
-  G.moriNode=pool[Math.floor(Math.random()*pool.length)];
+  // Randomly assign all 6 starting nodes (5 detectives + Moriarty), no overlaps
+  const allNodes=Object.keys(nodes).map(Number);
+  const shuffle=arr=>{for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}return arr;};
+  const picks=shuffle(allNodes).slice(0,6);
+  G.detectives.forEach((d,i)=>d.node=picks[i]);
+  G.moriNode=picks[5];
 
   document.getElementById('title-screen').style.display='none';
   document.getElementById('outcome').classList.remove('on');
