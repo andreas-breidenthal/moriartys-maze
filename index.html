@@ -722,7 +722,7 @@ let gameOver=false;
 ══════════════════════════════════════════════════════════════ */
 function freshGame(){
   return {
-    moriNode:1,moriMoveCount:0,
+    moriNode:1,moriMoveCount:0,posHistory:[],
     fogLeft:5,bluffLeft:2,
     bluffLeg:0,        // 0=none, 1=first leg in progress, 2=second leg in progress
     fogThisLeg:false,
@@ -830,119 +830,107 @@ function pruneBeliefDetNodes(){
    AI — MORIARTY
    Never moves to a detective-occupied node
 ══════════════════════════════════════════════════════════════ */
-/* BFS hop-distance using only land transport (taxi/bus/underground).
-   Used for safety checks — water requires fog so is not a reliable escape route. */
+/* BFS hop-distance using only land transport (taxi/bus/underground). */
 function landHopDist(a,b){
   if(a===b) return 0;
   const visited=new Set([a]);
   let frontier=[a],dist=0;
   while(frontier.length){
-    dist++;
-    const next=[];
-    for(const n of frontier){
-      for(const t of ['taxi','bus','underground']){
-        for(const nb of adj[n][t]){
-          if(nb===b) return dist;
-          if(!visited.has(nb)){visited.add(nb);next.push(nb);}
-        }
-      }
-    }
-    frontier=next;
-    if(dist>30) return 99;
+    dist++;const next=[];
+    for(const n of frontier) for(const t of ['taxi','bus','underground'])
+      for(const nb of adj[n][t]){if(nb===b)return dist;if(!visited.has(nb)){visited.add(nb);next.push(nb);}}
+    frontier=next;if(dist>30)return 99;
   }
   return 99;
 }
 
-/* How many hops does it take to reach ANY underground station from nodeId? */
+/* Hops to nearest underground station (land only). */
 function hopsToUnderground(nodeId){
-  if(nodes[nodeId].types.includes('underground')) return 0;
-  const visited=new Set([nodeId]);
-  let frontier=[nodeId],dist=0;
+  if(nodes[nodeId].types&&nodes[nodeId].types.includes('underground')) return 0;
+  const visited=new Set([nodeId]);let frontier=[nodeId],dist=0;
   while(frontier.length){
-    dist++;
-    const next=[];
-    for(const n of frontier){
-      for(const t of ['taxi','bus','underground']){
-        for(const nb of adj[n][t]){
-          if(nodes[nb].types.includes('underground')) return dist;
-          if(!visited.has(nb)){visited.add(nb);next.push(nb);}
-        }
+    dist++;const next=[];
+    for(const n of frontier) for(const t of ['taxi','bus','underground'])
+      for(const nb of adj[n][t]){
+        if(nodes[nb].types&&nodes[nb].types.includes('underground'))return dist;
+        if(!visited.has(nb)){visited.add(nb);next.push(nb);}
       }
-    }
-    frontier=next;
-    if(dist>8) return 99;
+    frontier=next;if(dist>8)return 99;
   }
   return 99;
 }
 
-/* Score a candidate destination node for Moriarty.
-   Hard rule: never land 1 land-hop from any detective.
-   Otherwise: reward mobility and escape options, not raw distance.
-   Moriarty is invisible — being 2+ hops away is safe enough.
-   Willingness to pass near detectives is fine if it opens better escape. */
-function scoreNode(nodeId,detPos){
-  // Hard constraint: do not land on a node adjacent (1 land hop) to any detective
-  for(const dp of detPos){
-    if(landHopDist(nodeId,dp)<=1) return -10000;
-  }
-
-  // Land mobility out of this node
+/* Score a node for immediate safety and mobility.
+   Hard rule: never land within 1 land-hop of a detective. */
+function scoreNode(nodeId, detPos){
+  for(const dp of detPos) if(landHopDist(nodeId,dp)<=1) return -10000;
   const mob=adj[nodeId].taxi.length+adj[nodeId].bus.length+adj[nodeId].underground.length;
-
-  // Dead-end penalty: <=2 land exits is a trap
-  const deadEndPenalty=mob<=2?-300:0;
-
-  // Future mobility: average land connections of reachable neighbours
+  if(mob===0) return -5000;
   const nbrs=new Set();
   ['taxi','bus','underground'].forEach(t=>adj[nodeId][t].forEach(n=>nbrs.add(n)));
   const futMob=nbrs.size===0?0:
     [...nbrs].reduce((s,n)=>s+adj[n].taxi.length+adj[n].bus.length+adj[n].underground.length,0)/nbrs.size;
-
-  // Bonus for being at or near an underground station (best escape tool)
-  const undergroundBonus=(200-hopsToUnderground(nodeId)*40);
-
-  // Mild penalty for each detective that is 2 land hops away (they could reach us next turn)
+  const deadEndPenalty=mob<=2?-300:0;
+  const ugBonus=Math.max(0,200-hopsToUnderground(nodeId)*40);
   let dangerPenalty=0;
-  for(const dp of detPos){
-    if(landHopDist(nodeId,dp)===2) dangerPenalty-=60;
-  }
-
-  return mob*20 + futMob*12 + undergroundBonus + dangerPenalty + deadEndPenalty;
+  for(const dp of detPos) if(landHopDist(nodeId,dp)===2) dangerPenalty-=50;
+  return mob*20+futMob*12+ugBonus+dangerPenalty+deadEndPenalty;
 }
 
-/* BFS to find best escape route — returns score of best reachable safe node
-   within maxDepth moves, penalising paths that pass through danger zones.
-   This lets Moriarty route THROUGH tight spots toward open territory. */
+/* Deep escape-route search: BFS up to maxDepth moves ahead.
+   Each depth step, detectives advance ONE hop toward Moriarty (worst case).
+   This means Moriarty plans around a closing net, not a static one.
+   Anti-oscillation: recently visited nodes are penalised. */
 function escapeRouteScore(fromNode, detPos, maxDepth){
-  // BFS/beam search: track (node, accumulated_path_penalty)
-  // We want the best safe node reachable, accepting some danger en route
-  const detSet=new Set(detPos);
-  const visited=new Map(); // node -> best score seen
-  let frontier=[{node:fromNode,penalty:0}];
+  const recentlyVisited=new Set(G.posHistory||[]);
+
+  // State: {node, detPos (array), penalty}
+  // Advance detective positions each step using BFS toward current mori position
+  function advanceDets(dPos, targetNode){
+    return dPos.map(dp=>{
+      if(dp===targetNode) return dp;
+      // Move one step toward targetNode
+      let best=dp,bestDist=landHopDist(dp,targetNode);
+      for(const t of ['taxi','bus','underground']){
+        for(const nb of adj[dp][t]){
+          const d=landHopDist(nb,targetNode);
+          if(d<bestDist){bestDist=d;best=nb;}
+        }
+      }
+      return best;
+    });
+  }
+
+  const stateKey=(node,depth)=>node*100+depth;
+  const visited=new Map();
+  let frontier=[{node:fromNode,dPos:detPos,penalty:0}];
   let bestScore=-Infinity;
 
   for(let depth=0;depth<maxDepth;depth++){
     const next=[];
-    for(const {node,penalty} of frontier){
+    for(const {node,dPos,penalty} of frontier){
+      const advDPos=advanceDets(dPos,node); // detectives close in
+      const dSet=new Set(advDPos);
       const nbrs=[];
       ['taxi','bus','underground'].forEach(t=>adj[node][t].forEach(n=>{
-        if(!detSet.has(n)) nbrs.push(n);
+        if(!dSet.has(n)) nbrs.push(n);
       }));
       for(const nb of nbrs){
-        // Penalty for being adjacent to a detective (dangerous transit)
-        const minHopsHere=Math.min(...detPos.map(dp=>landHopDist(nb,dp)));
-        const transitPenalty=minHopsHere<=1?500:minHopsHere===2?80:0;
-        const totalPenalty=penalty+transitPenalty;
-        const prev=visited.get(nb);
+        const minHops=Math.min(...advDPos.map(dp=>landHopDist(nb,dp)));
+        const transitPenalty=minHops<=1?600:minHops===2?100:0;
+        // Anti-oscillation: penalise nodes we've been at recently
+        const revisitPenalty=recentlyVisited.has(nb)?250:0;
+        const totalPenalty=penalty+transitPenalty+revisitPenalty;
+        const key=stateKey(nb,depth);
+        const prev=visited.get(key);
         if(prev!==undefined&&prev<=totalPenalty) continue;
-        visited.set(nb,totalPenalty);
-        // Score this node as a destination
-        const nodeScore=scoreNode(nb,detPos);
+        visited.set(key,totalPenalty);
+        const nodeScore=scoreNode(nb,advDPos);
         if(nodeScore>-10000){
           const adjusted=nodeScore-totalPenalty;
           if(adjusted>bestScore) bestScore=adjusted;
         }
-        next.push({node:nb,penalty:totalPenalty});
+        next.push({node:nb,dPos:advDPos,penalty:totalPenalty});
       }
     }
     frontier=next;
@@ -955,6 +943,7 @@ function aiPickMoriMove(){
   const detPos=G.detectives.map(d=>d.node);
   const detSet=new Set(detPos);
   const nextMove=G.moriMoveCount+1;
+  const recentlyVisited=new Set(G.posHistory||[]);
 
   const FOG_BANNED  =new Set([1,2,3,8,13,18,24]);
   const BLUFF_BANNED=new Set([1,2,3,7,8,12,13,17,18]);
@@ -965,43 +954,34 @@ function aiPickMoriMove(){
   if(!G.fogThisLeg) candidates=candidates.filter(m=>m.type!=='water');
   if(!candidates.length) candidates=moriMoves(G.moriNode).filter(m=>!detSet.has(m.node));
 
-  // Score each candidate: immediate safety + escape route quality (3 moves deep)
+  // Score: immediate + deep escape route (4 moves, detectives advancing)
   let best=candidates[0],bestScore=-Infinity;
   candidates.forEach(m=>{
     const imm=scoreNode(m.node,detPos);
-    if(imm<=-10000) return; // never land adjacent to detective
-    const escape=escapeRouteScore(m.node,detPos,3);
-    const total=imm*0.4+escape*0.6; // weight escape route heavily
+    if(imm<=-10000) return;
+    const revisitPenalty=recentlyVisited.has(m.node)?300:0;
+    const escape=escapeRouteScore(m.node,detPos,4);
+    const total=imm*0.35+escape*0.65-revisitPenalty;
     if(total>bestScore){bestScore=total;best=m;}
   });
 
-  // Closest detective to destination (land hops)
   const minDestHops=Math.min(...detPos.map(dp=>landHopDist(dp,best.node)));
-  const detVeryClose=minDestHops<=2;  // within 2 hops = genuinely threatened
+  const detVeryClose=minDestHops<=2;
 
-  // ── FOG rules ──
-  // Eligible: not banned, not already used this leg, detectives very close at dest
-  // Extra check: fog only meaningful if dest has >1 transport type
-  // (if cab-only, fog hides nothing useful)
-  const destTransportTypes=new Set(
-    moriMoves(best.node).filter(m=>m.type!=='water').map(m=>m.type)
-  );
+  // Fog: only if meaningful (dest has >1 transport type) and detectives very close
+  const destTransportTypes=new Set(moriMoves(best.node).filter(m=>m.type!=='water').map(m=>m.type));
   const fogMeaningful=destTransportTypes.size>1;
-  const fogEligible=G.fogLeft>0&&!G.fogThisLeg&&!FOG_BANNED.has(nextMove)
-                    &&detVeryClose&&fogMeaningful;
+  const fogEligible=G.fogLeft>0&&!G.fogThisLeg&&!FOG_BANNED.has(nextMove)&&detVeryClose&&fogMeaningful;
 
-  // ── BLUFF rules ──
-  // Eligible: not banned, not already in bluff, detectives very close
-  // Do NOT use two bluffs contiguously — check we haven't just finished one
-  const justUsedBluff=G.moriMoveCount>0&&G.bluffLeg===0&&G.bluffPairStart===G.moriMoveCount-1;
-  const bluffEligible=G.bluffLeft>0&&G.bluffLeg===0&&!BLUFF_BANNED.has(nextMove)
-                      &&detVeryClose&&!justUsedBluff;
+  // Bluff: not banned, not just used one, detectives very close
+  const justUsedBluff=G.bluffLeg===0&&G.bluffPairStart===G.moriMoveCount-1;
+  const bluffEligible=G.bluffLeft>0&&G.bluffLeg===0&&!BLUFF_BANNED.has(nextMove)&&detVeryClose&&!justUsedBluff;
 
-  // Never use both fog and bluff on same move — bluff takes priority (more powerful)
+  // Never both on same move — bluff wins
   const bluffWanted=bluffEligible;
   const fogWanted=fogEligible&&!bluffWanted;
 
-  // If fog active this leg or wanted, reconsider water routes
+  // If fog active or wanted, reconsider water routes
   let finalBest=best;
   if(fogWanted||G.fogThisLeg){
     const withWater=moriMoves(G.moriNode).filter(m=>!detSet.has(m.node));
@@ -1009,7 +989,8 @@ function aiPickMoriMove(){
     withWater.forEach(m=>{
       const imm=scoreNode(m.node,detPos);
       if(imm<=-10000) return;
-      const total=imm*0.4+escapeRouteScore(m.node,detPos,3)*0.6;
+      const revisitPenalty=recentlyVisited.has(m.node)?300:0;
+      const total=imm*0.35+escapeRouteScore(m.node,detPos,4)*0.65-revisitPenalty;
       if(total>ws){ws=total;wb=m;}
     });
     finalBest=wb;
@@ -1547,6 +1528,7 @@ function doMoriMove(dest,type){
   const legal=usingFog?valid.some(m=>m.node===dest):valid.some(m=>m.node===dest&&m.type===type);
   if(!legal){console.warn('Illegal Moriarty move',dest,type);return;}
 
+  G.posHistory=G.posHistory||[];G.posHistory.push(G.moriNode);if(G.posHistory.length>6)G.posHistory.shift();
   G.moriNode=dest;G.moriMoveCount++;
   if(G.ghostNode>=0) G.ghostSince++;
 
