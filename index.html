@@ -37,7 +37,7 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
   animation:flicker 7s ease-in-out infinite}
 #title-screen h1 span{color:var(--gold-hi)}
 @keyframes flicker{0%,88%,100%{opacity:1}90%{opacity:.87}95%{opacity:.79}}
-.t-sub{font-family:'IM Fell English',serif;font-style:italic;font-size:clamp(12px,2vw,18px);color:var(--parch-dk);text-align:center}
+.t-sub{font-family:'IM Fell English',serif;font-size:clamp(12px,2vw,18px);color:var(--parch-dk);text-align:center}
 .t-rule{width:min(300px,82vw);height:1px;background:linear-gradient(to right,transparent,var(--gold-hi),transparent)}
 .mode-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;width:min(560px,94vw)}
 .mode-card{background:rgba(242,228,192,.07);border:1px solid rgba(176,120,8,.35);
@@ -47,7 +47,7 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
 .mode-icon{font-size:28px;display:block;margin-bottom:8px}
 .mode-title{font-family:'Cinzel',serif;font-size:11px;font-weight:700;color:var(--gold-hi);
   letter-spacing:1.5px;text-transform:uppercase;margin-bottom:5px}
-.mode-desc{font-size:11px;color:var(--parch-dk);line-height:1.45;font-style:italic}
+.mode-desc{font-size:11px;color:var(--parch-dk);line-height:1.45}
 .t-foot{font-size:8px;color:#6a5030;letter-spacing:4px;text-transform:uppercase;font-family:'Cinzel',serif}
 
 /* ── GAME SHELL ── */
@@ -177,7 +177,7 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
 .det-meta{flex:1;min-width:0}
 .det-name-sm{font-family:'Cinzel',serif;font-size:11px;font-weight:700;color:var(--parch-text);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.det-pos-sm{font-size:11px;color:var(--parch-text);font-style:italic}
+.det-pos-sm{font-size:11px;color:var(--parch-text)}
 .det-tix-sm{display:flex;gap:2px;margin-top:1px;flex-wrap:wrap}
 .det-tix-sm span{font-size:10px;padding:1px 3px;border-radius:1px;font-family:'Cinzel',serif;font-weight:700}
 .det-tix-sm .t{background:rgba(200,144,16,.18);color:#7a4a00;border:1px solid rgba(200,144,16,.4)}
@@ -197,7 +197,7 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
 .log-n{font-family:'Cinzel',serif;font-size:10px;color:var(--gold);
   flex-shrink:0;padding-top:1px;min-width:20px;font-weight:700}
 .log-i{font-size:10px;flex-shrink:0}
-.log-t{color:var(--parch-text);font-style:italic;font-size:13px}
+.log-t{color:var(--parch-text);font-size:13px}
 .log-t strong{color:var(--parch-text);font-style:normal}
 .log-entry.reveal{background:rgba(139,26,26,.08);border-left:3px solid var(--crim-hi);
   padding:3px 4px;margin-left:-4px;border-radius:1px}
@@ -212,13 +212,13 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
   display:flex;justify-content:space-between;align-items:center}
 #notes-coach-log{flex:1;overflow-y:auto;padding:4px 9px 5px;
   scrollbar-width:thin;scrollbar-color:rgba(26,112,48,.2) transparent}
-.coach-entry{font-family:'Crimson Text',serif;font-style:italic;font-size:16px;
+.coach-entry{font-family:'Crimson Text',serif;font-size:16px;
   color:#1a3a1a;line-height:1.6;margin-bottom:5px;
   border-left:3px solid rgba(26,122,48,.5);padding-left:7px;font-weight:600}
 #notes-text{flex:1;resize:none;border:none;outline:none;background:transparent;
   font-family:'Crimson Text',serif;font-size:14px;color:var(--parch-text);
   padding:5px 9px;line-height:1.5}
-#notes-text::placeholder{color:var(--parch-dk);font-style:italic}
+#notes-text::placeholder{color:var(--parch-dk)}
 
 /* ── BOTTOM BAR — slim status only ── */
 #bottom-bar{flex-shrink:0;height:36px;background:var(--panel-bg);
@@ -231,7 +231,7 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
 @keyframes ph-p{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.6)}}
 .ph-txt{font-family:'Cinzel',serif;font-size:12px;color:var(--parch-text);letter-spacing:1px;font-weight:700}
 #ai-bar{display:none;align-items:center;gap:6px;
-  font-family:'Crimson Text',serif;font-style:italic;font-size:14px;color:var(--parch-text)}
+  font-family:'Crimson Text',serif;font-size:14px;color:var(--parch-text)}
 #ai-bar.on{display:flex}
 .think-dots span{display:inline-block;width:4px;height:4px;border-radius:50%;background:var(--gold);
   margin:0 1px;animation:td 1.1s ease-in-out infinite}
@@ -311,7 +311,7 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
   text-align:center;letter-spacing:4px;animation:fli .8s ease forwards}
 @keyframes fli{0%{opacity:0}80%{opacity:.85}90%{opacity:.6}100%{opacity:1}}
 .out-mori{color:#f06050}.out-dets{color:#f0c840}
-.out-sub{font-family:'IM Fell English',serif;font-style:italic;
+.out-sub{font-family:'IM Fell English',serif;
   font-size:clamp(13px,2vw,20px);color:var(--parch-dk);
   text-align:center;padding:0 24px;max-width:500px;line-height:1.6}
 .out-acts{display:flex;gap:10px}
@@ -351,7 +351,7 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
     </div>
   </div>
   <div class="t-rule"></div>
-  <div class="t-foot">Scotland Yard · Ravensburger · 199 Stations</div>
+  <div class="t-foot">199 Stations</div>
 </div>
 
 <div id="game">
