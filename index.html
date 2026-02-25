@@ -824,26 +824,59 @@ function pruneBeliefDetNodes(){
    AI — MORIARTY
    Never moves to a detective-occupied node
 ══════════════════════════════════════════════════════════════ */
-function scoreNode(nodeId,detPos){
-  const n=nodes[nodeId];
-  let minD=Infinity;
-  detPos.forEach(dp=>{const d=nodes[dp];const dist=Math.hypot(n.x-d.x,n.y-d.y);if(dist<minD)minD=dist;});
-  const mob=adj[nodeId].taxi.length+adj[nodeId].bus.length+adj[nodeId].underground.length;
-  const twoHop=new Set([nodeId]);
-  adj[nodeId].taxi.forEach(a=>{twoHop.add(a);adj[a].taxi.forEach(b=>twoHop.add(b));});
-  let dens=0;detPos.forEach(dp=>{if(twoHop.has(dp))dens++;});
-  return minD+mob*12-dens*70;
+/* BFS hop-distance using all transport types */
+function moriHopDist(a,b){
+  if(a===b) return 0;
+  const visited=new Set([a]);
+  let frontier=[a],dist=0;
+  while(frontier.length){
+    dist++;
+    const next=[];
+    for(const n of frontier){
+      for(const t of ['taxi','bus','underground','water']){
+        for(const nb of adj[n][t]){
+          if(nb===b) return dist;
+          if(!visited.has(nb)){visited.add(nb);next.push(nb);}
+        }
+      }
+    }
+    frontier=next;
+    if(dist>30) return 99;
+  }
+  return 99;
 }
+
+/* Score a candidate node.
+   Stay 2+ hops from all detectives, maximise escape routes, avoid dead ends. */
+function scoreNode(nodeId,detPos){
+  const hops=detPos.map(dp=>moriHopDist(nodeId,dp));
+  const minHops=Math.min(...hops);
+  if(minHops<=1) return -10000;
+  const mob=adj[nodeId].taxi.length+adj[nodeId].bus.length
+           +adj[nodeId].underground.length+adj[nodeId].water.length;
+  const neighbours=[];
+  ['taxi','bus','underground','water'].forEach(t=>adj[nodeId][t].forEach(n=>neighbours.push(n)));
+  const uniqueNbrs=[...new Set(neighbours)];
+  const futMob=uniqueNbrs.length===0?0:
+    uniqueNbrs.reduce((s,n)=>s+adj[n].taxi.length+adj[n].bus.length+adj[n].underground.length,0)/uniqueNbrs.length;
+  const deadEndPenalty=mob<=2?-200:0;
+  const safeDist=Math.min(minHops,5);
+  return safeDist*80+mob*15+futMob*8+deadEndPenalty;
+}
+
 function aiPickMoriMove(){
   const detPos=G.detectives.map(d=>d.node);
   const detSet=new Set(detPos);
-  const nextMoveNum=G.moriMoveCount+1;
-  const isRevealMove=REVEAL_MOVES.includes(nextMoveNum);
-  const mn=nodes[G.moriNode];
-  const minDetDist=Math.min(...detPos.map(dp=>{const d=nodes[dp];return Math.hypot(mn.x-d.x,mn.y-d.y);}));
-  const useBluff=G.bluffLeft>0&&G.bluffLeg===0&&isRevealMove;
-  const useFog=G.fogLeft>0&&(isRevealMove||minDetDist<160);
-  // Candidates must not be detective-occupied
+  const justRevealed=REVEAL_MOVES.includes(G.moriMoveCount);
+  const minDetHops=Math.min(...detPos.map(dp=>moriHopDist(G.moriNode,dp)));
+  const detClose=minDetHops<=3;
+  const postRevealEscape=justRevealed&&minDetHops<=4;
+  // Fog: use AFTER reveals when detectives are close, or when very close (escape)
+  // Never waste on a reveal move itself
+  const useFog=G.fogLeft>0&&!G.fogThisLeg&&(postRevealEscape||detClose);
+  // Bluff: use when cornered or just after reveal with detectives close
+  const cornered=minDetHops<=2;
+  const useBluff=G.bluffLeft>0&&G.bluffLeg===0&&(cornered||(justRevealed&&detClose));
   let candidates=moriMoves(G.moriNode).filter(m=>!detSet.has(m.node));
   if(!candidates.length) return {node:G.moriNode,type:'taxi',surrender:true};
   const fogAvail=useFog||G.fogThisLeg;
