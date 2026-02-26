@@ -1087,19 +1087,57 @@ function aiPickMoriMove(){
    AI — DETECTIVES
    Respect no-sharing rule: plannedDests tracks all committed destinations
 ══════════════════════════════════════════════════════════════ */
+/* How many land hops to nearest node with a bus connection */
+function hopsToBus(nodeId){
+  if(adj[nodeId].bus.length>0) return 0;
+  const vis=new Set([nodeId]);let fr=[nodeId],d=0;
+  while(fr.length){
+    d++;const nx=[];
+    for(const n of fr)for(const t of ['taxi','bus','underground'])
+      for(const nb of adj[n][t]){
+        if(adj[nb].bus.length>0) return d;
+        if(!vis.has(nb)){vis.add(nb);nx.push(nb);}
+      }
+    fr=nx;if(d>8)return 99;
+  }
+  return 99;
+}
+/* How many land hops to nearest underground station */
+function hopsToUndergroundDet(nodeId){
+  if(nodes[nodeId].types&&nodes[nodeId].types.includes('underground')) return 0;
+  const vis=new Set([nodeId]);let fr=[nodeId],d=0;
+  while(fr.length){
+    d++;const nx=[];
+    for(const n of fr)for(const t of ['taxi','bus','underground'])
+      for(const nb of adj[n][t]){
+        if(nodes[nb].types&&nodes[nb].types.includes('underground')) return d;
+        if(!vis.has(nb)){vis.add(nb);nx.push(nb);}
+      }
+    fr=nx;if(d>8)return 99;
+  }
+  return 99;
+}
+
 function aiDetTeamMoves(){
   const moves=[];
-  // plannedDests: nodes already claimed by detectives who have moved this phase
   const plannedDests=new Set();
+  const TAXI_START=10,BUS_START=8,UG_START=4;
+  const movesLeft=Math.max(1,MAX_MOVES-G.moriMoveCount);
+
+  // Rank nodes by belief for target assignment
   const ranked=[];
   for(let i=1;i<=199;i++) ranked.push({id:i,b:G.belief[i]});
   ranked.sort((a,b)=>b.b-a.b);
+
+  // Belief-weighted centroid and spread
   let cx=0,cy=0,tot=0;
   for(let i=1;i<=199;i++){cx+=nodes[i].x*G.belief[i];cy+=nodes[i].y*G.belief[i];tot+=G.belief[i];}
   if(tot>0){cx/=tot;cy/=tot;}
   let spread=0;
   for(let i=1;i<=199;i++){const dx=nodes[i].x-cx,dy=nodes[i].y-cy;spread+=Math.sqrt(dx*dx+dy*dy)*G.belief[i];}
   if(tot>0) spread/=tot;
+
+  // Assign spread-out targets
   const targets=[];const assignedT=new Set();
   const minSep=spread>250?150:80;
   for(let di=0;di<NUM_DETS;di++){
@@ -1111,25 +1149,69 @@ function aiDetTeamMoves(){
     }
     assignedT.add(target);targets.push(target);
   }
+
   G.detectives.forEach((det,i)=>{
-    // excludeNodes = all OTHER detectives' current nodes + already planned destinations
     const otherCurrent=new Set(G.detectives.filter((_,j)=>j!==i).map(d=>d.node));
     const exclude=new Set([...otherCurrent,...plannedDests]);
-    const valid=detMoves(det,exclude);
+    let valid=detMoves(det,exclude);
     if(!valid.length){
-      // Try without plannedDests exclusion (fallback: stay put counts as stranded)
       const fallback=detMoves(det,otherCurrent);
       if(!fallback.length){moves.push({detIdx:i,node:det.node,type:'taxi',stranded:true});return;}
-      // Pick best fallback ignoring planned
-      const tgt=nodes[targets[i]||ranked[0].id];
-      let best=fallback[0],bs=-Infinity;
-      fallback.forEach(m=>{const s=-Math.hypot(nodes[m.node].x-tgt.x,nodes[m.node].y-tgt.y)+(G.belief[m.node]||0)*4000;if(s>bs){bs=s;best=m;}});
-      plannedDests.add(best.node);moves.push({detIdx:i,node:best.node,type:best.type});return;
+      valid=fallback;
     }
+
     const tgt=nodes[targets[i]||ranked[0].id];
+    const taxiRatio=det.tickets.taxi/TAXI_START;
+    const busRatio=det.tickets.bus/BUS_START;
+    const ugRatio=det.tickets.underground/UG_START;
+
     let best=valid[0],bs=-Infinity;
-    valid.forEach(m=>{const s=-Math.hypot(nodes[m.node].x-tgt.x,nodes[m.node].y-tgt.y)+(G.belief[m.node]||0)*4000;if(s>bs){bs=s;best=m;}});
-    plannedDests.add(best.node);moves.push({detIdx:i,node:best.node,type:best.type});
+    valid.forEach(m=>{
+      // Base score: closeness to target + belief at destination
+      const dist=-Math.hypot(nodes[m.node].x-tgt.x,nodes[m.node].y-tgt.y);
+      const belief=(G.belief[m.node]||0)*4000;
+
+      // ── TICKET MANAGEMENT SCORING ──
+      // Penalise over-using taxi relative to its starting ratio vs other tickets.
+      // If taxi ratio is much higher than bus ratio, push toward using bus/underground.
+      let ticketScore=0;
+      if(m.type==='taxi'){
+        // Penalise taxi use proportional to how much more taxi we have vs bus
+        const overuse=Math.max(0,taxiRatio-busRatio);
+        ticketScore=-(overuse*300);
+        // Extra penalty if close to running out of bus but still have lots of taxi
+        if(det.tickets.bus<=2&&det.tickets.taxi>4) ticketScore-=200;
+      } else if(m.type==='bus'){
+        // Reward bus when taxi ratio is higher than bus ratio (rebalance)
+        ticketScore=Math.max(0,taxiRatio-busRatio)*200;
+        // Reward bus for covering more ground (nodes reachable 2 hops from dest)
+        ticketScore+=50;
+      } else if(m.type==='underground'){
+        // Underground is precious — use it when it saves significant hops
+        // Only reward it if taxi ratio >> underground ratio (overdue to use one)
+        const ugOverdue=Math.max(0,ugRatio-taxiRatio+0.2);
+        // Also reward if destination is much closer to target than alternatives
+        const ugDistGain=valid.filter(v=>v.type!=='underground')
+          .reduce((best,v)=>Math.max(best,Math.hypot(nodes[v.node].x-tgt.x,nodes[v.node].y-tgt.y)),0)
+          -Math.hypot(nodes[m.node].x-tgt.x,nodes[m.node].y-tgt.y);
+        ticketScore=ugOverdue*300+(ugDistGain>80?200:ugDistGain>40?80:0);
+      }
+
+      // ── STRANDING PREVENTION ──
+      // Penalise moves that leave detective stranded from alternative transport
+      const hopsToNextBus=hopsToBus(m.node);
+      const hopsToNextUG=hopsToUndergroundDet(m.node);
+      // If taxi almost gone, penalise being far from bus
+      if(det.tickets.taxi<=3&&hopsToNextBus>det.tickets.taxi) ticketScore-=500;
+      // If bus almost gone, penalise being far from underground
+      if(det.tickets.bus<=2&&hopsToNextUG>det.tickets.bus+det.tickets.taxi) ticketScore-=300;
+
+      const total=dist+belief+ticketScore;
+      if(total>bs){bs=total;best=m;}
+    });
+
+    plannedDests.add(best.node);
+    moves.push({detIdx:i,node:best.node,type:best.type});
   });
   return moves;
 }
