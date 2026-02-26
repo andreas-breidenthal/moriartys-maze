@@ -1018,32 +1018,29 @@ function aiPickMoriMove(){
   }
 
   // ── BLUFF SPECIAL CASE ──
-  // In crisis/alarm: bluff lets leg 1 go as close as 1 hop, leg 2 must achieve safe distances
-  // Evaluate bluff by scoring where we could be after 2 moves
   const justUsedBluff=G.bluffLeg===0&&G.bluffPairStart===G.moriMoveCount-1;
   const bluffWorthIt=level==='crisis'||(level==='alarm'&&G.bluffLeft>0);
   const bluffWanted=G.bluffLeft>0&&G.bluffLeg===0
     &&!BLUFF_BANNED.has(nextMove)&&bluffWorthIt&&!justUsedBluff;
 
-  // ── CANDIDATE MOVES ──
+  // ── CANDIDATE MOVES — always from actual moriMoves() so type is always valid ──
   let candidates=moriMoves(G.moriNode).filter(m=>!detSet.has(m.node));
   if(!candidates.length)return{node:G.moriNode,type:'taxi',surrender:true};
   if(!G.fogThisLeg)candidates=candidates.filter(m=>m.type!=='water');
   if(!candidates.length)candidates=moriMoves(G.moriNode).filter(m=>!detSet.has(m.node));
 
-  // During bluff leg 1: allow moving within 1 hop IF leg 2 can escape
-  // During normal play: hard veto on adjacent nodes
+  // isBluffLeg1: relax adjacency veto so leg 1 can pass through tight spots
   const isBluffLeg1=bluffWanted||(G.bluffLeg===1);
 
   let best=null,bestScore=-Infinity;
   candidates.forEach(m=>{
+    // m.node and m.type are always valid — came from moriMoves()
     let s=scoreNode(m.node,detPos);
 
-    // During bluff leg 1, relax the adjacency rule but require escape path after
     if(isBluffLeg1&&s<=-99999){
-      // Check if a good escape exists 2 moves from here
+      // Relaxed: adjacent to detective OK on leg 1 if escape exists afterward
       const escapeHaven=findBestHaven(m.node,detPos,3);
-      if(escapeHaven&&escapeHaven.score>0) s=escapeHaven.score-500; // usable but penalised
+      if(escapeHaven&&escapeHaven.score>0) s=escapeHaven.score-500;
       else return;
     } else if(s<=-99999) return;
 
@@ -1055,6 +1052,16 @@ function aiPickMoriMove(){
   });
 
   if(!best)return{node:G.moriNode,type:'taxi',surrender:true};
+
+  // Sanity check: verify best.node is reachable by best.type from current node
+  // (should always be true since candidates come from moriMoves, but guard anyway)
+  const reachable=moriMoves(G.moriNode).some(m=>m.node===best.node&&(m.type===best.type||G.fogThisLeg));
+  if(!reachable){
+    // Fall back to first safe candidate
+    const safe=candidates.find(m=>scoreNode(m.node,detPos)>-99999);
+    if(!safe)return{node:G.moriNode,type:'taxi',surrender:true};
+    best=safe;
+  }
 
   // ── FOG DECISION ──
   const minDestHops=Math.min(...detPos.map(dp=>landHopDist(dp,best.node)));
