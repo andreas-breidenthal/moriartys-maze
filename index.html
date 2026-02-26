@@ -830,7 +830,7 @@ function pruneBeliefDetNodes(){
    AI — MORIARTY
    Never moves to a detective-occupied node
 ══════════════════════════════════════════════════════════════ */
-/* BFS hop-distance using only land transport. */
+/* ── LAND HOP DISTANCE (taxi/bus/underground only) ── */
 function landHopDist(a,b){
   if(a===b)return 0;
   const vis=new Set([a]);let fr=[a],d=0;
@@ -843,7 +843,7 @@ function landHopDist(a,b){
   return 99;
 }
 
-/* Hops to nearest underground station. */
+/* ── HOPS TO NEAREST UNDERGROUND ── */
 function hopsToUnderground(nodeId){
   if(nodes[nodeId].types&&nodes[nodeId].types.includes('underground'))return 0;
   const vis=new Set([nodeId]);let fr=[nodeId],d=0;
@@ -859,34 +859,89 @@ function hopsToUnderground(nodeId){
   return 99;
 }
 
-/* Static quality of a node as a safe haven.
-   High score = many exits, near underground, away from detectives. */
-function havenScore(nodeId, detPos){
-  for(const dp of detPos)if(landHopDist(nodeId,dp)<=1)return -10000;
+/* ── EDGE PENALTY: nodes near map edge/corners are dangerous traps ──
+   Map is 1600x1200. Penalty rises sharply near edges, compounds at corners. */
+function edgePenalty(nodeId){
+  const n=nodes[nodeId];
+  const WORLD_W=1600,WORLD_H=1200,MARGIN=200;
+  const dx=Math.max(0,MARGIN-Math.min(n.x,WORLD_W-n.x));  // 0 if safe, >0 near edge
+  const dy=Math.max(0,MARGIN-Math.min(n.y,WORLD_H-n.y));
+  // Corners compound multiplicatively
+  if(dx>0&&dy>0) return -(dx+dy)*3;   // corner: harshest
+  return -(dx+dy)*1.5;                 // edge only: moderate
+}
+
+/* ── THREAT LEVEL: compounding danger based on sorted detective distances ──
+   Returns a penalty score based on how many detectives are too close.
+   Rules:
+   - Any detective within 1 hop: hard veto (-99999)
+   - Compounding pressure when multiple detectives cluster:
+     1 within 2, 2nd within 4, 3rd within 5 = acceptable
+     If 3rd comes within 4: raise alarm
+     If 2nd comes within 3: raise alarm
+     4+ within 3: crisis
+*/
+function threatPenalty(nodeId, detPos){
+  const hops=detPos.map(dp=>landHopDist(nodeId,dp)).sort((a,b)=>a-b);
+  const [h1,h2,h3,h4,h5]=hops;
+
+  // Hard veto: never land adjacent to any detective
+  if(h1<=1) return -99999;
+
+  let penalty=0;
+
+  // Closest detective pressure
+  if(h1===2) penalty-=150;
+
+  // Second closest compounding
+  if(h2<=3) penalty-=200;
+  else if(h2<=4) penalty-=80;
+
+  // Third closest compounding
+  if(h3<=3) penalty-=250;   // 3rd within 3 = serious alarm
+  else if(h3<=4) penalty-=120;
+  else if(h3<=5) penalty-=40;
+
+  // Crisis: 4+ detectives within 3 hops
+  const within3=hops.filter(h=>h<=3).length;
+  const within4=hops.filter(h=>h<=4).length;
+  if(within3>=4) penalty-=500;
+  else if(within3>=3) penalty-=300;
+  if(within4>=4) penalty-=200;
+
+  return penalty;
+}
+
+/* ── NODE QUALITY: mobility + underground access ── */
+function nodeQuality(nodeId){
   const mob=adj[nodeId].taxi.length+adj[nodeId].bus.length+adj[nodeId].underground.length;
-  if(mob===0)return -5000;
+  if(mob===0) return -5000;
   const nbrs=new Set();
   ['taxi','bus','underground'].forEach(t=>adj[nodeId][t].forEach(n=>nbrs.add(n)));
   const futMob=[...nbrs].reduce((s,n)=>s+adj[n].taxi.length+adj[n].bus.length+adj[n].underground.length,0)/(nbrs.size||1);
   const ugBonus=Math.max(0,160-hopsToUnderground(nodeId)*35);
   const deadEnd=mob<=2?-400:0;
-  let danger=0;
-  for(const dp of detPos){const h=landHopDist(nodeId,dp);if(h<=2)danger-=80;else if(h<=3)danger-=20;}
-  return mob*18+futMob*10+ugBonus+danger+deadEnd;
+  return mob*18+futMob*10+ugBonus+deadEnd;
 }
 
-/* scoreNode: used for immediate-move safety check only. */
-function scoreNode(nodeId,detPos){return havenScore(nodeId,detPos);}
+/* ── COMBINED SCORE for a candidate node ── */
+function scoreNode(nodeId, detPos){
+  const threat=threatPenalty(nodeId,detPos);
+  if(threat<=-99999) return -99999;
+  return nodeQuality(nodeId)+threat+edgePenalty(nodeId);
+}
 
-/* Find the best haven reachable within maxHops land moves.
-   Returns {node, dist} or null. */
+// Keep havenScore as alias
+function havenScore(nodeId,detPos){return scoreNode(nodeId,detPos);}
+
+/* ── FIND BEST HAVEN within maxHops ── */
 function findBestHaven(fromNode, detPos, maxHops){
   const vis=new Set([fromNode]);
   let frontier=[fromNode];
   let bestNode=null,bestScore=-Infinity;
   for(let d=0;d<=maxHops;d++){
     for(const n of frontier){
-      const s=havenScore(n,detPos);
+      const s=scoreNode(n,detPos);
       if(s>bestScore){bestScore=s;bestNode=n;}
     }
     if(d===maxHops)break;
@@ -898,15 +953,13 @@ function findBestHaven(fromNode, detPos, maxHops){
   return bestNode?{node:bestNode,score:bestScore}:null;
 }
 
-/* Find next step on shortest land path from `from` toward `to`.
-   Returns node id of the next step, or null. */
+/* ── SHORTEST PATH: next step toward target ── */
 function nextStepToward(from, to, detPos){
   if(from===to)return null;
   const detSet=new Set(detPos);
   const vis=new Set([from]);
   const parent=new Map([[from,null]]);
-  let frontier=[from];
-  let found=false;
+  let frontier=[from],found=false;
   while(frontier.length&&!found){
     const next=[];
     for(const n of frontier){
@@ -924,10 +977,22 @@ function nextStepToward(from, to, detPos){
     frontier=next;
   }
   if(!found)return null;
-  // Walk back from `to` to find the step after `from`
   let cur=to;
   while(parent.get(cur)!==from)cur=parent.get(cur);
   return cur;
+}
+
+/* ── CRISIS CHECK: are we in a situation needing special moves? ──
+   Returns threat level: 'crisis' | 'alarm' | 'watch' | 'safe' */
+function threatLevel(nodeId, detPos){
+  const hops=detPos.map(dp=>landHopDist(nodeId,dp)).sort((a,b)=>a-b);
+  const within3=hops.filter(h=>h<=3).length;
+  const within4=hops.filter(h=>h<=4).length;
+  if(hops[0]<=1) return 'crisis';
+  if(within3>=4) return 'crisis';
+  if(within3>=3||hops[1]<=2) return 'alarm';
+  if(within4>=3||hops[2]<=4) return 'watch';
+  return 'safe';
 }
 
 function aiPickMoriMove(){
@@ -939,81 +1004,77 @@ function aiPickMoriMove(){
   const FOG_BANNED  =new Set([1,2,3,8,13,18,24]);
   const BLUFF_BANNED=new Set([1,2,3,7,8,12,13,17,18]);
 
-  // ── TARGET SELECTION ──
-  // Pick or re-evaluate the target haven every move.
-  // Invalidate if: target is gone, target is now dangerous, or we reached it.
-  const targetInvalid=!G.moriTarget
-    ||G.moriTarget===G.moriNode
-    ||havenScore(G.moriTarget,detPos)<-1000
-    ||landHopDist(G.moriTarget,detPos.reduce((a,dp)=>landHopDist(dp,G.moriTarget)<landHopDist(dp,a)?dp:a,detPos[0]))<=2;
+  const level=threatLevel(G.moriNode,detPos);
 
-  if(targetInvalid){
-    const haven=findBestHaven(G.moriNode,detPos,8);
+  // ── TARGET: pick or revalidate ──
+  const targetBad=!G.moriTarget
+    ||G.moriTarget===G.moriNode
+    ||scoreNode(G.moriTarget,detPos)<-1000
+    ||(()=>{const h=detPos.map(dp=>landHopDist(dp,G.moriTarget)).sort((a,b)=>a-b);return h[0]<=2;})();
+
+  if(targetBad){
+    const haven=findBestHaven(G.moriNode,detPos,10);
     G.moriTarget=haven?haven.node:null;
   }
 
-  // ── NEXT STEP ──
-  // Try to follow the path to target. If blocked, fall back to best immediate move.
-  let best=null;
+  // ── BLUFF SPECIAL CASE ──
+  // In crisis/alarm: bluff lets leg 1 go as close as 1 hop, leg 2 must achieve safe distances
+  // Evaluate bluff by scoring where we could be after 2 moves
+  const justUsedBluff=G.bluffLeg===0&&G.bluffPairStart===G.moriMoveCount-1;
+  const bluffWorthIt=level==='crisis'||(level==='alarm'&&G.bluffLeft>0);
+  const bluffWanted=G.bluffLeft>0&&G.bluffLeg===0
+    &&!BLUFF_BANNED.has(nextMove)&&bluffWorthIt&&!justUsedBluff;
 
-  if(G.moriTarget){
-    const nextStep=nextStepToward(G.moriNode,G.moriTarget,detPos);
-    if(nextStep&&!detSet.has(nextStep)){
-      // Find what move type gets us to nextStep
-      const matchingMoves=moriMoves(G.moriNode).filter(m=>m.node===nextStep&&!detSet.has(m.node));
-      if(matchingMoves.length){
-        // Only use this step if it's safe (not adjacent to detective)
-        if(havenScore(nextStep,detPos)>-1000&&!recentlyVisited.has(nextStep)){
-          best=matchingMoves[0];
-        }
-      }
-    }
-  }
+  // ── CANDIDATE MOVES ──
+  let candidates=moriMoves(G.moriNode).filter(m=>!detSet.has(m.node));
+  if(!candidates.length)return{node:G.moriNode,type:'taxi',surrender:true};
+  if(!G.fogThisLeg)candidates=candidates.filter(m=>m.type!=='water');
+  if(!candidates.length)candidates=moriMoves(G.moriNode).filter(m=>!detSet.has(m.node));
 
-  // Fallback: score all candidates if we have no committed step
-  if(!best){
-    let candidates=moriMoves(G.moriNode).filter(m=>!detSet.has(m.node));
-    if(!G.fogThisLeg)candidates=candidates.filter(m=>m.type!=='water');
-    if(!candidates.length)candidates=moriMoves(G.moriNode).filter(m=>!detSet.has(m.node));
-    if(!candidates.length)return{node:G.moriNode,type:'taxi',surrender:true};
+  // During bluff leg 1: allow moving within 1 hop IF leg 2 can escape
+  // During normal play: hard veto on adjacent nodes
+  const isBluffLeg1=bluffWanted||(G.bluffLeg===1);
 
-    let bestScore=-Infinity;
-    candidates.forEach(m=>{
-      const s=havenScore(m.node,detPos);
-      if(s<=-10000)return;
-      const revisit=recentlyVisited.has(m.node)?400:0;
-      // Prefer nodes that are on the path toward the target
-      const towardTarget=G.moriTarget?Math.max(0,(landHopDist(G.moriNode,G.moriTarget)-landHopDist(m.node,G.moriTarget))*50):0;
-      const total=s+towardTarget-revisit;
-      if(total>bestScore){bestScore=total;best=m;}
-    });
-  }
+  let best=null,bestScore=-Infinity;
+  candidates.forEach(m=>{
+    let s=scoreNode(m.node,detPos);
+
+    // During bluff leg 1, relax the adjacency rule but require escape path after
+    if(isBluffLeg1&&s<=-99999){
+      // Check if a good escape exists 2 moves from here
+      const escapeHaven=findBestHaven(m.node,detPos,3);
+      if(escapeHaven&&escapeHaven.score>0) s=escapeHaven.score-500; // usable but penalised
+      else return;
+    } else if(s<=-99999) return;
+
+    const revisit=recentlyVisited.has(m.node)?400:0;
+    const towardTarget=G.moriTarget
+      ?Math.max(0,(landHopDist(G.moriNode,G.moriTarget)-landHopDist(m.node,G.moriTarget))*60):0;
+    const total=s+towardTarget-revisit;
+    if(total>bestScore){bestScore=total;best=m;}
+  });
 
   if(!best)return{node:G.moriNode,type:'taxi',surrender:true};
 
-  // ── SPECIAL MOVES ──
+  // ── FOG DECISION ──
   const minDestHops=Math.min(...detPos.map(dp=>landHopDist(dp,best.node)));
   const detVeryClose=minDestHops<=2;
-
   const destTransportTypes=new Set(moriMoves(best.node).filter(m=>m.type!=='water').map(m=>m.type));
   const fogMeaningful=destTransportTypes.size>1;
-  const fogEligible=G.fogLeft>0&&!G.fogThisLeg&&!FOG_BANNED.has(nextMove)&&detVeryClose&&fogMeaningful;
+  const fogWanted=G.fogLeft>0&&!G.fogThisLeg&&!FOG_BANNED.has(nextMove)
+    &&detVeryClose&&fogMeaningful&&!bluffWanted;
 
-  const justUsedBluff=G.bluffLeg===0&&G.bluffPairStart===G.moriMoveCount-1;
-  const bluffEligible=G.bluffLeft>0&&G.bluffLeg===0&&!BLUFF_BANNED.has(nextMove)&&detVeryClose&&!justUsedBluff;
-
-  const bluffWanted=bluffEligible;
-  const fogWanted=fogEligible&&!bluffWanted;
-
+  // If fog wanted, reconsider water routes
   let finalBest=best;
   if(fogWanted||G.fogThisLeg){
     const withWater=moriMoves(G.moriNode).filter(m=>!detSet.has(m.node));
     let wb=best,ws=-Infinity;
     withWater.forEach(m=>{
-      const s=havenScore(m.node,detPos);
-      if(s<=-10000)return;
+      let s=scoreNode(m.node,detPos);
+      if(s<=-99999)return;
       const revisit=recentlyVisited.has(m.node)?400:0;
-      const towardTarget=G.moriTarget?Math.max(0,(landHopDist(G.moriNode,G.moriTarget)-landHopDist(m.node,G.moriTarget))*50):0;
+      const towardTarget=G.moriTarget
+        ?Math.max(0,(landHopDist(G.moriNode,G.moriTarget)-landHopDist(m.node,G.moriTarget))*60):0;
       const total=s+towardTarget-revisit;
       if(total>ws){ws=total;wb=m;}
     });
