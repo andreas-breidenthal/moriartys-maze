@@ -966,394 +966,200 @@ function hopsToBus(nodeId){
 }
 
 /* ══════════════════════════════════════════════════════════════
-   MORIARTY AI — Three-factor move scoring
-   1. opportunityScore[node]  — fixed, precalculated at game start
-   2. dangerScore(dest)       — dynamic, detective reachability BFS
-   3. directionalScore(dest)  — dynamic, moving away from detective bulk
-   + revealAwareness          — always present, weight scales with proximity to reveal
-   + momentumNudge            — small weight, recent detective movement direction
-   + fogManagement            — conserve until post-reveal
+   MORIARTY AI — Lookahead escape scoring
+   scoreNode = nodeQuality + threatPenalty + edgePenalty + convergencePenalty
+   aiPickMoriMove scores each candidate by escapeScore: best node
+   reachable in 5-6 hops from there, with +80 per hop distance bonus.
+   No fixed target. Always moves toward best DISTANT open space.
 ══════════════════════════════════════════════════════════════ */
 
-/* ── 1. OPPORTUNITY SCORE — fixed, calculated once at game start ──
-   Measures how good a node is as a position for Moriarty:
-   - Transport available (underground best, bus good, taxi-only poor)
-   - Hops to nearest better transport if taxi-only
-   - Edge/corner penalty (trapped positions)
-   Stored in opportunityScore[] array, never recalculated. */
-const opportunityScore=new Float32Array(200);
-function buildOpportunityScores(){
-  const WORLD_W=1600,WORLD_H=1200,MARGIN=180;
-  for(let i=1;i<=199;i++){
-    let score=0;
-    const hasUG=adj[i].underground.length>0;
-    const hasBus=adj[i].bus.length>0;
-    const taxiN=adj[i].taxi.length;
-    const busN=adj[i].bus.length;
-    const ugN=adj[i].underground.length;
-    const waterN=adj[i].water.length;
-
-    // Transport type at this node
-    if(hasUG)      score+=500;  // underground: long jump available
-    else if(hasBus) score+=200; // bus: medium jump available
-    else {
-      // Taxi-only: penalise, but less if many taxi connections (more options)
-      score+=taxiN*10;
-      // Hops to nearest bus or underground
-      let hops=0;
-      const vis=new Set([i]);let fr=[i];
-      while(fr.length&&hops<6){
-        hops++;const nx=[];
-        for(const n of fr)for(const t of ['taxi','bus','underground'])
-          for(const nb of adj[n][t]){
-            if(adj[nb].underground.length>0||adj[nb].bus.length>0){hops=-hops;break;}// found
-            if(!vis.has(nb)){vis.add(nb);nx.push(nb);}
-          }
-        if(hops<0)break;
-        fr=nx;
-      }
-      const hopsToGateway=Math.abs(hops);
-      score-=hopsToGateway*80; // each hop away from better transport costs 80
-    }
-
-    // Riverboat availability bonus
-    if(waterN>0) score+=150;
-
-    // 2-hop reach: how many distinct nodes reachable in 2 moves
-    const reach=new Set();
-    for(const t of ['taxi','bus','underground'])
-      for(const nb of adj[i][t]){
-        reach.add(nb);
-        for(const t2 of ['taxi','bus','underground'])
-          for(const nb2 of adj[nb][t2]) reach.add(nb2);
-      }
-    score+=Math.min(reach.size*2,120);
-
-    // Edge/corner penalty
-    const n=nodes[i];
-    const dx=Math.max(0,MARGIN-Math.min(n.x,WORLD_W-n.x));
-    const dy=Math.max(0,MARGIN-Math.min(n.y,WORLD_H-n.y));
-    if(dx>0&&dy>0) score-=(dx+dy)*3;   // corner: harsh
-    else           score-=(dx+dy)*1.5; // edge: moderate
-
-    // Dead end penalty: only 1-2 exits total
-    if(taxiN+busN+ugN<=2) score-=300;
-
-    opportunityScore[i]=score;
-  }
+/* ── EDGE PENALTY ── */
+function edgePenalty(nodeId){
+  const n=nodes[nodeId];
+  const WORLD_W=1600,WORLD_H=1200,MARGIN=200;
+  const dx=Math.max(0,MARGIN-Math.min(n.x,WORLD_W-n.x));
+  const dy=Math.max(0,MARGIN-Math.min(n.y,WORLD_H-n.y));
+  if(dx>0&&dy>0) return -(dx+dy)*3;
+  return -(dx+dy)*1.5;
 }
 
-/* ── 2. DANGER SCORE — dynamic ──
-   For a proposed destination, calculate how reachable it is by the
-   3 closest detectives, weighted by their actual ticket/node constraints.
-
-   BFS from each detective filtered by:
-   - Their remaining tickets per transport type
-   - Which transport types exist on each edge
-   - Whether intermediate nodes have better transport (multiplies their threat)
-
-   Returns a danger value: higher = more dangerous for Moriarty. */
-function detectiveDangerAt(destNode){
-  // Sort detectives by hop distance to destination
-  const sorted=G.detectives.map((det,i)=>{
-    const hops=landHopDist(det.node,destNode);
-    return{det,hops};
-  }).sort((a,b)=>a.hops-b.hops);
-
-  const weights=[1.0,0.6,0.3];
-  let totalDanger=0;
-
-  for(let wi=0;wi<Math.min(3,sorted.length);wi++){
-    const {det}=sorted[wi];
-    // BFS from detective's node, filtered by their actual tickets
-    // Returns minimum moves to reach destNode, or Infinity if unreachable
-    const minMoves=detReachability(det,destNode);
-    if(minMoves===Infinity) continue; // can't reach — no danger from this detective
-
-    // Base danger from reachability
-    let danger=0;
-    if(minMoves===1)      danger=1000; // adjacent — extreme danger
-    else if(minMoves===2) danger=500;  // 2 moves — high danger
-    else if(minMoves===3) danger=200;  // 3 moves — moderate
-    else if(minMoves===4) danger=80;   // 4 moves — low
-    else                  danger=20;   // 5+ moves — minimal
-
-    totalDanger+=danger*weights[wi];
-  }
-  return totalDanger;
+/* ── THREAT PENALTY ── */
+function threatPenalty(nodeId,detPos){
+  const hops=detPos.map(dp=>landHopDist(nodeId,dp)).sort((a,b)=>a-b);
+  const [h1,h2,h3]=hops;
+  if(h1<=1) return -99999;
+  let p=0;
+  if(h1===2) p-=150;
+  if(h2<=3) p-=200; else if(h2<=4) p-=80;
+  if(h3<=3) p-=250; else if(h3<=4) p-=120; else if(h3<=5) p-=40;
+  const w3=hops.filter(h=>h<=3).length;
+  const w4=hops.filter(h=>h<=4).length;
+  if(w3>=4) p-=500; else if(w3>=3) p-=300;
+  if(w4>=4) p-=200;
+  return p;
 }
 
-/* BFS from detective's current node to destNode, respecting their tickets.
-   Returns minimum number of moves needed, or Infinity if unreachable within 5. */
-function detReachability(det,destNode){
-  if(det.node===destNode) return 0;
-  const tix={...det.tickets};
-  // State: [node, tickets_remaining] — track ticket state to avoid invalid paths
-  const visited=new Set();
-  const queue=[{node:det.node,tix:{...tix},moves:0}];
-  while(queue.length){
-    const{node:cur,tix:rem,moves}=queue.shift();
-    if(moves>=5) continue; // cap at 5 moves
-    const key=`${cur}|${rem.taxi}|${rem.bus}|${rem.underground}`;
-    if(visited.has(key)) continue;
-    visited.add(key);
-    for(const t of ['taxi','bus','underground']){
-      if((rem[t]||0)<=0) continue; // no tickets for this type
-      for(const nb of adj[cur][t]){
-        if(nb===destNode) return moves+1; // found it
-        const newTix={...rem,[t]:rem[t]-1};
-        const nk=`${nb}|${newTix.taxi}|${newTix.bus}|${newTix.underground}`;
-        if(!visited.has(nk)) queue.push({node:nb,tix:newTix,moves:moves+1});
-      }
-    }
-  }
-  return Infinity; // unreachable within 5 moves
+/* ── NODE QUALITY ── */
+function nodeQuality(nodeId){
+  const mob=adj[nodeId].taxi.length+adj[nodeId].bus.length+adj[nodeId].underground.length;
+  if(mob===0) return -5000;
+  const nbrs=new Set();
+  ['taxi','bus','underground'].forEach(t=>adj[nodeId][t].forEach(n=>nbrs.add(n)));
+  const futMob=[...nbrs].reduce((s,n)=>s+adj[n].taxi.length+adj[n].bus.length+adj[n].underground.length,0)/(nbrs.size||1);
+  const ugBonus=Math.max(0,160-hopsToUnderground(nodeId)*35);
+  const deadEnd=mob<=2?-400:0;
+  return mob*18+futMob*10+ugBonus+deadEnd;
 }
 
-/* ── 3. DIRECTIONAL SCORE — dynamic ──
-   Dot product of proposed move vector against away-from-centroid vector.
-   Positive = moving away from detective bulk = good.
-   Also incorporates detective momentum (small weight). */
-function directionalScore(fromNode, destNode){
-  // Current detective centroid
-  let dcx=0,dcy=0;
-  G.detectives.forEach(d=>{dcx+=nodes[d.node].x;dcy+=nodes[d.node].y;});
-  dcx/=G.detectives.length;dcy/=G.detectives.length;
-
-  const me=nodes[fromNode];
-  const dest=nodes[destNode];
-
-  // Away vector (from centroid through Moriarty's current position)
-  const awayX=me.x-dcx;
-  const awayY=me.y-dcy;
-  const awayLen=Math.hypot(awayX,awayY)||1;
-
-  // Proposed move vector
-  const moveX=dest.x-me.x;
-  const moveY=dest.y-me.y;
-  const moveLen=Math.hypot(moveX,moveY)||1;
-
-  // Dot product: +1 = perfectly away, -1 = directly toward
-  const dot=(moveX/moveLen)*(awayX/awayLen)+(moveY/moveLen)*(awayY/awayLen);
-
-  // Scale by how far the move takes us (longer move = more directional impact)
-  const directional=dot*moveLen*0.5;
-
-  // Momentum nudge: small penalty if moving toward where detectives came from
-  let momentum=0;
-  const hist=G.detHistory||[];
+/* ── DETECTIVE CONVERGENCE ── */
+function detectiveConvergence(){
+  const WORLD_W=1600,WORLD_H=1200;
+  let cx=0,cy=0;
+  G.detectives.forEach(d=>{cx+=nodes[d.node].x;cy+=nodes[d.node].y;});
+  cx/=G.detectives.length;cy/=G.detectives.length;
+  let vx=0,vy=0,count=0;
   G.detectives.forEach((d,i)=>{
-    const h=hist[i]||[];
-    if(h.length<1) return;
-    const prev=h[h.length-1];
-    // Detective's recent movement vector
-    const dvx=nodes[d.node].x-nodes[prev].x;
-    const dvy=nodes[d.node].y-nodes[prev].y;
-    const dlen=Math.hypot(dvx,dvy)||1;
-    // Penalty if Moriarty is moving in the same direction the detective came from
-    const mdot=(moveX/moveLen)*(dvx/dlen)+(moveY/moveLen)*(dvy/dlen);
-    if(mdot>0.5) momentum-=30; // small nudge only
-  });
-
-  return directional+momentum;
-}
-
-/* ── REVEAL AWARENESS ──
-   Always active. Weight increases as reveal approaches.
-   On reveal move: heavy bonus for being on UG/bus node with escape routes.
-   Post-reveal move: best time to spend fog ticket. */
-function revealAwarenessScore(destNode,nextMoveNum){
-  const nextReveal=REVEAL_MOVES.find(r=>r>=nextMoveNum);
-  if(!nextReveal) return 0;
-
-  const movesToReveal=nextReveal-nextMoveNum;
-  const isRevealMove=(movesToReveal===0);
-  const isPostReveal=(nextMoveNum===nextReveal+1);
-
-  const hasUG=adj[destNode].underground.length>0;
-  const hasBus=adj[destNode].bus.length>0;
-
-  // Weight scales with proximity
-  let weight=0;
-  if(movesToReveal<=0)      weight=3.0;  // this IS the reveal move
-  else if(movesToReveal===1) weight=2.0;
-  else if(movesToReveal===2) weight=1.2;
-  else if(movesToReveal===3) weight=0.6;
-  else if(movesToReveal===4) weight=0.3;
-  else                       weight=0.1;
-
-  // Bonus for being on good transport at reveal
-  let transportBonus=0;
-  if(hasUG)       transportBonus=400; // best: underground jump available immediately
-  else if(hasBus) transportBonus=200; // good: bus escape available
-  else{
-    // Taxi-only at reveal: penalise by hops to nearest gateway
-    let hops=0;
-    const vis=new Set([destNode]);let fr=[destNode];
-    while(fr.length&&hops<4){
-      hops++;const nx=[];
-      for(const n of fr)for(const t of ['taxi','bus','underground'])
-        for(const nb of adj[n][t]){
-          if(adj[nb].underground.length>0||adj[nb].bus.length>0){hops=-hops;break;}
-          if(!vis.has(nb)){vis.add(nb);nx.push(nb);}
-        }
-      if(hops<0)break;
-      fr=nx;
+    const hist=(G.detHistory||[])[i]||[];
+    if(hist.length>=1){
+      const prev=hist[hist.length-1];
+      vx+=nodes[d.node].x-nodes[prev].x;
+      vy+=nodes[d.node].y-nodes[prev].y;
+      count++;
     }
-    transportBonus=-(Math.abs(hops)*100);
+  });
+  if(count>0){vx/=count;vy/=count;}
+  const fx=cx+vx*3,fy=cy+vy*3;
+  return{cx,cy,vx,vy,fx:Math.max(0,Math.min(WORLD_W,fx)),fy:Math.max(0,Math.min(WORLD_H,fy))};
+}
+function convergencePenalty(nodeId){
+  const conv=detectiveConvergence();
+  const n=nodes[nodeId];
+  const distToFuture=Math.hypot(n.x-conv.fx,n.y-conv.fy);
+  const distToCurrent=Math.hypot(n.x-conv.cx,n.y-conv.cy);
+  const futurePenalty=Math.max(0,800-distToFuture)*(-0.5);
+  const spreadBonus=Math.min(distToCurrent*0.3,150);
+  return futurePenalty+spreadBonus;
+}
+
+/* ── COMBINED NODE SCORE ── */
+function scoreNode(nodeId,detPos){
+  const threat=threatPenalty(nodeId,detPos);
+  if(threat<=-99999) return -99999;
+  return nodeQuality(nodeId)+threat+edgePenalty(nodeId)+convergencePenalty(nodeId);
+}
+function havenScore(nodeId,detPos){return scoreNode(nodeId,detPos);}
+
+/* ── LOOKAHEAD ESCAPE SCORE ──
+   BFS from candidate node, +80 per hop distance. Returns best weighted score.
+   This is what makes Moriarty flee AWAY, not shuffle locally. */
+function escapeScore(fromNode,detPos,maxHops){
+  const vis=new Map([[fromNode,0]]);
+  const queue=[{node:fromNode,d:0}];
+  let best=-Infinity;
+  const types=G.fogLeft>0?['taxi','bus','underground','water']:['taxi','bus','underground'];
+  while(queue.length){
+    const{node:n,d}=queue.shift();
+    const q=scoreNode(n,detPos);
+    if(q>-99999){
+      const weighted=q+d*80;
+      if(weighted>best) best=weighted;
+    }
+    if(d>=maxHops) continue;
+    for(const t of types)
+      for(const nb of adj[n][t])
+        if(!vis.has(nb)){vis.set(nb,d+1);queue.push({node:nb,d:d+1});}
   }
-
-  // Multi-exit bonus: more routes away = harder to trap post-reveal
-  const exits=adj[destNode].taxi.length+adj[destNode].bus.length+adj[destNode].underground.length+adj[destNode].water.length;
-  const exitBonus=Math.min(exits*20,120);
-
-  return (transportBonus+exitBonus)*weight;
+  return best;
 }
 
-/* ── FOG MANAGEMENT ──
-   Returns whether to use heavy fog on this land move.
-   Logic: conserve fog tickets. Best used on the move AFTER a reveal.
-   Never waste on casual moves when safe. */
-function shouldUseFog(destNode,nextMoveNum,detPos,bluffWanted){
-  if(G.fogLeft<=0||G.fogThisLeg||bluffWanted) return false;
-
-  const FOG_BANNED=new Set([1,2,3,8,13,18,24]);
-  if(FOG_BANNED.has(nextMoveNum)) return false;
-
-  // Best used move after reveal — detectives know position, fog hides escape direction
-  const justRevealed=REVEAL_MOVES.includes(nextMoveNum-1);
-  if(justRevealed) return true;
-
-  // Also use if detectives are very close (crisis) and destination has multiple exits
-  const minHops=Math.min(...detPos.map(dp=>landHopDist(dp,destNode)));
-  const destTypes=new Set(moriMoves(destNode).filter(m=>m.type!=='water').map(m=>m.type));
-  if(minHops<=2&&destTypes.size>1&&G.fogLeft>=2) return true;
-
-  // Otherwise conserve
-  return false;
+/* ── FIND BEST HAVEN ── */
+function findBestHaven(fromNode,detPos,maxHops){
+  const vis=new Map([[fromNode,0]]);
+  const queue=[{node:fromNode,d:0}];
+  let bestNode=null,bestScore=-Infinity;
+  const types=G.fogLeft>0?['taxi','bus','underground','water']:['taxi','bus','underground'];
+  while(queue.length){
+    const{node:n,d}=queue.shift();
+    const q=scoreNode(n,detPos);
+    if(q>-99999){
+      const weighted=q+d*80;
+      if(weighted>bestScore){bestScore=weighted;bestNode=n;}
+    }
+    if(d>=maxHops) continue;
+    for(const t of types)
+      for(const nb of adj[n][t])
+        if(!vis.has(nb)){vis.set(nb,d+1);queue.push({node:nb,d:d+1});}
+  }
+  return bestNode?{node:bestNode,score:bestScore}:null;
 }
 
-/* ── MAIN: aiPickMoriMove ── */
+/* ── THREAT LEVEL ── */
+function threatLevel(nodeId,detPos){
+  const hops=detPos.map(dp=>landHopDist(nodeId,dp)).sort((a,b)=>a-b);
+  const w3=hops.filter(h=>h<=3).length;
+  if(hops[0]<=1||w3>=4) return 'crisis';
+  if(hops[0]<=2||w3>=3) return 'alarm';
+  if(hops[0]<=3||w3>=2) return 'watch';
+  return 'safe';
+}
+
+/* LEGACY no-op */
+function buildOpportunityScores(){}
+
 function aiPickMoriMove(){
   const detPos=G.detectives.map(d=>d.node);
   const detSet=new Set(detPos);
   const nextMove=G.moriMoveCount+1;
   const recentlyVisited=new Set(G.posHistory||[]);
+  const level=threatLevel(G.moriNode,detPos);
 
+  const FOG_BANNED  =new Set([1,2,3,8,13,18,24]);
   const BLUFF_BANNED=new Set([1,2,3,7,8,12,13,17,18]);
 
-  // Bluff: save for genuine emergencies — detective adjacent or 2+ closing in fast
   const justUsedBluff=G.bluffLeg===0&&G.bluffPairStart===G.moriMoveCount-1;
-  const detHops=detPos.map(dp=>landHopDist(dp,G.moriNode)).sort((a,b)=>a-b);
-  const closestHops=detHops[0];
-  const within2=detHops.filter(h=>h<=2).length;
-  // Only bluff if: detective adjacent (1 hop) OR 2+ detectives within 2 hops
-  // AND we're past move 5 (don't waste early)
-  const bluffWorthIt=nextMove>5&&(closestHops<=1||(within2>=2));
+  const bluffWorthIt=level==='crisis'||level==='alarm'||(level==='watch'&&G.bluffLeft>0);
   const bluffWanted=G.bluffLeft>0&&G.bluffLeg===0
     &&!BLUFF_BANNED.has(nextMove)&&bluffWorthIt&&!justUsedBluff;
 
-  // Candidates: all reachable nodes not occupied by detectives
-  // Water only if fog tickets remain and fog not already used this leg
   let candidates=moriMoves(G.moriNode).filter(m=>!detSet.has(m.node));
   if(!candidates.length) return{node:G.moriNode,type:'taxi',surrender:true};
   if(G.fogThisLeg||G.fogLeft<=0) candidates=candidates.filter(m=>m.type!=='water');
   if(!candidates.length) candidates=moriMoves(G.moriNode).filter(m=>!detSet.has(m.node));
 
-  // Detective centroid
-  let dcx=0,dcy=0;
-  detPos.forEach(dp=>{dcx+=nodes[dp].x;dcy+=nodes[dp].y;});
-  dcx/=detPos.length;dcy/=detPos.length;
+  const escapeMode=level==='crisis'||level==='alarm';
+  const lookahead=escapeMode?6:5;
 
-  // Find best DISTANT gateway — underground/bus node that is:
-  // 1. At least 3 hops away (not the immediate local node)
-  // 2. Well-aligned with escape direction
-  // 3. Far from detective centroid
-  // Scoring rewards DISTANCE — forces Moriarty to plan across the map
-  const me=nodes[G.moriNode];
-  const awayX=me.x-dcx, awayY=me.y-dcy;
-  const awayLen=Math.hypot(awayX,awayY)||1;
-  let bestGateway=null,bestGWScore=-Infinity;
-  for(let i=1;i<=199;i++){
-    if(adj[i].underground.length===0&&adj[i].bus.length===0) continue;
-    if(i===G.moriNode) continue;
-    const n=nodes[i];
-    const toX=n.x-me.x, toY=n.y-me.y;
-    const toLen=Math.hypot(toX,toY)||1;
-    const alignment=(toX/toLen)*(awayX/awayLen)+(toY/toLen)*(awayY/awayLen);
-    if(alignment<0.1) continue; // must be roughly in the away direction
-    const hops=landHopDist(G.moriNode,i);
-    if(hops<3||hops>8) continue; // must require real travel — not immediate, not unreachable
-    // Distance from detective centroid after reaching this node (safety)
-    const distFromDets=Math.hypot(n.x-dcx,n.y-dcy);
-    // Score: opportunity quality + alignment + distance safety - hop cost
-    const gs=opportunityScore[i]*0.5+alignment*300+distFromDets*0.3-hops*40;
-    if(gs>bestGWScore){bestGWScore=gs;bestGateway=i;}
-  }
-
-  // Score each candidate
   let best=null,bestScore=-Infinity;
-
   candidates.forEach(m=>{
-    // ── DANGER: primary gate ──
-    const danger=detectiveDangerAt(m.node);
-    // Hard veto: detective can reach in 1 move
-    if(danger>=1000*1.0) return;
-
-    // ── OPPORTUNITY: fixed lookup ──
-    const opportunity=opportunityScore[m.node];
-
-    // ── DIRECTIONAL: moving away from detective bulk ──
-    const directional=directionalScore(G.moriNode,m.node);
-
-    // ── GATEWAY ROUTING: for taxi moves, bonus for progress toward best gateway ──
-    // This is the key driver when on taxi-only nodes — pulls Moriarty toward
-    // underground/bus nodes in the escape direction rather than wandering locally
-    // ── GATEWAY ROUTING: gentle nudge toward distant gateway, not obsession ──
-    // Only applies to taxi moves (bus/UG already score high via opportunityScore)
-    // Progress toward gateway is rewarded, but revisit penalty overrides looping
-    let gatewayBonus=0;
-    if(m.type==='taxi'&&bestGateway){
-      const hopsBefore=landHopDist(G.moriNode,bestGateway);
-      const hopsAfter=landHopDist(m.node,bestGateway);
-      const progress=hopsBefore-hopsAfter;
-      gatewayBonus=progress*120; // reduced: guides without locking onto one path
-    }
-
-    // ── REVEAL AWARENESS: always present ──
-    const reveal=revealAwarenessScore(m.node,nextMove);
-
-    // ── REVISIT PENALTY — scales with recency, strong enough to force variety ──
-    const posHist=G.posHistory||[];
-    const lastIdx=posHist.lastIndexOf(m.node);
-    const revisitAge=lastIdx>=0?posHist.length-1-lastIdx:99;
-    // Very recent (last 3): heavy penalty. Less recent: diminishing.
-    const revisit=revisitAge<=2?600:revisitAge<=5?300:revisitAge<=8?100:0;
-
-    // ── COMBINED SCORE ──
-    const total=opportunity+directional+gatewayBonus+reveal-danger*0.8-revisit;
-
+    const imm=scoreNode(m.node,detPos);
+    if(imm<=-99999) return;
+    const esc=escapeScore(m.node,detPos,lookahead);
+    const revisit=recentlyVisited.has(m.node)?500:0;
+    const reachBonus=m.type==='underground'?200:m.type==='water'?150:m.type==='bus'?60:0;
+    const total=esc+reachBonus-revisit;
     if(total>bestScore){bestScore=total;best=m;}
   });
 
-  // Fallback: if all moves are dangerous (cornered), pick least dangerous
   if(!best){
-    let leastDanger=Infinity;
     candidates.forEach(m=>{
-      const danger=detectiveDangerAt(m.node);
-      const opp=opportunityScore[m.node];
-      // Among dangerous moves, prefer best opportunity + least danger
-      const s=opp-danger;
-      if(s>bestScore){bestScore=s;best=m;}
+      const esc=escapeScore(m.node,detPos,3);
+      const reachBonus=m.type==='underground'?200:m.type==='water'?150:m.type==='bus'?60:0;
+      const total=esc+reachBonus;
+      if(total>bestScore){bestScore=total;best=m;}
     });
   }
 
   if(!best) return{node:G.moriNode,type:'taxi',surrender:true};
 
-  // ── FOG/RIVERBOAT DECISION ──
-  const isRiverboat=best.type==='water';
-  const heavyFog=!isRiverboat&&shouldUseFog(best.node,nextMove,detPos,bluffWanted);
+  let heavyFog=false;
+  if(best.type!=='water'){
+    const minHops=Math.min(...detPos.map(dp=>landHopDist(dp,best.node)));
+    const destTypes=new Set(moriMoves(best.node).filter(m=>m.type!=='water').map(m=>m.type));
+    heavyFog=G.fogLeft>0&&!G.fogThisLeg&&!FOG_BANNED.has(nextMove)
+      &&!bluffWanted&&minHops<=2&&destTypes.size>1;
+  }
 
+  const isRiverboat=best.type==='water';
   return{
     node:best.node,
     type:(isRiverboat||heavyFog)?'fog':best.type,
@@ -1362,7 +1168,6 @@ function aiPickMoriMove(){
     bluffConsumed:bluffWanted
   };
 }
-
 
 /* ══════════════════════════════════════════════════════════════
    AI — DETECTIVES
@@ -2035,7 +1840,7 @@ function doMoriMove(dest,type){
     hidePrompt();G.phase='detectives';pruneBeliefDetNodes();updateSidebar();
     G.finalDetPhase=true; // flag so endDetPhase knows to end game after
     setTimeout(()=>{
-      if(currentMode==='moriarty'||currentMode==='coach-moriarty'){
+      if(currentMode==='coach-moriarty'){
         showAI('One last chance for the Bureau…');setTimeout(runAIDetPhase,600);
       } else {
         showDetPrompt(0);
@@ -2047,7 +1852,7 @@ function doMoriMove(dest,type){
   if(G.bluffLeg===1){
     G.bluffLeg=2;hidePrompt();
     setTimeout(()=>{
-      if(currentMode==='moriarty'||currentMode==='coach-moriarty') showMoriPrompt(2);
+      if(currentMode==='coach-moriarty') showMoriPrompt(2);
       else runAIMoriLeg();
     },350);
     return;
@@ -2056,7 +1861,7 @@ function doMoriMove(dest,type){
 
   hidePrompt();G.phase='detectives';pruneBeliefDetNodes();updateSidebar();
   setTimeout(()=>{
-    if(currentMode==='moriarty'||currentMode==='coach-moriarty'){
+    if(currentMode==='coach-moriarty'){
       showAI('The detective bureau advances…');setTimeout(runAIDetPhase,600);
     } else {
       showDetPrompt(0);
