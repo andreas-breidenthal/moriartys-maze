@@ -1317,7 +1317,7 @@ function scoreDetMove(det, fromNode, toNode, type, targetNode, occupiedByOthers)
     if(hBus>det.tickets.taxi) score-=500;
   }
   if(det.tickets.bus<=2){
-    const hUG=hopsToUndergroundDet(toNode);
+    const hUG=hopsToUnderground(toNode);
     if(hUG>det.tickets.bus+det.tickets.taxi) score-=300;
   }
 
