@@ -1051,17 +1051,20 @@ function aiPickMoriMove(){
     if(total>bestScore){bestScore=total;best=m;}
   });
 
-  if(!best)return{node:G.moriNode,type:'taxi',surrender:true};
-
-  // Sanity check: verify best.node is reachable by best.type from current node
-  // (should always be true since candidates come from moriMoves, but guard anyway)
-  const reachable=moriMoves(G.moriNode).some(m=>m.node===best.node&&(m.type===best.type||G.fogThisLeg));
-  if(!reachable){
-    // Fall back to first safe candidate
-    const safe=candidates.find(m=>scoreNode(m.node,detPos)>-99999);
-    if(!safe)return{node:G.moriNode,type:'taxi',surrender:true};
-    best=safe;
+  // If no candidate passed the safety filter, pick least-bad option
+  // (every adjacent node dangerous — better to move than freeze)
+  if(!best){
+    let leastBad=candidates[0],leastBadScore=-Infinity;
+    candidates.forEach(m=>{
+      // Score by escape quality 2 moves ahead, ignoring immediate adjacency
+      const escape=findBestHaven(m.node,detPos,3);
+      const s=escape?escape.score:-9999;
+      if(s>leastBadScore){leastBadScore=s;leastBad=m;}
+    });
+    best=leastBad;
   }
+
+  if(!best)return{node:G.moriNode,type:'taxi',surrender:true};
 
   // ── FOG DECISION ──
   const minDestHops=Math.min(...detPos.map(dp=>landHopDist(dp,best.node)));
