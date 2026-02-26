@@ -1019,84 +1019,66 @@ function aiPickMoriMove(){
 
   // ── BLUFF SPECIAL CASE ──
   const justUsedBluff=G.bluffLeg===0&&G.bluffPairStart===G.moriMoveCount-1;
-  const bluffWorthIt=level==='crisis'||(level==='alarm'&&G.bluffLeft>0);
+  const bluffWorthIt=level==='crisis'||level==='alarm'||(level==='watch'&&G.bluffLeft>0);
   const bluffWanted=G.bluffLeft>0&&G.bluffLeg===0
     &&!BLUFF_BANNED.has(nextMove)&&bluffWorthIt&&!justUsedBluff;
 
-  // ── CANDIDATE MOVES — always from actual moriMoves() so type is always valid ──
+  // ── CANDIDATE MOVES: ALL transport types always included ──
+  // Water (Riverboat) is just another transport option — it costs a fog ticket if chosen.
+  // Always score it alongside taxi/bus/underground; only filter it out if no fog tickets left.
   let candidates=moriMoves(G.moriNode).filter(m=>!detSet.has(m.node));
   if(!candidates.length)return{node:G.moriNode,type:'taxi',surrender:true};
-  if(!G.fogThisLeg)candidates=candidates.filter(m=>m.type!=='water');
+  // Only exclude water if fog already used this leg OR no fog tickets remaining
+  if(G.fogThisLeg||G.fogLeft<=0)candidates=candidates.filter(m=>m.type!=='water');
   if(!candidates.length)candidates=moriMoves(G.moriNode).filter(m=>!detSet.has(m.node));
 
-  // isBluffLeg1: relax adjacency veto so leg 1 can pass through tight spots
-  const isBluffLeg1=bluffWanted||(G.bluffLeg===1);
+  // ── SCORE ALL CANDIDATES ──
+  // Adjacency veto is ABSOLUTE — never move to a node 1 hop from any detective.
+  // No exceptions, no fallbacks. If all nodes are adjacent to detectives = surrender.
+  const escapeMode=level==='crisis'||level==='alarm';
 
   let best=null,bestScore=-Infinity;
   candidates.forEach(m=>{
-    // m.node and m.type are always valid — came from moriMoves()
-    let s=scoreNode(m.node,detPos);
-
-    if(isBluffLeg1&&s<=-99999){
-      // Relaxed: adjacent to detective OK on leg 1 if escape exists afterward
-      const escapeHaven=findBestHaven(m.node,detPos,3);
-      if(escapeHaven&&escapeHaven.score>0) s=escapeHaven.score-500;
-      else return;
-    } else if(s<=-99999) return;
+    const s=scoreNode(m.node,detPos);
+    if(s<=-99999) return; // absolute veto — skip always
 
     const revisit=recentlyVisited.has(m.node)?400:0;
-    const towardTarget=G.moriTarget
+    const towardTarget=(!escapeMode&&G.moriTarget)
       ?Math.max(0,(landHopDist(G.moriNode,G.moriTarget)-landHopDist(m.node,G.moriTarget))*60):0;
-    const total=s+towardTarget-revisit;
+    const reachBonus=m.type==='underground'?80:m.type==='water'?60:m.type==='bus'?30:0;
+    const total=s+towardTarget+reachBonus-revisit;
     if(total>bestScore){bestScore=total;best=m;}
   });
 
-  // If no candidate passed the safety filter, pick least-bad option
-  // (every adjacent node dangerous — better to move than freeze)
-  if(!best){
-    let leastBad=candidates[0],leastBadScore=-Infinity;
-    candidates.forEach(m=>{
-      // Score by escape quality 2 moves ahead, ignoring immediate adjacency
-      const escape=findBestHaven(m.node,detPos,3);
-      const s=escape?escape.score:-9999;
-      if(s>leastBadScore){leastBadScore=s;leastBad=m;}
-    });
-    best=leastBad;
-  }
-
+  // If every candidate is adjacent to a detective, Moriarty is truly cornered — surrender
   if(!best)return{node:G.moriNode,type:'taxi',surrender:true};
 
-  // ── FOG DECISION ──
-  const minDestHops=Math.min(...detPos.map(dp=>landHopDist(dp,best.node)));
-  const detVeryClose=minDestHops<=2;
-  const destTransportTypes=new Set(moriMoves(best.node).filter(m=>m.type!=='water').map(m=>m.type));
-  const fogMeaningful=destTransportTypes.size>1;
-  const fogWanted=G.fogLeft>0&&!G.fogThisLeg&&!FOG_BANNED.has(nextMove)
-    &&detVeryClose&&fogMeaningful&&!bluffWanted;
-
-  // If fog wanted, reconsider water routes
-  let finalBest=best;
-  if(fogWanted||G.fogThisLeg){
-    const withWater=moriMoves(G.moriNode).filter(m=>!detSet.has(m.node));
-    let wb=best,ws=-Infinity;
-    withWater.forEach(m=>{
-      let s=scoreNode(m.node,detPos);
-      if(s<=-99999)return;
-      const revisit=recentlyVisited.has(m.node)?400:0;
-      const towardTarget=G.moriTarget
-        ?Math.max(0,(landHopDist(G.moriNode,G.moriTarget)-landHopDist(m.node,G.moriTarget))*60):0;
-      const total=s+towardTarget-revisit;
-      if(total>ws){ws=total;wb=m;}
-    });
-    finalBest=wb;
+  // Revalidate target when not in escape mode
+  if(!escapeMode){
+    const targetBad2=!G.moriTarget||G.moriTarget===G.moriNode||scoreNode(G.moriTarget,detPos)<-1000;
+    if(targetBad2){const haven=findBestHaven(G.moriNode,detPos,10);G.moriTarget=haven?haven.node:null;}
+  } else {
+    G.moriTarget=null; // clear target in crisis — re-pick when safe
   }
 
-  const fogConsumed=finalBest.type==='water'||(fogWanted&&!G.fogThisLeg);
+  // ── STEP 2: FOG DECISION (only for land transport) ──
+  // Riverboat already handles its own fog ticket — no further fog decision needed.
+  // For land transport: decide whether to play Heavy Fog based on detective proximity.
+  let heavyFog=false;
+  if(best.type!=='water'){
+    const minHopsToDest=Math.min(...detPos.map(dp=>landHopDist(dp,best.node)));
+    const destTypes=new Set(moriMoves(best.node).filter(m=>m.type!=='water').map(m=>m.type));
+    const fogMeaningful=destTypes.size>1; // only useful if dest has >1 transport type
+    heavyFog=G.fogLeft>0&&!G.fogThisLeg&&!FOG_BANNED.has(nextMove)
+      &&!bluffWanted&&minHopsToDest<=2&&fogMeaningful;
+  }
+
+  const isRiverboat=best.type==='water';
   return{
-    node:finalBest.node,
-    type:fogConsumed?'fog':finalBest.type,
-    realType:finalBest.type,
-    fogConsumed,
+    node:best.node,
+    type:(isRiverboat||heavyFog)?'fog':best.type,
+    realType:best.type,
+    fogConsumed:isRiverboat||heavyFog,
     bluffConsumed:bluffWanted
   };
 }
