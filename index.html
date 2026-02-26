@@ -722,7 +722,7 @@ let gameOver=false;
 ══════════════════════════════════════════════════════════════ */
 function freshGame(){
   return {
-    moriNode:1,moriMoveCount:0,posHistory:[],
+    moriNode:1,moriMoveCount:0,posHistory:[],detHistory:[],
     fogLeft:5,bluffLeft:2,
     bluffLeg:0,        // 0=none, 1=first leg in progress, 2=second leg in progress
     fogThisLeg:false,
@@ -993,11 +993,61 @@ function nodeQuality(nodeId){
 function scoreNode(nodeId, detPos){
   const threat=threatPenalty(nodeId,detPos);
   if(threat<=-99999) return -99999;
-  return nodeQuality(nodeId)+threat+edgePenalty(nodeId);
+  return nodeQuality(nodeId)+threat+edgePenalty(nodeId)+convergencePenalty(nodeId);
 }
 
 // Keep havenScore as alias
 function havenScore(nodeId,detPos){return scoreNode(nodeId,detPos);}
+
+/* ── DETECTIVE CONVERGENCE ANALYSIS ──
+   Computes a vector showing where detectives are heading collectively.
+   Returns: { cx, cy } = weighted centroid of detective future positions
+            { vx, vy } = net velocity (where they're moving toward)
+   Used to penalise quadrants detectives are converging on. */
+function detectiveConvergence(){
+  const WORLD_W=1600,WORLD_H=1200;
+  // Current centroid of all detectives
+  let cx=0,cy=0;
+  G.detectives.forEach(d=>{cx+=nodes[d.node].x;cy+=nodes[d.node].y;});
+  cx/=G.detectives.length;cy/=G.detectives.length;
+
+  // Velocity: average movement direction over last moves
+  let vx=0,vy=0,count=0;
+  G.detectives.forEach((d,i)=>{
+    const hist=(G.detHistory||[])[i]||[];
+    if(hist.length>=1){
+      const prev=hist[hist.length-1];
+      vx+=nodes[d.node].x-nodes[prev].x;
+      vy+=nodes[d.node].y-nodes[prev].y;
+      count++;
+    }
+  });
+  if(count>0){vx/=count;vy/=count;}
+
+  // Projected future centroid (where they're heading)
+  const fx=cx+vx*3;
+  const fy=cy+vy*3;
+
+  return {cx,cy,vx,vy,fx:Math.max(0,Math.min(WORLD_W,fx)),fy:Math.max(0,Math.min(WORLD_H,fy))};
+}
+
+/* ── CONVERGENCE PENALTY for a node ──
+   Penalises nodes in the same quadrant detectives are converging toward.
+   Bonus for nodes in the opposite quadrant (away from their trajectory). */
+function convergencePenalty(nodeId){
+  const conv=detectiveConvergence();
+  const n=nodes[nodeId];
+  // Distance from node to projected future detective centroid
+  const distToFuture=Math.hypot(n.x-conv.fx,n.y-conv.fy);
+  // Distance from node to current detective centroid
+  const distToCurrent=Math.hypot(n.x-conv.cx,n.y-conv.cy);
+  // Reward being far from where detectives are heading
+  // Penalty for being close to their projected position
+  const futurePenalty=Math.max(0,800-distToFuture)*(-0.5);
+  // Bonus for being far from current centroid (opposite side of map)
+  const spreadBonus=Math.min(distToCurrent*0.3,150);
+  return futurePenalty+spreadBonus;
+}
 
 /* ── LOOKAHEAD ESCAPE SCORE ──
    From a given node, BFS outward up to maxHops.
@@ -1854,6 +1904,11 @@ function doMoriMove(dest,type){
 function doDetMove(di,dest,type){
   if(gameOver) return;
   const det=G.detectives[di];
+  // Record previous position for velocity tracking
+  G.detHistory=G.detHistory||[];
+  if(!G.detHistory[di]) G.detHistory[di]=[];
+  G.detHistory[di].push(det.node);
+  if(G.detHistory[di].length>3) G.detHistory[di].shift();
   const exclude=otherDetNodes(di);
   // Reject if dest is occupied by another detective (not Moriarty)
   if(exclude.has(dest)){console.warn('Detective tried to move to occupied node',dest);return;}
