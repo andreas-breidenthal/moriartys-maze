@@ -1041,11 +1041,33 @@ function convergencePenalty(nodeId){
   return futurePenalty+spreadBonus;
 }
 
+/* ── BELIEF SPREAD BONUS ──
+   From dkeitley: reward nodes that maximise detective uncertainty.
+   More possible Moriarty locations = harder to track = better hiding spot.
+   Uses the bounding box area of the current belief cloud as a proxy for
+   how spread out detective guesses are from this position. */
+function beliefSpreadBonus(nodeId){
+  if(!G.belief) return 0;
+  // Find bounding box of all nodes with meaningful belief probability
+  let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity,count=0;
+  for(let i=1;i<=199;i++){
+    if(G.belief[i]<0.002) continue;
+    const n=nodes[i];
+    if(n.x<minX) minX=n.x; if(n.x>maxX) maxX=n.x;
+    if(n.y<minY) minY=n.y; if(n.y>maxY) maxY=n.y;
+    count++;
+  }
+  if(count<2) return 0;
+  // Bounding box area normalised to board size, plus raw count bonus
+  const area=(maxX-minX)*(maxY-minY)/(1600*1200);
+  return area*120 + count*0.4;
+}
+
 /* ── COMBINED NODE SCORE ── */
 function scoreNode(nodeId,detPos){
   const threat=threatPenalty(nodeId,detPos);
   if(threat<=-99999) return -99999;
-  return nodeQuality(nodeId)+threat+edgePenalty(nodeId)+convergencePenalty(nodeId);
+  return nodeQuality(nodeId)+threat+edgePenalty(nodeId)+convergencePenalty(nodeId)+beliefSpreadBonus(nodeId);
 }
 function havenScore(nodeId,detPos){return scoreNode(nodeId,detPos);}
 
