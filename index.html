@@ -761,6 +761,10 @@ function freshGame(){
     phase:'moriarty',
     coachMovRec:null,coachDetRecs:null,
     bluffPairStart:-1,
+    bluffSecondLeg:null,
+    revealPlan:null,
+    postRevealPlan:null,
+    bluffSecondLeg:null,
   };
 }
 
@@ -1041,14 +1045,9 @@ function convergencePenalty(nodeId){
   return futurePenalty+spreadBonus;
 }
 
-/* ── BELIEF SPREAD BONUS ──
-   From dkeitley: reward nodes that maximise detective uncertainty.
-   More possible Moriarty locations = harder to track = better hiding spot.
-   Uses the bounding box area of the current belief cloud as a proxy for
-   how spread out detective guesses are from this position. */
+/* ── BELIEF SPREAD BONUS ── */
 function beliefSpreadBonus(nodeId){
   if(!G.belief) return 0;
-  // Find bounding box of all nodes with meaningful belief probability
   let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity,count=0;
   for(let i=1;i<=199;i++){
     if(G.belief[i]<0.002) continue;
@@ -1058,9 +1057,8 @@ function beliefSpreadBonus(nodeId){
     count++;
   }
   if(count<2) return 0;
-  // Bounding box area normalised to board size, plus raw count bonus
   const area=(maxX-minX)*(maxY-minY)/(1600*1200);
-  return area*120 + count*0.4;
+  return area*120+count*0.4;
 }
 
 /* ── COMBINED NODE SCORE ── */
@@ -1071,9 +1069,7 @@ function scoreNode(nodeId,detPos){
 }
 function havenScore(nodeId,detPos){return scoreNode(nodeId,detPos);}
 
-/* ── LOOKAHEAD ESCAPE SCORE ──
-   BFS from candidate node, +80 per hop distance. Returns best weighted score.
-   This is what makes Moriarty flee AWAY, not shuffle locally. */
+/* ── LOOKAHEAD ESCAPE SCORE ── */
 function escapeScore(fromNode,detPos,maxHops){
   const vis=new Map([[fromNode,0]]);
   const queue=[{node:fromNode,d:0}];
@@ -1128,57 +1124,347 @@ function threatLevel(nodeId,detPos){
 /* LEGACY no-op */
 function buildOpportunityScores(){}
 
+/* ══════════════════════════════════════════════════════════════
+   SAFETY RULE
+   A node is safe if no detective can reach it in one move
+   with their currently available tickets.
+══════════════════════════════════════════════════════════════ */
+function isSafeNode(nodeId){
+  return G.detectives.every(det=>{
+    // Check every transport type connecting detective to nodeId
+    for(const t of ['taxi','bus','underground','water']){
+      if((det.tickets[t]||0)>0 && adj[det.node][t].includes(nodeId)) return false;
+    }
+    return true;
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DIRECTIONAL VECTOR BIAS
+   Detective centroid → Moriarty → extend outward.
+   Candidate moves aligning with flee vector get a bonus,
+   scaling up near reveal moves.
+══════════════════════════════════════════════════════════════ */
+function detectiveCentroid(detPos){
+  let cx=0,cy=0;
+  detPos.forEach(d=>{cx+=nodes[d].x;cy+=nodes[d].y;});
+  return{x:cx/detPos.length,y:cy/detPos.length};
+}
+
+function directionalBonus(candidateNode,moriNode,detPos,nextMove){
+  const cent=detectiveCentroid(detPos);
+  const mn=nodes[moriNode],cn=nodes[candidateNode];
+  const vx=mn.x-cent.x,vy=mn.y-cent.y;
+  const vlen=Math.hypot(vx,vy);
+  if(vlen<1) return 0;
+  const dx=cn.x-mn.x,dy=cn.y-mn.y;
+  const dot=(dx*vx+dy*vy)/vlen;
+  if(dot<=0) return 0;
+  const nextReveal=REVEAL_MOVES.find(r=>r>=nextMove)||MAX_MOVES;
+  const hopsToReveal=nextReveal-nextMove+1;
+  const revealUrgency=Math.max(1,6-hopsToReveal)/5;
+  return dot*0.25*revealUrgency;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   REVEAL LANDING PAD SYSTEM
+   3 moves before each reveal, find the best "hub" node
+   (underground > riverboat > bus) reachable in exactly
+   hops-to-reveal hops. Store as G.revealPlan.
+   Replan only if a detective can now reach the next waypoint.
+══════════════════════════════════════════════════════════════ */
+
+/* Hub quality: underground=300, water=200, bus=100, plus escape score */
+function hubScore(nodeId,detPos){
+  let typeBonus=0;
+  if(nodes[nodeId].types.includes('underground')) typeBonus=300;
+  else if(adj[nodeId].water.length>0)             typeBonus=200;
+  else if(adj[nodeId].bus.length>0)               typeBonus=100;
+  if(typeBonus===0) return -Infinity; // must be a hub
+  const connections=adj[nodeId].taxi.length+adj[nodeId].bus.length+
+                    adj[nodeId].underground.length+adj[nodeId].water.length;
+  // Dead-end penalty: end-of-line nodes are traps, not hubs
+  const deadEndPenalty=connections<=2?-500:connections<=3?-200:0;
+  const edgePen=edgePenalty(nodeId)*3; // triple weight vs normal scoring — corners are traps for reveals
+  // End-of-line penalty: underground terminus has only 1 underground exit — predictable and trappable
+  const ugExits=adj[nodeId].underground.length;
+  const terminusPenalty=nodes[nodeId].types.includes('underground')&&ugExits<=1?-400:0;
+  return typeBonus+connections*20+deadEndPenalty+terminusPenalty+edgePen+escapeScore(nodeId,detPos,3);
+}
+
+/* BFS to find best hub reachable in exactly `radius` hops,
+   returning the hub node and the first-step waypoint toward it */
+function findLandingPad(fromNode,detPos,radius){
+  if(radius<1) return null;
+  // BFS tracking path
+  const vis=new Map([[fromNode,{d:0,firstStep:null}]]);
+  const queue=[{node:fromNode,d:0,firstStep:null}];
+  let bestHub=null,bestFirst=null,bestScore=-Infinity;
+  while(queue.length){
+    const{node:n,d,firstStep}=queue.shift();
+    if(d===radius){
+      const hs=hubScore(n,detPos);
+      if(hs>bestScore){bestScore=hs;bestHub=n;bestFirst=firstStep;}
+      continue;
+    }
+    for(const t of ['taxi','bus','underground','water'])
+      for(const nb of adj[n][t])
+        if(!vis.has(nb)){
+          const fs=firstStep||nb;
+          vis.set(nb,{d:d+1,firstStep:fs});
+          queue.push({node:nb,d:d+1,firstStep:fs});
+        }
+  }
+  return bestHub?{hub:bestHub,firstStep:bestFirst,score:bestScore}:null;
+}
+
+/* Check if current plan's next waypoint is threatened */
+function planThreatened(waypoint){
+  if(!waypoint) return true;
+  return !isSafeNode(waypoint);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   POST-REVEAL ESCAPE
+   Immediately after a reveal, maximise distance from
+   revealed position AND detective centroid.
+   Prefer underground > water > bus for single-hop range.
+══════════════════════════════════════════════════════════════ */
+/* ── POST-REVEAL SAFE-HOUSE PLAN ──
+   Move 1: long-distance escape (underground > water > bus preferred),
+           safe, away from revealed position and detective centroid.
+   Move 2: from that landing, find a taxi-only side-street safe-house —
+           a node only reachable by taxi (no bus/underground fast access),
+           must also be safe.
+   Store both moves in G.postRevealPlan; execute over next 2 calls. */
+function isSideStreet(nodeId){
+  // A side street: can only be reached by taxi from all neighbours
+  // i.e. no detective can fast-travel here via bus or underground
+  for(let i=1;i<=199;i++){
+    if(adj[i].bus.includes(nodeId)||adj[i].underground.includes(nodeId)) return false;
+  }
+  return true;
+}
+
+function buildPostRevealPlan(detPos){
+  const detSet=new Set(detPos);
+  const cent=detectiveCentroid(detPos);
+  const mn=nodes[G.moriNode];
+
+  // Move 1 candidates: safe, not occupied, prefer long-distance transport
+  const move1cands=moriMoves(G.moriNode)
+    .filter(m=>!detSet.has(m.node)&&isSafeNode(m.node));
+  const move1pool=move1cands.length?move1cands:
+    moriMoves(G.moriNode).filter(m=>!detSet.has(m.node));
+
+  let bestPlan=null,bestScore=-Infinity;
+
+  move1pool.forEach(m1=>{
+    const c1=nodes[m1.node];
+    const dist1=Math.hypot(c1.x-mn.x,c1.y-mn.y);
+    const distCent1=Math.hypot(c1.x-cent.x,c1.y-cent.y);
+    const type1Bonus=m1.type==='underground'?300:m1.type==='water'?200:m1.type==='bus'?100:0;
+
+    // Move 2: find best safe side-street reachable from m1 by taxi
+    let bestM2=null,bestM2Score=-Infinity;
+    adj[m1.node].taxi.forEach(nb=>{
+      if(detSet.has(nb)) return;
+      if(!isSafeNode(nb)) return; // ALWAYS must be safe
+      const sideStreetBonus=isSideStreet(nb)?400:0;
+      const c2=nodes[nb];
+      const dist2=Math.hypot(c2.x-mn.x,c2.y-mn.y);
+      const distCent2=Math.hypot(c2.x-cent.x,c2.y-cent.y);
+      const s=dist2+distCent2+sideStreetBonus;
+      if(s>bestM2Score){bestM2Score=s;bestM2={node:nb,type:'taxi'};}
+    });
+
+    // Score plan: move1 distance + move2 quality (if found)
+    const m2bonus=bestM2?bestM2Score*0.5:0;
+    const total=dist1+distCent1+type1Bonus+m2bonus;
+    if(total>bestScore){
+      bestScore=total;
+      bestPlan={move1:m1,move2:bestM2};
+    }
+  });
+
+  return bestPlan;
+}
+
+function postRevealMove(detPos){
+  // Execute pre-calculated plan if available
+  if(G.postRevealPlan&&G.postRevealPlan.move2){
+    const m=G.postRevealPlan.move2;
+    G.postRevealPlan=null;
+    if(isSafeNode(m.node)) return m;
+    // Safe-house no longer safe — fall through to fresh calculation
+  }
+  G.postRevealPlan=null;
+
+  // Build fresh plan
+  const plan=buildPostRevealPlan(detPos);
+  if(plan&&plan.move2) G.postRevealPlan=plan; // store move2 for next call
+  return plan?plan.move1:null;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DOUBLE BLUFF PRE-CALCULATION
+   Both legs computed simultaneously.
+   Leg1: any safe move.
+   Leg2: must be a safe node (no detective can reach in one move).
+══════════════════════════════════════════════════════════════ */
+function calcBluffLegs(moriNode,detPos,nextMove){
+  const detSet=new Set(detPos);
+  const leg1cands=moriMoves(moriNode)
+    .filter(m=>!detSet.has(m.node)&&m.type!=='water');
+  let bestLeg1=null,bestLeg2=null,bestScore=-Infinity;
+  leg1cands.forEach(m1=>{
+    const leg2cands=moriMoves(m1.node)
+      .filter(m=>!detSet.has(m.node)&&m.node!==moriNode&&isSafeNode(m.node));
+    leg2cands.forEach(m2=>{
+      const esc=escapeScore(m2.node,detPos,4);
+      const dir=directionalBonus(m2.node,m1.node,detPos,nextMove+1);
+      const total=esc+dir;
+      if(total>bestScore){bestScore=total;bestLeg1=m1;bestLeg2=m2;}
+    });
+  });
+  return{leg1:bestLeg1,leg2:bestLeg2};
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MAIN AI ENTRY POINT
+══════════════════════════════════════════════════════════════ */
 function aiPickMoriMove(){
   const detPos=G.detectives.map(d=>d.node);
   const detSet=new Set(detPos);
   const nextMove=G.moriMoveCount+1;
   const recentlyVisited=new Set(G.posHistory||[]);
   const level=threatLevel(G.moriNode,detPos);
+  const FOG_BANNED=new Set([1,2,3,8,13,18,24]);
 
-  const FOG_BANNED  =new Set([1,2,3,8,13,18,24]);
-  const BLUFF_BANNED=new Set([1,2,3,7,8,12,13,17,18]);
+  /* ── LEG 2 OF PRE-CALCULATED BLUFF ── */
+  if(G.bluffLeg===2&&G.bluffSecondLeg){
+    const m=G.bluffSecondLeg;
+    G.bluffSecondLeg=null;
+    const isRiverboat=m.type==='water';
+    return{node:m.node,type:isRiverboat?'fog':m.type,realType:m.type,
+           fogConsumed:isRiverboat,bluffConsumed:false};
+  }
 
-  const justUsedBluff=G.bluffLeg===0&&G.bluffPairStart===G.moriMoveCount-1;
-  const bluffWorthIt=level==='crisis'||level==='alarm'||(level==='watch'&&G.bluffLeft>0);
-  const bluffWanted=G.bluffLeft>0&&G.bluffLeg===0
-    &&!BLUFF_BANNED.has(nextMove)&&bluffWorthIt&&!justUsedBluff;
+  /* ── POST-REVEAL ESCAPE ── */
+  // G.moriMoveCount = last completed move; if it was a reveal, plan escape now
+  const justRevealed=REVEAL_MOVES.includes(G.moriMoveCount)||G.postRevealPlan!==null;
+  if(justRevealed){
+    const pr=postRevealMove(detPos);
+    if(pr){
+      const isRiverboat=pr.type==='water';
+      // Use fog on first move after reveal unless closest detective is 4+ hops away
+      const revealedNode=G.moriNode; // still at revealed position when planning this move
+      const closestDetHops=Math.min(...detPos.map(d=>landHopDist(revealedNode,d)));
+      // Fog only on the long-distance first move, not the taxi safe-house move
+      const isFirstRevealMove=REVEAL_MOVES.includes(G.moriMoveCount);
+      const revealFog=isFirstRevealMove&&!isRiverboat&&G.fogLeft>0&&!G.fogThisLeg&&
+                      !FOG_BANNED.has(nextMove)&&closestDetHops<4;
+      return{node:pr.node,
+             type:(isRiverboat||revealFog)?'fog':pr.type,
+             realType:pr.type,
+             fogConsumed:isRiverboat||revealFog,
+             bluffConsumed:false};
+    }
+  }
 
+  /* ── REVEAL LANDING PAD PLAN ── */
+  const nextReveal=REVEAL_MOVES.find(r=>r>=nextMove)||MAX_MOVES;
+  const hopsToReveal=nextReveal-nextMove; // hops remaining AFTER this move
+  // Plan: find a hub reachable in hopsToReveal hops, aim first step toward it
+  // Replan if: no plan exists, or next waypoint is now threatened
+  if(hopsToReveal>=1&&hopsToReveal<=5){
+    if(!G.revealPlan||planThreatened(G.revealPlan.firstStep)||
+       G.revealPlan.forReveal!==nextReveal){
+      G.revealPlan=findLandingPad(G.moriNode,detPos,hopsToReveal);
+      if(G.revealPlan) G.revealPlan.forReveal=nextReveal;
+    }
+  } else {
+    G.revealPlan=null;
+  }
+
+  /* ── CANDIDATES ── */
   let candidates=moriMoves(G.moriNode).filter(m=>!detSet.has(m.node));
   if(!candidates.length) return{node:G.moriNode,type:'taxi',surrender:true};
   if(G.fogThisLeg||G.fogLeft<=0) candidates=candidates.filter(m=>m.type!=='water');
   if(!candidates.length) candidates=moriMoves(G.moriNode).filter(m=>!detSet.has(m.node));
 
+  /* ── SAFETY FILTER ── */
+  const safeCandidates=candidates.filter(m=>isSafeNode(m.node));
+  const noSafeMoves=safeCandidates.length===0;
+  const workingCandidates=noSafeMoves?candidates:safeCandidates;
+
+  /* ── BLUFF TRIGGER ── */
+  const crisisBluff=noSafeMoves&&G.bluffLeft>0&&G.bluffLeg===0;
+  const forcedBluff=G.bluffLeg===0&&(
+    (nextMove===21&&G.bluffLeft>=2)||(nextMove===23&&G.bluffLeft>=1)
+  );
+  const bluffWanted=crisisBluff||forcedBluff;
+
+  /* ── EXECUTE BLUFF ── */
+  if(bluffWanted){
+    const legs=calcBluffLegs(G.moriNode,detPos,nextMove);
+    if(legs.leg1&&legs.leg2){
+      G.bluffSecondLeg=legs.leg2;
+      return{node:legs.leg1.node,type:legs.leg1.type,realType:legs.leg1.type,
+             fogConsumed:false,bluffConsumed:true};
+    }
+    // No clean safe leg2 found — skip bluff, continue to normal move
+  }
+
+  /* ── SCORE CANDIDATES ── */
   const escapeMode=level==='crisis'||level==='alarm';
   const lookahead=escapeMode?6:5;
 
+  // Landing pad bonus: if this move's destination is the planned first step
+  const padFirstStep=G.revealPlan?G.revealPlan.firstStep:null;
+
   let best=null,bestScore=-Infinity;
-  candidates.forEach(m=>{
+  workingCandidates.forEach(m=>{
     const imm=scoreNode(m.node,detPos);
     if(imm<=-99999) return;
     const esc=escapeScore(m.node,detPos,lookahead);
     const revisit=recentlyVisited.has(m.node)?500:0;
     const reachBonus=m.type==='underground'?200:m.type==='water'?150:m.type==='bus'?60:0;
-    const total=esc+reachBonus-revisit;
+    const dir=directionalBonus(m.node,G.moriNode,detPos,nextMove);
+    const padBonus=padFirstStep&&m.node===padFirstStep?300:0;
+    const total=esc+reachBonus+dir+padBonus-revisit;
     if(total>bestScore){bestScore=total;best=m;}
   });
 
+  // Fallback: shorter lookahead
   if(!best){
-    candidates.forEach(m=>{
+    workingCandidates.forEach(m=>{
       const esc=escapeScore(m.node,detPos,3);
       const reachBonus=m.type==='underground'?200:m.type==='water'?150:m.type==='bus'?60:0;
-      const total=esc+reachBonus;
+      const dir=directionalBonus(m.node,G.moriNode,detPos,nextMove);
+      const total=esc+reachBonus+dir;
       if(total>bestScore){bestScore=total;best=m;}
     });
   }
 
   if(!best) return{node:G.moriNode,type:'taxi',surrender:true};
 
+  /* ── FOG DECISION ── */
   let heavyFog=false;
   if(best.type!=='water'){
     const minHops=Math.min(...detPos.map(dp=>landHopDist(dp,best.node)));
     const destTypes=new Set(moriMoves(best.node).filter(m=>m.type!=='water').map(m=>m.type));
-    heavyFog=G.fogLeft>0&&!G.fogThisLeg&&!FOG_BANNED.has(nextMove)
-      &&!bluffWanted&&minHops<=2&&destTypes.size>1;
+    const normalFog=G.fogLeft>0&&!G.fogThisLeg&&!FOG_BANNED.has(nextMove)
+      &&!bluffWanted&&minHops<=1&&destTypes.size>1;
+    // Count remaining fog slots: moves after this one that aren't banned or bluff moves
+    const FOG_FORCE_BANNED=new Set([1,2,3,8,13,18,24]);
+    const BLUFF_FORCE_MOVES=new Set([21,23]);
+    let slotsLeft=0;
+    for(let m=nextMove+1;m<=MAX_MOVES;m++)
+      if(!FOG_FORCE_BANNED.has(m)&&!BLUFF_FORCE_MOVES.has(m)) slotsLeft++;
+    const mustSpendNow=!G.fogThisLeg&&G.fogLeft>0&&!FOG_BANNED.has(nextMove)
+      &&!bluffWanted&&G.fogLeft>slotsLeft;
+    heavyFog=normalFog||mustSpendNow;
   }
 
   const isRiverboat=best.type==='water';
@@ -1187,17 +1473,17 @@ function aiPickMoriMove(){
     type:(isRiverboat||heavyFog)?'fog':best.type,
     realType:best.type,
     fogConsumed:isRiverboat||heavyFog,
-    bluffConsumed:bluffWanted
+    bluffConsumed:false
   };
 }
 
+
+
 /* ══════════════════════════════════════════════════════════════
    AI — DETECTIVES
-   Respect no-sharing rule: plannedDests tracks all committed destinations
+   Dynamic blocker/chaser roles, pre-reveal positioning,
+   post-reveal convergence vs dispersal, ticket-aware transport.
 ══════════════════════════════════════════════════════════════ */
-/* ── DETECTIVE TICKET-AWARE MOVE SCORING ──
-   Combines detective-mind.js lookahead philosophy with our ticket ratio balancing.
-   scoreCandidateMove ports the TicketPlanner logic directly. */
 
 function detIsStranded(nodeId, tickets){
   return ['taxi','bus','underground'].every(t=>
@@ -1205,8 +1491,6 @@ function detIsStranded(nodeId, tickets){
   );
 }
 
-/* Reachable belief mass within depth moves, tracking ticket state.
-   Ports detective-mind _mobilityLookahead. */
 function mobilityLookahead(nodeId, tickets, depth){
   const reachable=new Set([nodeId]);
   const visited=new Set([`${nodeId}|${tickets.taxi}|${tickets.bus}|${tickets.underground}`]);
@@ -1231,29 +1515,21 @@ function mobilityLookahead(nodeId, tickets, depth){
   return totalBelief*reachable.size;
 }
 
-/* Score a single detective move — ports detective-mind scoreCandidateMove
-   plus our ticket ratio balancing. */
+/* Score a single detective move */
 function scoreDetMove(det, fromNode, toNode, type, targetNode, occupiedByOthers){
   const TAXI_START=10,BUS_START=8,UG_START=4;
   const UNDERGROUND_MIN_SAVING=3;
   const remTix={...det.tickets,[type]:det.tickets[type]-1};
   let score=0;
 
-  // Immediate belief value
   score+=(G.belief[toNode]||0)*1000;
-
-  // Adjacent follow-up belief (one step further)
   for(const t of ['taxi','bus','underground']){
     if(remTix[t]<=0) continue;
     for(const nb of adj[toNode][t]) score+=(G.belief[nb]||0)*500;
   }
-
-  // Stranding penalty — from detective-mind
   if(detIsStranded(toNode,remTix)&&(G.belief[toNode]||0)<0.5) score-=200;
 
-  // Underground conservation — only spend if saves >= UNDERGROUND_MIN_SAVING hops
   if(type==='underground'){
-    // Best land-only (taxi/bus) neighbour distance to target
     let bestAlt=99;
     for(const t of ['taxi','bus'])
       for(const nb of adj[fromNode][t]){
@@ -1266,17 +1542,11 @@ function scoreDetMove(det, fromNode, toNode, type, targetNode, occupiedByOthers)
     else score+=saving*10;
   }
 
-  // Mobility lookahead — from detective-mind _mobilityLookahead
   score+=mobilityLookahead(toNode,remTix,4)*30;
-
-  // Distance to assigned cluster target
   const d=landHopDist(toNode,targetNode);
   if(d<99) score-=d*10;
-
-  // Avoid collision with teammates this round
   if(occupiedByOthers.has(toNode)) score-=80;
 
-  // ── TICKET RATIO BALANCING (our addition) ──
   const taxiRatio=det.tickets.taxi/TAXI_START;
   const busRatio=det.tickets.bus/BUS_START;
   const ugRatio=det.tickets.underground/UG_START;
@@ -1290,8 +1560,6 @@ function scoreDetMove(det, fromNode, toNode, type, targetNode, occupiedByOthers)
     const ugOverdue=Math.max(0,ugRatio-taxiRatio+0.2);
     score+=ugOverdue*300;
   }
-
-  // Stranding prevention — penalise if taxi almost gone and far from bus
   if(det.tickets.taxi<=3){
     const hBus=hopsToBus(toNode);
     if(hBus>det.tickets.taxi) score-=500;
@@ -1300,43 +1568,257 @@ function scoreDetMove(det, fromNode, toNode, type, targetNode, occupiedByOthers)
     const hUG=hopsToUnderground(toNode);
     if(hUG>det.tickets.bus+det.tickets.taxi) score-=300;
   }
-
   return score;
 }
 
+/* ── BELIEF CLOUD ANALYSIS ── */
+function beliefCloudStats(){
+  let cx=0,cy=0,tot=0;
+  for(let i=1;i<=199;i++){
+    cx+=nodes[i].x*G.belief[i];
+    cy+=nodes[i].y*G.belief[i];
+    tot+=G.belief[i];
+  }
+  if(tot>0){cx/=tot;cy/=tot;}
+  let spread=0;
+  for(let i=1;i<=199;i++){
+    const dx=nodes[i].x-cx,dy=nodes[i].y-cy;
+    spread+=Math.sqrt(dx*dx+dy*dy)*G.belief[i];
+  }
+  if(tot>0) spread/=tot;
+  // Count nodes with meaningful belief
+  let cloudSize=0;
+  for(let i=1;i<=199;i++) if(G.belief[i]>0.002) cloudSize++;
+  return{cx,cy,spread,cloudSize};
+}
+
+/* Is a node inside or adjacent to the belief cloud? */
+function isNearCloud(nodeId, threshold=0.005){
+  if(G.belief[nodeId]>threshold) return true;
+  for(const t of ['taxi','bus','underground'])
+    for(const nb of adj[nodeId][t])
+      if(G.belief[nb]>threshold) return true;
+  return false;
+}
+
+/* Best transport hub reachable by this detective within maxHops,
+   scored by connectivity weighted by available tickets */
+function bestTransportHub(det, maxHops){
+  const vis=new Map([[det.node,0]]);
+  const queue=[{node:det.node,d:0}];
+  let bestNode=null,bestScore=-Infinity;
+  while(queue.length){
+    const{node:n,d}=queue.shift();
+    if(d>0){
+      // Score hub by connections weighted by detective's available tickets
+      let hubVal=0;
+      if(det.tickets.taxi>0)       hubVal+=adj[n].taxi.length*det.tickets.taxi*2;
+      if(det.tickets.bus>0)        hubVal+=adj[n].bus.length*det.tickets.bus*4;
+      if(det.tickets.underground>0)hubVal+=adj[n].underground.length*det.tickets.underground*6;
+      // Prefer nodes inside belief cloud
+      hubVal+=(G.belief[n]||0)*500;
+      // Edge penalty
+      const nx=nodes[n];
+      const MARGIN=200;
+      const dx=Math.max(0,MARGIN-Math.min(nx.x,1600-nx.x));
+      const dy=Math.max(0,MARGIN-Math.min(nx.y,1200-nx.y));
+      hubVal-=(dx+dy)*2;
+      if(hubVal>bestScore){bestScore=hubVal;bestNode=n;}
+    }
+    if(d>=maxHops) continue;
+    for(const t of ['taxi','bus','underground'])
+      for(const nb of adj[n][t])
+        if(!vis.has(nb)){vis.set(nb,d+1);queue.push({node:nb,d:d+1});}
+  }
+  return bestNode;
+}
+
+/* Best perimeter blocking node: transport hub on edge of belief cloud
+   that cuts off escape routes */
+function bestBlockerTarget(det, cloudCx, cloudCy){
+  let bestNode=null,bestScore=-Infinity;
+  for(let i=1;i<=199;i++){
+    if(G.belief[i]<0.001) continue;
+    // Is this node on the cloud edge — belief here but sparse belief in direction away from centroid?
+    const n=nodes[i];
+    const dx=n.x-cloudCx,dy=n.y-cloudCy;
+    const dist=Math.hypot(dx,dy);
+    // Connectivity weighted by available tickets
+    let hubVal=0;
+    if(det.tickets.taxi>0)       hubVal+=adj[i].taxi.length*2;
+    if(det.tickets.bus>0)        hubVal+=adj[i].bus.length*4;
+    if(det.tickets.underground>0)hubVal+=adj[i].underground.length*6;
+    // Prefer nodes further from centroid (perimeter) and reachable
+    const hopDist=landHopDist(det.node,i);
+    if(hopDist>6) continue; // too far to be useful
+    const score=hubVal+dist*0.3-(hopDist*50);
+    if(score>bestScore){bestScore=score;bestNode=i;}
+  }
+  return bestNode||null;
+}
+
+/* Post-reveal: surround target nodes spread around revealed position */
+function surroundTargets(revealedNode, numDets){
+  // Find nodes at roughly equal angular spacing around revealed position
+  const rn=nodes[revealedNode];
+  const targets=[];
+  const ranked=[];
+  for(let i=1;i<=199;i++){
+    if(G.belief[i]<0.002) continue;
+    const n=nodes[i];
+    const dist=Math.hypot(n.x-rn.x,n.y-rn.y);
+    ranked.push({id:i,dist,angle:Math.atan2(n.y-rn.y,n.x-rn.x),belief:G.belief[i]});
+  }
+  ranked.sort((a,b)=>b.belief-a.belief);
+  // Pick spread-out targets at different angles
+  const assigned=[];
+  const MIN_ANGLE=Math.PI*2/numDets;
+  for(const cand of ranked){
+    if(targets.length>=numDets) break;
+    const tooClose=assigned.some(a=>{
+      let diff=Math.abs(cand.angle-a);
+      if(diff>Math.PI) diff=Math.PI*2-diff;
+      return diff<MIN_ANGLE*0.7;
+    });
+    if(!tooClose){targets.push(cand.id);assigned.push(cand.angle);}
+  }
+  // Fill remaining with highest belief
+  for(const cand of ranked){
+    if(targets.length>=numDets) break;
+    if(!targets.includes(cand.id)) targets.push(cand.id);
+  }
+  return targets;
+}
+
+/* ── MAIN DETECTIVE TEAM AI ── */
 function aiDetTeamMoves(){
   const moves=[];
   const plannedDests=new Set();
+  const nextReveal=REVEAL_MOVES.find(r=>r>G.moriMoveCount)||MAX_MOVES;
+  const movesToReveal=nextReveal-G.moriMoveCount;
+  const stats=beliefCloudStats();
+  const{cx:cloudCx,cy:cloudCy,spread:cloudSpread}=stats;
 
   // Rank nodes by belief
   const ranked=[];
-  for(let i=1;i<=199;i++) ranked.push({id:i,b:G.belief[i]});
+  for(let i=1;i<=199;i++) if(G.belief[i]>0.001) ranked.push({id:i,b:G.belief[i]});
   ranked.sort((a,b)=>b.b-a.b);
 
-  // Belief-weighted centroid and spread for target separation
-  let cx=0,cy=0,tot=0;
-  for(let i=1;i<=199;i++){cx+=nodes[i].x*G.belief[i];cy+=nodes[i].y*G.belief[i];tot+=G.belief[i];}
-  if(tot>0){cx/=tot;cy/=tot;}
-  let spread=0;
-  for(let i=1;i<=199;i++){const dx=nodes[i].x-cx,dy=nodes[i].y-cy;spread+=Math.sqrt(dx*dx+dy*dy)*G.belief[i];}
-  if(tot>0) spread/=tot;
+  /* ── ASSIGN ROLES AND TARGETS ── */
+  const targets=[];
 
-  // Assign spread-out targets
-  const targets=[];const assignedT=new Set();
-  const minSep=spread>250?150:80;
-  for(let di=0;di<NUM_DETS;di++){
-    let target=ranked[0].id;
-    for(const {id} of ranked){
-      if(G.belief[id]<0.001) continue;
-      const tooClose=[...assignedT].some(t=>{
-        const tn=nodes[t],cn=nodes[id];
-        return Math.hypot(tn.x-cn.x,tn.y-cn.y)<minSep;
-      });
-      if(!tooClose){target=id;break;}
+  // Post-reveal: check if last move was a reveal
+  const justRevealed=REVEAL_MOVES.includes(G.moriMoveCount);
+  const revealedNode=justRevealed?
+    (G.posHistory&&G.posHistory.length?G.posHistory[G.posHistory.length-1]:-1):-1;
+
+  if(justRevealed&&revealedNode>0){
+    // For each detective currently 2 hops from the revealed node:
+    // find all nodes they can reach in 1 move that are also 1 hop from revealedNode.
+    // If multiple options exist, prefer the one with the most major transport
+    // connection TO the revealed node (underground=3, bus=2, taxi=1).
+    // Detectives not within 2 hops fall back to converge/surround.
+    const moriOnUG=nodes[revealedNode].types.includes('underground');
+
+    // Pre-score each node adjacent to revealed node by transport priority
+    const adjPriority=new Map();
+    if(moriOnUG)
+      adj[revealedNode].underground.forEach(nb=>
+        adjPriority.set(nb,Math.max(adjPriority.get(nb)||0,3)));
+    adj[revealedNode].bus.forEach(nb=>
+      adjPriority.set(nb,Math.max(adjPriority.get(nb)||0,2)));
+    adj[revealedNode].taxi.forEach(nb=>
+      adjPriority.set(nb,Math.max(adjPriority.get(nb)||0,1)));
+
+    const assignedBlocks=new Set();
+    const assignedT=new Set();
+    for(let di=0;di<NUM_DETS;di++){
+      const det=G.detectives[di];
+      const hopsToMori=landHopDist(det.node,revealedNode);
+      let assigned=false;
+
+      if(hopsToMori<=2){
+        // Find all moves this detective can make that land 1 hop from revealed node
+        // i.e. the destination is in adjPriority map
+        let bestNode=null,bestPriority=-1;
+        for(const t of ['taxi','bus','underground']){
+          if(det.tickets[t]<=0) continue;
+          for(const nb of adj[det.node][t]){
+            if(!adjPriority.has(nb)) continue;
+            if(assignedBlocks.has(nb)) continue;
+            const pri=adjPriority.get(nb);
+            if(pri>bestPriority){bestPriority=pri;bestNode=nb;}
+          }
+        }
+        if(bestNode!==null){
+          targets.push(bestNode);
+          assignedBlocks.add(bestNode);
+          assignedT.add(bestNode);
+          assigned=true;
+        }
+      }
+
+      if(!assigned){
+        // Fallback: converge if cloud tight, surround if wide
+        const CONVERGE_THRESHOLD=200;
+        if(cloudSpread<CONVERGE_THRESHOLD){
+          let target=ranked[0]?ranked[0].id:revealedNode;
+          for(const{id} of ranked){
+            const tooClose=[...assignedT].some(t=>{
+              const tn=nodes[t],cn=nodes[id];
+              return Math.hypot(tn.x-cn.x,tn.y-cn.y)<80;
+            });
+            if(!tooClose){target=id;break;}
+          }
+          assignedT.add(target);targets.push(target);
+        } else {
+          const surround=surroundTargets(revealedNode,NUM_DETS);
+          targets.push(surround[di]||ranked[0].id);
+        }
+      }
     }
-    assignedT.add(target);targets.push(target);
+  } else if(movesToReveal<=2){
+    /* ── PRE-REVEAL POSITIONING ── */
+    // 1 move before: lock onto best reachable transport hub near cloud
+    // 2 moves before: start moving toward well-connected nodes in cloud
+    const assignedT=new Set();
+    for(let di=0;di<NUM_DETS;di++){
+      const det=G.detectives[di];
+      const hub=bestTransportHub(det,movesToReveal+1);
+      const target=hub||ranked[0].id;
+      assignedT.add(target);targets.push(target);
+    }
+  } else {
+    /* ── NORMAL PLAY: DYNAMIC BLOCKER/CHASER SPLIT ── */
+    // Detectives near cloud = chasers (target high-belief nodes)
+    // Detectives outside cloud = blockers (target perimeter transport hubs)
+    const minSep=cloudSpread>250?150:80;
+    const assignedT=new Set();
+
+    for(let di=0;di<NUM_DETS;di++){
+      const det=G.detectives[di];
+      const nearCloud=isNearCloud(det.node);
+      let target;
+
+      if(nearCloud){
+        // Chaser: target highest-belief node not already taken
+        target=ranked[0]?ranked[0].id:1;
+        for(const{id} of ranked){
+          const tooClose=[...assignedT].some(t=>{
+            const tn=nodes[t],cn=nodes[id];
+            return Math.hypot(tn.x-cn.x,tn.y-cn.y)<minSep;
+          });
+          if(!tooClose){target=id;break;}
+        }
+      } else {
+        // Blocker: target best transport hub on cloud perimeter
+        target=bestBlockerTarget(det,cloudCx,cloudCy)||ranked[0].id;
+      }
+      assignedT.add(target);targets.push(target);
+    }
   }
 
+  /* ── EXECUTE MOVES ── */
   G.detectives.forEach((det,i)=>{
     const otherCurrent=new Set(G.detectives.filter((_,j)=>j!==i).map(d=>d.node));
     const exclude=new Set([...otherCurrent,...plannedDests]);
@@ -1346,19 +1828,19 @@ function aiDetTeamMoves(){
       if(!fallback.length){moves.push({detIdx:i,node:det.node,type:'taxi',stranded:true});return;}
       valid=fallback;
     }
-
     const targetNode=targets[i]||ranked[0].id;
     let best=valid[0],bestScore=-Infinity;
     valid.forEach(m=>{
       const s=scoreDetMove(det,det.node,m.node,m.type,targetNode,plannedDests);
       if(s>bestScore){bestScore=s;best=m;}
     });
-
     plannedDests.add(best.node);
     moves.push({detIdx:i,node:best.node,type:best.type});
   });
   return moves;
 }
+
+
 /* ══════════════════════════════════════════════════════════════
    COACH
 ══════════════════════════════════════════════════════════════ */
@@ -1627,7 +2109,7 @@ function initCanvas(){
 }
 function getPinchDist(){const p=[...pointers.values()];return p.length<2?null:Math.hypot(p[1].x-p[0].x,p[1].y-p[0].y);}
 function zoomAt(mx,my,f){const ns=Math.max(MIN_SCALE,Math.min(MAX_SCALE,transform.scale*f));transform.x=mx-(mx-transform.x)*(ns/transform.scale);transform.y=my-(my-transform.y)*(ns/transform.scale);transform.scale=ns;drawMap();}
-function resizeCanvas(){const r=canvas.parentElement.getBoundingClientRect();canvas.width=r.width;canvas.height=r.height;buildParchmentBg(r.width,r.height);drawMap();}
+function resizeCanvas(){const r=canvas.parentElement.getBoundingClientRect();if(!r.width||!r.height){setTimeout(resizeCanvas,50);return;}canvas.width=r.width;canvas.height=r.height;buildParchmentBg(r.width,r.height);drawMap();}
 const w2s=(x,y)=>[x*transform.scale+transform.x,y*transform.scale+transform.y];
 const s2w=(x,y)=>[(x-transform.x)/transform.scale,(y-transform.y)/transform.scale];
 function centreMap(){const r=canvas.getBoundingClientRect();const s=Math.min(r.width/WORLD_W,r.height/WORLD_H)*.95;transform.scale=s;transform.x=(r.width-WORLD_W*s)/2;transform.y=(r.height-WORLD_H*s)/2;}
