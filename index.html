@@ -2554,6 +2554,7 @@ function doDetMove(di,dest,type){
   if(!valid.some(m=>m.node===dest&&m.type===type)){console.warn('Illegal det move',di,dest,type);return;}
   det.tickets[type]--;det.node=dest;
   addLog(G.moriMoveCount,det.emoji,`<strong>${det.short}</strong> → Stn ${dest} via ${type}.`);
+  promptCtx=null;
   updateDetPanel();drawMap();
   if(dest===G.moriNode){hidePrompt();setTimeout(()=>endGame('detectives','capture'),300);return;}
   const adjN=moriMoves(G.moriNode).map(m=>m.node);
