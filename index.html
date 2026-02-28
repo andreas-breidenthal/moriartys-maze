@@ -1845,26 +1845,188 @@ function aiDetTeamMoves(){
 ══════════════════════════════════════════════════════════════ */
 function coachMoriSuggest(){
   const rec=aiPickMoriMove();
-  const mn=nodes[G.moriNode];
-  const closest=G.detectives.reduce((b,d)=>{const dist=Math.hypot(nodes[d.node].x-mn.x,nodes[d.node].y-mn.y);return dist<b.dist?{d,dist}:b;},{d:G.detectives[0],dist:Infinity});
+  const detPos=G.detectives.map(d=>d.node);
+  const level=threatLevel(G.moriNode,detPos);
   const nextReveal=REVEAL_MOVES.find(r=>r>G.moriMoveCount);
+  const movesToReveal=nextReveal?(nextReveal-G.moriMoveCount):null;
+  const justRevealed=REVEAL_MOVES.includes(G.moriMoveCount);
+  const hops=detPos.map(dp=>landHopDist(G.moriNode,dp)).sort((a,b)=>a-b);
+  const closestDet=G.detectives.reduce((b,d)=>{const h=landHopDist(G.moriNode,d.node);return h<b.h?{d,h}:b;},{d:G.detectives[0],h:99});
+  const tLabel={taxi:'🐴 hansom cab',bus:'🚃 omnibus',underground:'🚂 underground',fog:'🌫 riverboat'};
+  const tl=tLabel[rec.type]||rec.type;
+
   const lines=[];
-  lines.push(`${closest.d.short} is your nearest pursuer. Station ${rec.node} offers the best escape.`);
-  if(rec.fogConsumed) lines.push(`Heavy Fog advised — denies detectives transport intelligence.`);
-  if(rec.bluffConsumed) lines.push(`Double Bluff recommended — vacate the reveal position immediately.`);
-  if(nextReveal) lines.push(`Next reveal: move ${nextReveal} (${nextReveal-G.moriMoveCount} move${nextReveal-G.moriMoveCount!==1?'s':''} away).`);
+
+  // ── DOMINANT SITUATION ──
+  // Priority: surrender > crisis/post-reveal > bluff > reveal landing pad > fog > normal escape
+
+  if(rec.surrender){
+    lines.push(`There's no safe move — every exit is watched. Moriarty has no choice but to surrender.`);
+    G.coachMovRec=rec;
+    return{rec,text:lines.join(' ')};
+  }
+
+  if(justRevealed){
+    lines.push(`Moriarty's position was just revealed! The detectives know exactly where he is — he must run immediately.`);
+  } else if(level==='crisis'){
+    lines.push(`${closestDet.d.short} is only ${closestDet.h} step${closestDet.h!==1?'s':''} away — Moriarty is in serious danger and must escape fast.`);
+  } else if(level==='alarm'){
+    lines.push(`The net is closing in. ${closestDet.d.short} is just ${closestDet.h} steps away — Moriarty needs to move carefully.`);
+  } else if(level==='watch'){
+    lines.push(`The detectives are getting closer. Moriarty has some breathing room, but shouldn't get comfortable.`);
+  } else {
+    lines.push(`Moriarty has slipped away from the detectives for now — a good moment to plan ahead.`);
+  }
+
+  // ── DOMINANT MOVE REASON ──
+  const toN=nodes[rec.node];
+  const fromN=nodes[G.moriNode];
+  const destHopsFromDets=detPos.map(dp=>landHopDist(rec.node,dp)).sort((a,b)=>a-b);
+  const currentHopsFromDets=detPos.map(dp=>landHopDist(G.moriNode,dp)).sort((a,b)=>a-b);
+  const gainingDistance=destHopsFromDets[0]>currentHopsFromDets[0];
+  const ugConnections=adj[rec.node].underground.length;
+  const busConnections=adj[rec.node].bus.length;
+  const isHub=nodes[rec.node].types.includes('underground')||(adj[rec.node].water.length>0)||busConnections>=3;
+  const isRiverboat=rec.realType==='water';
+
+  let moveReason;
+  if(rec.bluffConsumed){
+    moveReason=`Use a Double Bluff — making two moves this turn will throw the detectives completely off the scent.`;
+  } else if(rec.fogConsumed&&!isRiverboat){
+    moveReason=`Use Heavy Fog on this move to station ${rec.node} — hiding the transport type means the detectives won't know which direction Moriarty went.`;
+  } else if(isRiverboat){
+    moveReason=`Take the ${tl} to station ${rec.node} — the river gives Moriarty a big jump across the map that the detectives won't expect.`;
+  } else if(justRevealed&&rec.type==='underground'){
+    moveReason=`Take the ${tl} to station ${rec.node} — the underground puts maximum distance between Moriarty and the detectives in a single move.`;
+  } else if(justRevealed){
+    moveReason=`Move to station ${rec.node} by ${tl} — getting away from the revealed position is the top priority right now.`;
+  } else if(level==='crisis'&&gainingDistance){
+    moveReason=`Move to station ${rec.node} by ${tl} — this is the best escape route away from ${closestDet.d.short}.`;
+  } else if(movesToReveal!==null&&movesToReveal<=3&&isHub){
+    const hubType=nodes[rec.node].types.includes('underground')?'underground station':adj[rec.node].water.length>0?'riverboat stop':'well-connected bus stop';
+    moveReason=`Head towards station ${rec.node} by ${tl} — it's a ${hubType}, giving Moriarty many escape options when he's revealed in ${movesToReveal} move${movesToReveal!==1?'s':''}.`;
+  } else if(movesToReveal!==null&&movesToReveal<=3){
+    moveReason=`Move to station ${rec.node} by ${tl} — positioning carefully before the reveal in ${movesToReveal} move${movesToReveal!==1?'s':''}.`;
+  } else if(gainingDistance&&level!=='safe'){
+    moveReason=`Move to station ${rec.node} by ${tl} — this puts more distance between Moriarty and his nearest pursuer.`;
+  } else if(isHub&&level==='safe'){
+    moveReason=`Move to station ${rec.node} by ${tl} — it's a well-connected hub that keeps plenty of future escape options open.`;
+  } else if(rec.type==='underground'){
+    moveReason=`Take the ${tl} to station ${rec.node} — the underground gives Moriarty a much bigger jump than road transport would.`;
+  } else {
+    moveReason=`Move to station ${rec.node} by ${tl} — this keeps Moriarty away from the detectives while staying out of any traps.`;
+  }
+
+  lines.push(moveReason);
+
+  // ── UPCOMING REVEAL WARNING ──
+  if(!justRevealed&&movesToReveal===1){
+    lines.push(`Warning: Moriarty will be revealed on the very next move — make sure he's somewhere with good escape routes!`);
+  }
+
   G.coachMovRec=rec;
-  return {rec,text:lines.join(' ')};
+  return{rec,text:lines.join(' ')};
 }
 function coachDetSuggest(){
   const recs=aiDetTeamMoves();
-  let peakNode=1,peakVal=0;
-  for(let i=1;i<=199;i++) if(G.belief[i]>peakVal){peakVal=G.belief[i];peakNode=i;}
-  const lines=[];
-  lines.push(`Highest probability: station ${peakNode} (${(peakVal*100).toFixed(1)}%).`);
-  if(G.ghostNode>=0) lines.push(`Last sighting station ${G.ghostNode}, ${G.ghostSince} move${G.ghostSince!==1?'s':''} ago.`);
-  lines.push(`Detectives fanning out across the probability cloud.`);
   G.coachDetRecs=recs;
+
+  const nextReveal=REVEAL_MOVES.find(r=>r>G.moriMoveCount);
+  const movesToReveal=nextReveal?(nextReveal-G.moriMoveCount):null;
+  const justRevealed=REVEAL_MOVES.includes(G.moriMoveCount);
+  const stats=beliefCloudStats();
+  const{cx:cloudCx,cy:cloudCy,spread:cloudSpread}=stats;
+
+  let peakNode=1,peakVal=0;
+  for(let i=1;i<=199;i++) if((G.belief[i]||0)>peakVal){peakVal=G.belief[i];peakNode=i;}
+
+  const tLabel={taxi:'🐴 hansom cab',bus:'🚃 omnibus',underground:'🚂 underground'};
+
+  const lines=[];
+
+  // Situation opener
+  if(justRevealed&&G.ghostNode>=0){
+    lines.push(`Moriarty was just spotted at station ${G.ghostNode}! Move fast to surround him before he slips away.`);
+  } else if(G.ghostNode>=0){
+    const ago=G.ghostSince;
+    lines.push(`Moriarty was last seen at station ${G.ghostNode}, ${ago} move${ago!==1?'s':''} ago. We think he's probably around station ${peakNode} now.`);
+  } else {
+    lines.push(`We haven't spotted Moriarty yet. Spread out to cover as much of the map as possible.`);
+  }
+
+  if(movesToReveal===1) lines.push(`He'll be revealed on the very next move — get as close as you can right now!`);
+  else if(movesToReveal===2) lines.push(`He'll be revealed in 2 moves — start closing in.`);
+  else if(movesToReveal===3) lines.push(`He'll be revealed in 3 moves — start heading towards where you think he is.`);
+
+  // Per-detective: figure out the dominant reason for the chosen move
+  const detLines=recs.map(r=>{
+    const det=G.detectives[r.detIdx];
+    if(r.stranded) return `• ${det.short} has no routes available this turn and stays put.`;
+
+    const tl=tLabel[r.type]||r.type;
+    const to=r.node;
+    const from=det.node;
+    const toN=nodes[to];
+    const fromN=nodes[from];
+    const peakN=nodes[peakNode];
+
+    // Evaluate key factors for this chosen move
+    const beliefAtDest=(G.belief[to]||0);
+    const neighbourBelief=['taxi','bus','underground'].reduce((s,t)=>s+adj[to][t].reduce((ss,nb)=>ss+(G.belief[nb]||0),0),0);
+    const distToPeak_before=Math.hypot(peakN.x-fromN.x,peakN.y-fromN.y);
+    const distToPeak_after=Math.hypot(peakN.x-toN.x,peakN.y-toN.y);
+    const closingOnPeak=distToPeak_after<distToPeak_before-15;
+    const isNearC=isNearCloud(from);
+    const ugConnections=adj[to].underground.length;
+    const busConnections=adj[to].bus.length;
+    const isTransportHub=(ugConnections>=2||busConnections>=3);
+    const onCloudEdge=(G.belief[to]||0)<0.005&&neighbourBelief>0.05;
+    const distToCloud_after=Math.hypot(toN.x-cloudCx,toN.y-cloudCy);
+    const distToCloud_before=Math.hypot(fromN.x-cloudCx,fromN.y-cloudCy);
+    const closingOnCloud=distToCloud_after<distToCloud_before-15;
+
+    // Ticket conservation signals
+    const lowTaxi=det.tickets.taxi<=3;
+    const lowBus=det.tickets.bus<=2;
+    const ugSaving=r.type==='underground'&&(()=>{
+      let bestAlt=99;
+      for(const t of ['taxi','bus']) for(const nb of adj[from][t]){const d=landHopDist(nb,peakNode);if(d<bestAlt)bestAlt=d;}
+      return (landHopDist(to,peakNode)-bestAlt)<-2; // underground saves 3+ hops
+    })();
+
+    // Post-reveal: blocking escape
+    const nearSighting=justRevealed&&G.ghostNode>=0&&Math.hypot(nodes[G.ghostNode].x-toN.x,nodes[G.ghostNode].y-toN.y)<130;
+
+    // Pick the dominant reason — ordered by priority
+    let reason;
+    if(justRevealed&&nearSighting){
+      reason=`move to station ${to} by ${tl} — that's right next to where Moriarty was just spotted, cutting off his escape.`;
+    } else if(beliefAtDest>0.12){
+      reason=`move to station ${to} by ${tl} — that's one of the most likely places Moriarty could be hiding right now.`;
+    } else if(ugSaving){
+      reason=`take the ${tl} to station ${to} — the underground gets him there much faster than any road route.`;
+    } else if(movesToReveal<=2&&closingOnPeak){
+      reason=`move to station ${to} by ${tl} — Moriarty will be revealed soon and this gets him as close as possible.`;
+    } else if(beliefAtDest>0.04||neighbourBelief>0.15){
+      reason=`move to station ${to} by ${tl} — Moriarty has been seen nearby and this puts pressure on him.`;
+    } else if(closingOnPeak&&!isNearC){
+      reason=`move to station ${to} by ${tl} — he's still too far from the search area and needs to close the distance.`;
+    } else if(isTransportHub&&onCloudEdge){
+      reason=`move to station ${to} by ${tl} — that's a busy transport hub on the edge of the search area, blocking escape routes.`;
+    } else if(isTransportHub&&!isNearC){
+      reason=`move to station ${to} by ${tl} — that's a well-connected station that Moriarty would have to pass through to escape.`;
+    } else if(closingOnCloud){
+      reason=`move to station ${to} by ${tl} — this brings him closer to the area where Moriarty is most likely hiding.`;
+    } else if(r.type==='bus'&&lowTaxi){
+      reason=`take the ${tl} to station ${to} — he's running low on cab tickets, so the omnibus is the smarter choice.`;
+    } else {
+      reason=`move to station ${to} by ${tl} — this spreads the net and keeps Moriarty from finding an open gap.`;
+    }
+
+    return `• ${det.short} should ${reason}`;
+  });
+
+  lines.push(detLines.join(' '));
   return {recs,text:lines.join(' ')};
 }
 
