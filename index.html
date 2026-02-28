@@ -186,6 +186,7 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
 
 /* Move log */
 #move-log-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0}
+#rp-top{flex:0 0 50%;display:flex;flex-direction:column;overflow:hidden;min-height:0}
 .log-sec-hdr{font-family:'Cinzel',serif;font-size:11px;letter-spacing:2px;text-transform:uppercase;
   color:var(--gold);font-weight:700;padding:5px 10px 3px;flex-shrink:0;
   border-bottom:1px solid var(--parch-dk)}
@@ -204,8 +205,8 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
 .log-entry.reveal .log-t{color:var(--crimson)}
 
 /* Notes/Coach */
-#notes-area{flex-shrink:0;max-height:30%;min-height:72px;
-  border-top:1px solid var(--parch-dk);display:flex;flex-direction:column;overflow:hidden}
+#notes-area{flex:0 0 50%;display:flex;
+  border-top:1px solid var(--parch-dk);flex-direction:column;overflow:hidden}
 .notes-hdr{font-family:'Cinzel',serif;font-size:11px;letter-spacing:2px;color:var(--gold);
   padding:5px 9px 3px;text-transform:uppercase;font-weight:700;
   border-bottom:1px solid var(--parch-dk);flex-shrink:0;
@@ -449,13 +450,15 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
 
     <!-- RIGHT: Detectives + Log + Notes -->
     <div id="right-panel">
-      <div class="rp-sec">
-        <div class="rp-lbl">Detective Bureau</div>
-        <div id="det-list"></div>
-      </div>
-      <div id="move-log-wrap">
-        <div class="log-sec-hdr">Movement Log</div>
-        <div id="move-log"></div>
+      <div id="rp-top">
+        <div class="rp-sec">
+          <div class="rp-lbl">Detective Bureau</div>
+          <div id="det-list"></div>
+        </div>
+        <div id="move-log-wrap">
+          <div class="log-sec-hdr">Movement Log</div>
+          <div id="move-log"></div>
+        </div>
       </div>
       <div id="notes-area">
         <div class="notes-hdr">
