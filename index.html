@@ -2503,7 +2503,9 @@ function doMoriMove(dest,type){
   // Move 24: detectives get one final move before Moriarty escapes
   // (they have 22 tickets, Moriarty has 24 moves via 2 doubles — detectives are owed move 22)
   if(G.moriMoveCount>=MAX_MOVES){
-    hidePrompt();G.phase='detectives';pruneBeliefDetNodes();updateSidebar();
+    hidePrompt();G.phase='detectives';pruneBeliefDetNodes();
+    if(currentMode==='detective'||currentMode==='coach-detective') promptCtx={who:'detective',detIdx:0};
+    updateSidebar();
     G.finalDetPhase=true; // flag so endDetPhase knows to end game after
     setTimeout(()=>{
     if(currentMode==='moriarty'||currentMode==='coach-moriarty'){
@@ -2525,7 +2527,9 @@ function doMoriMove(dest,type){
   }
   G.bluffLeg=0;
 
-  hidePrompt();G.phase='detectives';pruneBeliefDetNodes();updateSidebar();
+  hidePrompt();G.phase='detectives';pruneBeliefDetNodes();
+  if(currentMode==='detective'||currentMode==='coach-detective') promptCtx={who:'detective',detIdx:0};
+  updateSidebar();
   setTimeout(()=>{
     if(currentMode==='moriarty'||currentMode==='coach-moriarty'){
       showAI('The detective bureau advances…');setTimeout(runAIDetPhase,600);
