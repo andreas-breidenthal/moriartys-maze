@@ -1938,99 +1938,68 @@ function coachDetSuggest(){
   const movesToReveal=nextReveal?(nextReveal-G.moriMoveCount):null;
   const justRevealed=REVEAL_MOVES.includes(G.moriMoveCount);
   const stats=beliefCloudStats();
-  const{cx:cloudCx,cy:cloudCy,spread:cloudSpread}=stats;
+  const{cx:cloudCx,cy:cloudCy}=stats;
 
   let peakNode=1,peakVal=0;
   for(let i=1;i<=199;i++) if((G.belief[i]||0)>peakVal){peakVal=G.belief[i];peakNode=i;}
 
   const tLabel={taxi:'🐴 hansom cab',bus:'🚃 omnibus',underground:'🚂 underground'};
 
-  const lines=[];
-
-  // Situation opener
+  // ── SITUATION SUMMARY — shown once at the start of the detective phase ──
+  const sitLines=[];
   if(justRevealed&&G.ghostNode>=0){
-    lines.push(`Moriarty was just spotted at station ${G.ghostNode}! Move fast to surround him before he slips away.`);
+    sitLines.push(`Moriarty was just spotted at station ${G.ghostNode}! Move fast to surround him before he slips away.`);
   } else if(G.ghostNode>=0){
     const ago=G.ghostSince;
-    lines.push(`Moriarty was last seen at station ${G.ghostNode}, ${ago} move${ago!==1?'s':''} ago. We think he's probably around station ${peakNode} now.`);
+    sitLines.push(`Moriarty was last seen at station ${G.ghostNode}, ${ago} move${ago!==1?'s':''} ago. We think he's probably around station ${peakNode} now.`);
   } else {
-    lines.push(`We haven't spotted Moriarty yet. Spread out to cover as much of the map as possible.`);
+    sitLines.push(`We haven't spotted Moriarty yet. Spread out to cover as much of the map as possible.`);
   }
+  if(movesToReveal===1) sitLines.push(`He'll be revealed on the very next move — get as close as you can right now!`);
+  else if(movesToReveal===2) sitLines.push(`He'll be revealed in 2 moves — start closing in.`);
+  else if(movesToReveal===3) sitLines.push(`He'll be revealed in 3 moves — start heading towards where you think he is.`);
 
-  if(movesToReveal===1) lines.push(`He'll be revealed on the very next move — get as close as you can right now!`);
-  else if(movesToReveal===2) lines.push(`He'll be revealed in 2 moves — start closing in.`);
-  else if(movesToReveal===3) lines.push(`He'll be revealed in 3 moves — start heading towards where you think he is.`);
-
-  // Per-detective: figure out the dominant reason for the chosen move
+  // ── PER-DETECTIVE LINES — one line each ──
   const detLines=recs.map(r=>{
     const det=G.detectives[r.detIdx];
-    if(r.stranded) return `• ${det.short} has no routes available this turn and stays put.`;
+    if(r.stranded) return `${det.short} has no routes available this turn and stays put.`;
 
     const tl=tLabel[r.type]||r.type;
-    const to=r.node;
-    const from=det.node;
-    const toN=nodes[to];
-    const fromN=nodes[from];
-    const peakN=nodes[peakNode];
+    const to=r.node,from=det.node;
+    const toN=nodes[to],fromN=nodes[from],peakN=nodes[peakNode];
 
-    // Evaluate key factors for this chosen move
     const beliefAtDest=(G.belief[to]||0);
     const neighbourBelief=['taxi','bus','underground'].reduce((s,t)=>s+adj[to][t].reduce((ss,nb)=>ss+(G.belief[nb]||0),0),0);
-    const distToPeak_before=Math.hypot(peakN.x-fromN.x,peakN.y-fromN.y);
-    const distToPeak_after=Math.hypot(peakN.x-toN.x,peakN.y-toN.y);
-    const closingOnPeak=distToPeak_after<distToPeak_before-15;
+    const closingOnPeak=Math.hypot(peakN.x-toN.x,peakN.y-toN.y)<Math.hypot(peakN.x-fromN.x,peakN.y-fromN.y)-15;
     const isNearC=isNearCloud(from);
-    const ugConnections=adj[to].underground.length;
-    const busConnections=adj[to].bus.length;
-    const isTransportHub=(ugConnections>=2||busConnections>=3);
-    const onCloudEdge=(G.belief[to]||0)<0.005&&neighbourBelief>0.05;
-    const distToCloud_after=Math.hypot(toN.x-cloudCx,toN.y-cloudCy);
-    const distToCloud_before=Math.hypot(fromN.x-cloudCx,fromN.y-cloudCy);
-    const closingOnCloud=distToCloud_after<distToCloud_before-15;
-
-    // Ticket conservation signals
+    const isTransportHub=(adj[to].underground.length>=2||adj[to].bus.length>=3);
+    const onCloudEdge=beliefAtDest<0.005&&neighbourBelief>0.05;
+    const closingOnCloud=Math.hypot(toN.x-cloudCx,toN.y-cloudCy)<Math.hypot(fromN.x-cloudCx,fromN.y-cloudCy)-15;
     const lowTaxi=det.tickets.taxi<=3;
-    const lowBus=det.tickets.bus<=2;
     const ugSaving=r.type==='underground'&&(()=>{
       let bestAlt=99;
       for(const t of ['taxi','bus']) for(const nb of adj[from][t]){const d=landHopDist(nb,peakNode);if(d<bestAlt)bestAlt=d;}
-      return (landHopDist(to,peakNode)-bestAlt)<-2; // underground saves 3+ hops
+      return (landHopDist(to,peakNode)-bestAlt)<-2;
     })();
-
-    // Post-reveal: blocking escape
     const nearSighting=justRevealed&&G.ghostNode>=0&&Math.hypot(nodes[G.ghostNode].x-toN.x,nodes[G.ghostNode].y-toN.y)<130;
 
-    // Pick the dominant reason — ordered by priority
     let reason;
-    if(justRevealed&&nearSighting){
-      reason=`move to station ${to} by ${tl} — that's right next to where Moriarty was just spotted, cutting off his escape.`;
-    } else if(beliefAtDest>0.12){
-      reason=`move to station ${to} by ${tl} — that's one of the most likely places Moriarty could be hiding right now.`;
-    } else if(ugSaving){
-      reason=`take the ${tl} to station ${to} — the underground gets him there much faster than any road route.`;
-    } else if(movesToReveal<=2&&closingOnPeak){
-      reason=`move to station ${to} by ${tl} — Moriarty will be revealed soon and this gets him as close as possible.`;
-    } else if(beliefAtDest>0.04||neighbourBelief>0.15){
-      reason=`move to station ${to} by ${tl} — Moriarty has been seen nearby and this puts pressure on him.`;
-    } else if(closingOnPeak&&!isNearC){
-      reason=`move to station ${to} by ${tl} — he's still too far from the search area and needs to close the distance.`;
-    } else if(isTransportHub&&onCloudEdge){
-      reason=`move to station ${to} by ${tl} — that's a busy transport hub on the edge of the search area, blocking escape routes.`;
-    } else if(isTransportHub&&!isNearC){
-      reason=`move to station ${to} by ${tl} — that's a well-connected station that Moriarty would have to pass through to escape.`;
-    } else if(closingOnCloud){
-      reason=`move to station ${to} by ${tl} — this brings him closer to the area where Moriarty is most likely hiding.`;
-    } else if(r.type==='bus'&&lowTaxi){
-      reason=`take the ${tl} to station ${to} — he's running low on cab tickets, so the omnibus is the smarter choice.`;
-    } else {
-      reason=`move to station ${to} by ${tl} — this spreads the net and keeps Moriarty from finding an open gap.`;
-    }
+    if(justRevealed&&nearSighting)      reason=`station ${to} by ${tl} — right next to where Moriarty was spotted, cutting off his escape.`;
+    else if(beliefAtDest>0.12)          reason=`station ${to} by ${tl} — one of the most likely places Moriarty is hiding right now.`;
+    else if(ugSaving)                   reason=`station ${to} by ${tl} — the underground gets there much faster than any road route.`;
+    else if(movesToReveal<=2&&closingOnPeak) reason=`station ${to} by ${tl} — gets him as close as possible before the reveal.`;
+    else if(beliefAtDest>0.04||neighbourBelief>0.15) reason=`station ${to} by ${tl} — Moriarty has been seen nearby, this puts pressure on him.`;
+    else if(closingOnPeak&&!isNearC)    reason=`station ${to} by ${tl} — still too far from the search area, needs to close the distance.`;
+    else if(isTransportHub&&onCloudEdge) reason=`station ${to} by ${tl} — a busy transport hub on the search area's edge, blocking escape routes.`;
+    else if(isTransportHub&&!isNearC)   reason=`station ${to} by ${tl} — a well-connected station Moriarty would have to pass through to escape.`;
+    else if(closingOnCloud)             reason=`station ${to} by ${tl} — brings him closer to where Moriarty is most likely hiding.`;
+    else if(r.type==='bus'&&lowTaxi)    reason=`station ${to} by ${tl} — running low on cab tickets, the omnibus is the smarter choice.`;
+    else                                reason=`station ${to} by ${tl} — spreads the net and keeps Moriarty from finding an open gap.`;
 
-    return `• ${det.short} should ${reason}`;
+    return `${det.short} → ${reason}`;
   });
 
-  lines.push(detLines.join(' '));
-  return {recs,text:lines.join(' ')};
+  return {recs, situation:sitLines.join(' '), detLines};
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -2349,7 +2318,12 @@ function showDetPrompt(di){
   document.getElementById('special-row').classList.remove('on');
   document.getElementById('cc-btn').style.display=currentMode==='coach-detective'?'':'none';
   buildDetTransport(di);resetDest();
-  if(currentMode==='coach-detective'){const s=coachDetSuggest();const rec=s.recs.find(r=>r.detIdx===di);addCoachEntry(s.text,rec?'Rec: Stn '+rec.node:'');}
+  if(currentMode==='coach-detective'){
+    const s=coachDetSuggest();
+    const rec=s.recs.find(r=>r.detIdx===di);
+    if(di===0) addCoachEntry(s.situation,'');
+    if(rec) addCoachEntry(s.detLines[di],`Rec: Stn ${rec.node}`);
+  }
 }
 
 function hidePrompt(){
