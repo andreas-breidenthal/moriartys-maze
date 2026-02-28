@@ -2299,7 +2299,7 @@ function showMoriPrompt(leg=1){
   document.getElementById('bluff-btn-n').textContent=G.bluffLeft;
   document.getElementById('cc-btn').style.display=currentMode==='coach-moriarty'?'':'none';
   buildMoriTransport();resetDest();
-  if(currentMode==='coach-moriarty'){const s=coachMoriSuggest();addCoachEntry(s.text,'Rec: Stn '+s.rec.node);}
+  if(currentMode==='coach-moriarty'){const s=coachMoriSuggest();addCoachEntry('— — — — —\n'+s.text,'Rec: Stn '+s.rec.node);}
 }
 
 function showDetPrompt(di){
@@ -2321,7 +2321,7 @@ function showDetPrompt(di){
   if(currentMode==='coach-detective'){
     const s=coachDetSuggest();
     const rec=s.recs.find(r=>r.detIdx===di);
-    if(di===0) addCoachEntry(s.situation,'');
+    if(di===0) addCoachEntry('— — — — —\n'+s.situation,'');
     if(rec) addCoachEntry(s.detLines[di],`Rec: Stn ${rec.node}`);
   }
 }
@@ -2634,7 +2634,9 @@ function addLog(mn,icon,text,isReveal=false){
 }
 function addCoachEntry(text,rec){
   const log=document.getElementById('notes-coach-log');
-  const e=document.createElement('div');e.className='coach-entry';e.textContent=text;
+  const e=document.createElement('div');e.className='coach-entry';
+  e.style.whiteSpace='pre-line';
+  e.textContent=text;
   log.appendChild(e);log.scrollTop=log.scrollHeight;
   document.getElementById('coach-rec').textContent=rec||'';
 }
