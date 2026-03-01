@@ -2678,8 +2678,7 @@ function updateDetPanel(){
     c.style.borderLeft=isActive?`3px solid ${det.colour}`:'';
     c.innerHTML=`<div class="det-emoji">${det.emoji}<div style="width:18px;height:3px;background:${det.colour};border-radius:2px;margin-top:2px"></div></div>
       <div class="det-meta">
-        <div class="det-name-sm">${det.short}</div>
-        <div class="det-pos-sm">Stn ${det.node}</div>
+        <div class="det-name-sm" style="color:${det.colour}">${det.short} <span style="font-family:'Crimson Text',serif;font-size:13px;font-weight:400;color:var(--parch-text)">· Stn ${det.node}</span></div>
         <div class="det-tix-sm">
           <span class="t">🐴${det.tickets.taxi}</span>
           <span class="b">🚃${det.tickets.bus}</span>
