@@ -2008,7 +2008,7 @@ function coachDetSuggest(){
     else if(isTransportHub&&onCloudEdge) reason=`station ${to} by ${tl} — a busy transport hub on the search area's edge, blocking escape routes.`;
     else if(isTransportHub&&!isNearC)   reason=`station ${to} by ${tl} — a well-connected station Moriarty would have to pass through to escape.`;
     else if(closingOnCloud)             reason=`station ${to} by ${tl} — brings him closer to where Moriarty is most likely hiding.`;
-    else if(r.type==='bus'&&lowTaxi)    reason=`station ${to} by ${tl} — running low on cab tickets, the omnibus is the smarter choice.`;
+    else if(r.type==='bus'&&lowTaxi)    reason=`station ${to} by ${tl} — running low on hansom tickets, the omnibus is the smarter choice.`;
     else                                reason=`station ${to} by ${tl} — spreads the net and keeps Moriarty from finding an open gap.`;
 
     return `${det.short} → ${reason}`;
@@ -2483,8 +2483,8 @@ function doMoriMove(dest,type){
     addLog(G.moriMoveCount,'🎩',`<strong>REVEAL — Station ${dest}</strong>`,true);
     flashReveal();
   } else {
-    const typeName={taxi:'Hansom Cab',bus:'Omnibus',underground:'Underground',water:'Riverboat'}[type]||type;
-    addLog(G.moriMoveCount,'🎩',`Moriarty moves by <strong>${usingFog?'Heavy Fog':typeName}</strong>.`);
+    const typeName={taxi:'🐴',bus:'🚃',underground:'🚂',water:'⚓'}[type]||type;
+    addLog(G.moriMoveCount,'🎩',`Moriarty moves by <strong>${usingFog?'🌫 Heavy Fog':typeName}</strong>.`);
   }
   G.fogThisLeg=false;
   document.getElementById('move-num').textContent=G.moriMoveCount;
@@ -2549,7 +2549,8 @@ function doDetMove(di,dest,type){
   const valid=detMoves(det,exclude);
   if(!valid.some(m=>m.node===dest&&m.type===type)){console.warn('Illegal det move',di,dest,type);return;}
   det.tickets[type]--;det.node=dest;
-  addLog(G.moriMoveCount,det.emoji,`<strong>${det.short}</strong> → Stn ${dest} via ${type}.`);
+  const _tIcon={taxi:'🐴',bus:'🚃',underground:'🚂',water:'⚓'};
+  addLog(G.moriMoveCount,det.emoji,`<strong>${det.short}</strong> → Stn ${dest} ${_tIcon[type]||type}.`);
   if(di+1<NUM_DETS) promptCtx={who:'detective',detIdx:di+1};
   else promptCtx=null;
   updateDetPanel();drawMap();
@@ -2591,7 +2592,8 @@ function runAIOneDet(idx){
       // Verify rec is valid (not occupied, reachable)
       const chosen=(rec&&!rec.stranded&&valid.some(m=>m.node===rec.node&&m.type===rec.type))?rec:valid[0];
       det.tickets[chosen.type]--;det.node=chosen.node;
-      addLog(G.moriMoveCount,det.emoji,`<strong>${det.short}</strong> → Stn ${chosen.node} via ${chosen.type}.`);
+      const _tIcon2={taxi:'🐴',bus:'🚃',underground:'🚂',water:'⚓'};
+      addLog(G.moriMoveCount,det.emoji,`<strong>${det.short}</strong> → Stn ${chosen.node} ${_tIcon2[chosen.type]||chosen.type}.`);
       updateDetPanel();drawMap();
       if(chosen.node===G.moriNode){setTimeout(()=>endGame('detectives','capture'),300);return;}
       const adjN=moriMoves(G.moriNode).map(m=>m.node);
