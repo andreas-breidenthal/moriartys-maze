@@ -2028,7 +2028,7 @@ const MIN_SCALE=0.22,MAX_SCALE=8;
 const ESTYLE={
   taxi:        {col:'rgba(150,100,10,0.55)',w:1.4,dash:[]},
   bus:         {col:'rgba(15,110,35,0.80)',w:2.2,dash:[]},
-  underground: {col:'rgba(155,15,15,0.85)',w:2.8,dash:[5,3]},
+  underground: {col:'rgba(155,15,15,0.85)',w:4.0,dash:[8,6]},
   water:       {col:'rgba(35,55,90,0.90)', w:3.2,dash:[8,4]},
 };
 
@@ -2092,7 +2092,7 @@ function drawMap(){
   }
 
   // Edges
-  ['taxi','bus','underground','water'].forEach(type=>{
+  ['water','underground','bus','taxi'].forEach(type=>{
     const es=ESTYLE[type];
     ctx.strokeStyle=es.col;
     ctx.lineWidth=es.w*Math.min(transform.scale*1.3,2.8);
@@ -2151,19 +2151,34 @@ function drawMap(){
     // White background circle for number
     ctx.beginPath();ctx.arc(sx,sy,R0,0,Math.PI*2);
     if(moriVisible&&isMori){
-      // Moriarty: red fill, bright border
       ctx.fillStyle='#c01818';ctx.strokeStyle='#ff4040';ctx.lineWidth=2.5;
+      ctx.fill();ctx.stroke();
     } else if(isDet){
-      // Detective node: white fill, gold border
       ctx.fillStyle='#ffffff';ctx.strokeStyle='#b07808';ctx.lineWidth=2;
+      ctx.fill();ctx.stroke();
     } else {
-      // Normal: clean white fill, thin border matching node type
-      ctx.fillStyle='#ffffff';
-      if(n.types.includes('underground')){ctx.strokeStyle='rgba(155,15,15,.8)';ctx.lineWidth=1.8;}
-      else if(n.types.includes('bus')){ctx.strokeStyle='rgba(15,110,35,.7)';ctx.lineWidth=1.4;}
-      else{ctx.strokeStyle='rgba(130,95,15,.5)';ctx.lineWidth=1;}
+      // Normal: white fill, then split-ring border by transport type
+      ctx.fillStyle='#ffffff';ctx.fill();
+
+      const hasUG=n.types.includes('underground');
+      const hasBus=n.types.includes('bus');
+      const lw=Math.max(1.2, R0*0.18);
+
+      if(!hasUG&&!hasBus){
+        // Hansom only — full yellow ring
+        ctx.beginPath();ctx.arc(sx,sy,R0,0,Math.PI*2);
+        ctx.strokeStyle='rgba(130,95,15,.5)';ctx.lineWidth=lw;ctx.stroke();
+      } else {
+        // Top half: red if underground, else yellow
+        ctx.beginPath();ctx.arc(sx,sy,R0,Math.PI,0); // top half (PI to 0 = left→right across top)
+        ctx.strokeStyle=hasUG?'rgba(155,15,15,.85)':'rgba(130,95,15,.5)';
+        ctx.lineWidth=hasUG?lw*1.6:lw;ctx.stroke();
+        // Bottom half: green if omnibus, else yellow
+        ctx.beginPath();ctx.arc(sx,sy,R0,0,Math.PI); // bottom half
+        ctx.strokeStyle=hasBus?'rgba(15,110,35,.8)':'rgba(130,95,15,.5)';
+        ctx.lineWidth=hasBus?lw*1.4:lw;ctx.stroke();
+      }
     }
-    ctx.fill();ctx.stroke();
 
     // Station number — always visible, black, uses Arial for maximum legibility
     const numSize=Math.max(7,Math.min(20,R0*0.85));
