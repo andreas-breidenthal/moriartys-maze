@@ -30,14 +30,14 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
   align-items:center;justify-content:center;gap:18px;padding:24px;
   background:radial-gradient(ellipse at 35% 30%,#2d1f08 0%,#0d0904 65%);
 }
-.t-orn{font-family:'Cinzel',serif;font-size:11px;letter-spacing:9px;text-transform:uppercase;color:var(--gold-hi);opacity:.7}
+.t-orn{font-family:'Cinzel',serif;font-size:13px;letter-spacing:9px;text-transform:uppercase;color:var(--gold-hi);opacity:.7}
 #title-screen h1{font-family:'Cinzel',serif;font-weight:900;font-size:clamp(30px,7vw,78px);
   color:var(--parch);text-align:center;line-height:1;letter-spacing:3px;
   text-shadow:0 0 50px rgba(180,120,10,.7),0 3px 8px rgba(0,0,0,.95);
   animation:flicker 7s ease-in-out infinite}
 #title-screen h1 span{color:var(--gold-hi)}
 @keyframes flicker{0%,88%,100%{opacity:1}90%{opacity:.87}95%{opacity:.79}}
-.t-sub{font-family:'IM Fell English',serif;font-size:clamp(12px,2vw,18px);color:var(--parch-dk);text-align:center}
+.t-sub{font-family:'IM Fell English',serif;font-size:clamp(15px,2vw,22px);color:var(--parch-dk);text-align:center}
 .t-rule{width:min(300px,82vw);height:1px;background:linear-gradient(to right,transparent,var(--gold-hi),transparent)}
 .mode-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;width:min(560px,94vw)}
 .mode-card{background:rgba(242,228,192,.07);border:1px solid rgba(176,120,8,.35);
@@ -45,10 +45,10 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
 .mode-card:hover{border-color:var(--gold-hi);transform:translateY(-3px);
   background:rgba(242,228,192,.13);box-shadow:0 10px 32px rgba(0,0,0,.7),0 0 22px rgba(180,120,10,.18)}
 .mode-icon{font-size:28px;display:block;margin-bottom:8px}
-.mode-title{font-family:'Cinzel',serif;font-size:11px;font-weight:700;color:var(--gold-hi);
+.mode-title{font-family:'Cinzel',serif;font-size:14px;font-weight:700;color:var(--gold-hi);
   letter-spacing:1.5px;text-transform:uppercase;margin-bottom:5px}
-.mode-desc{font-size:11px;color:var(--parch-dk);line-height:1.45}
-.t-foot{font-size:8px;color:#6a5030;letter-spacing:4px;text-transform:uppercase;font-family:'Cinzel',serif}
+.mode-desc{font-size:14px;color:var(--parch-dk);line-height:1.45}
+.t-foot{font-size:11px;color:#6a5030;letter-spacing:4px;text-transform:uppercase;font-family:'Cinzel',serif}
 
 /* ── GAME SHELL ── */
 #game{display:none;position:fixed;inset:0;flex-direction:column}
@@ -297,10 +297,10 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
   max-width:440px;width:100%;box-shadow:0 0 60px rgba(0,0,0,.5);border-radius:3px}
 .modal-title{font-family:'Cinzel',serif;font-size:17px;font-weight:900;color:var(--gold);
   text-align:center;margin-bottom:12px;letter-spacing:2px}
-.modal-body{font-size:12px;color:var(--parch-sub);line-height:1.7;margin-bottom:16px}
+.modal-body{font-size:15px;color:var(--parch-sub);line-height:1.7;margin-bottom:16px}
 .modal-acts{display:flex;gap:8px;justify-content:center}
 .modal-btn{background:rgba(176,120,8,.1);border:1.5px solid rgba(176,120,8,.45);color:var(--gold);
-  font-family:'Cinzel',serif;font-size:9px;padding:6px 16px;cursor:pointer;
+  font-family:'Cinzel',serif;font-size:13px;padding:8px 18px;cursor:pointer;
   letter-spacing:1.5px;text-transform:uppercase;transition:all .2s;border-radius:2px;font-weight:700}
 .modal-btn:hover{background:rgba(176,120,8,.22)}
 
@@ -312,7 +312,7 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
 #outcome.on{display:flex}
 #outcome.out-mori-bg{background:radial-gradient(ellipse at 40% 35%,rgba(80,8,8,.97) 0%,rgba(20,4,4,.99) 70%)}
 #outcome.out-dets-bg{background:radial-gradient(ellipse at 40% 35%,rgba(6,40,18,.97) 0%,rgba(4,14,8,.99) 70%)}
-.out-ornament{font-family:'Cinzel',serif;font-size:10px;letter-spacing:8px;
+.out-ornament{font-family:'Cinzel',serif;font-size:13px;letter-spacing:8px;
   text-transform:uppercase;opacity:.5;margin-bottom:-8px}
 .out-mori .out-ornament{color:#f06050}
 .out-dets .out-ornament{color:#40d060}
@@ -329,7 +329,7 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
 .out-mori .out-sub{color:rgba(255,200,190,.8)}
 .out-dets .out-sub{color:rgba(200,240,210,.8)}
 .out-acts{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:8px}
-.out-btn{font-family:'Cinzel',serif;font-size:10px;padding:10px 18px;
+.out-btn{font-family:'Cinzel',serif;font-size:14px;padding:10px 18px;
   cursor:pointer;letter-spacing:1.5px;text-transform:uppercase;
   border-radius:2px;font-weight:700;transition:all .2s}
 .out-mori .out-btn{background:rgba(180,40,20,.15);border:1.5px solid rgba(220,60,40,.5);color:#f08070}
@@ -344,9 +344,9 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
 .end-title{font-family:'Cinzel',serif;font-size:16px;font-weight:900;letter-spacing:3px;text-transform:uppercase;text-align:center;margin-bottom:4px}
 .end-title.end-mori{color:#f06050}
 .end-title.end-dets{color:#40d060}
-.end-sub{font-family:'IM Fell English',serif;font-size:13px;line-height:1.55;text-align:center;color:rgba(255,255,255,.7);margin-bottom:4px}
+.end-sub{font-family:'IM Fell English',serif;font-size:16px;line-height:1.55;text-align:center;color:rgba(255,255,255,.7);margin-bottom:4px}
 .end-acts{display:flex;gap:6px;margin-top:2px}
-.end-btn{flex:1;font-family:'Cinzel',serif;font-size:11px;padding:9px 8px;cursor:pointer;letter-spacing:1.5px;text-transform:uppercase;border-radius:2px;font-weight:700;transition:all .2s}
+.end-btn{flex:1;font-family:'Cinzel',serif;font-size:14px;padding:9px 8px;cursor:pointer;letter-spacing:1.5px;text-transform:uppercase;border-radius:2px;font-weight:700;transition:all .2s}
 .end-btn.mori{background:rgba(180,40,20,.15);border:1.5px solid rgba(180,40,20,.6);color:#f06050}
 .end-btn.mori:hover{background:rgba(180,40,20,.3)}
 .end-btn.dets{background:rgba(20,140,50,.12);border:1.5px solid rgba(20,140,50,.55);color:#40d060}
