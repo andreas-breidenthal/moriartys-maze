@@ -73,7 +73,7 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
 @keyframes pip-p{0%,100%{opacity:1}50%{opacity:.35}}
 .tb-actions{display:flex;gap:5px}
 .tb-btn{background:rgba(242,228,192,.08);border:1px solid rgba(176,120,8,.35);color:var(--parch-dk);
-  font-family:'Cinzel',serif;font-size:11px;padding:4px 10px;cursor:pointer;
+  font-family:'Cinzel',serif;font-size:14px;padding:6px 14px;cursor:pointer;
   letter-spacing:1px;text-transform:uppercase;transition:all .2s;border-radius:1px}
 .tb-btn:hover{border-color:var(--gold-hi);color:var(--parch);background:rgba(242,228,192,.16)}
 
@@ -81,9 +81,9 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
 #content{flex:1;display:flex;overflow:hidden;min-height:0}
 
 /* ── LEFT PANEL — Ticket Strip ── */
-#left-panel{width:90px;flex-shrink:0;background:var(--panel-bg);
+#left-panel{width:120px;flex-shrink:0;background:var(--panel-bg);
   border-right:2px solid var(--panel-bdr);display:flex;flex-direction:column;overflow:hidden}
-@media(max-width:500px){#left-panel{width:64px}}
+@media(max-width:500px){#left-panel{width:80px}}
 
 .lp-header{padding:6px 6px 5px;border-bottom:1px solid var(--parch-dk);
   background:rgba(0,0,0,.04);text-align:center}
@@ -2119,12 +2119,12 @@ function drawMap(){
     ctx.beginPath();ctx.arc(sx,sy,R,0,Math.PI*2);
     ctx.fillStyle='rgba(100,30,30,.7)';ctx.strokeStyle='rgba(200,50,50,.6)';ctx.lineWidth=2;
     ctx.fill();ctx.stroke();
-    const fs=Math.round(Math.max(12,Math.min(24,16*transform.scale)));
+    const fs=Math.round(Math.max(10,Math.min(30,16*transform.scale)));
     ctx.font=`${fs}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
     ctx.fillText('🎩',sx,sy-R-fs*.6);
     ctx.textBaseline='alphabetic';
     if(G.ghostSince>0){
-      ctx.font=`bold ${Math.round(Math.max(11,Math.min(16,11*transform.scale)))}px 'Cinzel',serif`;
+      ctx.font=`bold ${Math.round(Math.max(10,Math.min(20,11*transform.scale)))}px 'Cinzel',serif`;
       ctx.fillStyle='rgba(180,60,50,.85)';
       ctx.fillText('+'+G.ghostSince,sx,sy+R+9*Math.min(transform.scale,1.5));
     }
@@ -2132,7 +2132,7 @@ function drawMap(){
 
   // Nodes
   const moriVisible=(currentMode==='moriarty'||currentMode==='coach-moriarty');
-  const R0=Math.max(9,15*Math.min(transform.scale,1.6));
+  const R0=Math.max(5,20*Math.min(transform.scale,1.6));
 
   for(let i=1;i<=199;i++){
     const n=nodes[i];const[sx,sy]=w2s(n.x,n.y);
@@ -2166,7 +2166,7 @@ function drawMap(){
     ctx.fill();ctx.stroke();
 
     // Station number — always visible, black, uses Arial for maximum legibility
-    const numSize=Math.max(9,Math.min(16,R0*0.85));
+    const numSize=Math.max(7,Math.min(20,R0*0.85));
     ctx.font=`bold ${numSize}px Arial,sans-serif`;
     ctx.textAlign='center';ctx.textBaseline='middle';
     ctx.fillStyle=isMori&&moriVisible?'#fff':'#000';
@@ -2186,7 +2186,7 @@ function drawMap(){
           ctx.strokeStyle=col.replace(')',',0.35)').replace('rgb','rgba');
           ctx.lineWidth=5;ctx.stroke();
         }
-        const fs=Math.round(Math.max(12,Math.min(26,18*transform.scale)));
+        const fs=Math.round(Math.max(10,Math.min(30,18*transform.scale)));
         ctx.font=`${fs}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
         const bx2=sx+ox,by2=sy-R0-fs*.7;
         ctx.beginPath();
@@ -2200,7 +2200,7 @@ function drawMap(){
 
     // Moriarty hat (moriarty-visible modes only)
     if(moriVisible&&isMori){
-      const fs=Math.round(Math.min(26,18*transform.scale));
+      const fs=Math.round(Math.max(10,Math.min(30,18*transform.scale)));
       ctx.font=`${fs}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
       // Bright red glow ring
       ctx.beginPath();ctx.arc(sx,sy,R0+3.5,0,Math.PI*2);
