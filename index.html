@@ -2250,7 +2250,7 @@ function initCanvas(){
   canvas.addEventListener('mousedown',e=>{didPan=false;panStart={tx:transform.x,ty:transform.y,px:e.clientX,py:e.clientY};});
   canvas.addEventListener('mouseup',()=>{panStart=null;canvas.classList.remove('panning');});
   canvas.addEventListener('mouseleave',()=>{hoveredNode=null;hideTooltip();drawMap();});
-  canvas.addEventListener('wheel',e=>{e.preventDefault();const r=canvas.getBoundingClientRect();zoomAt(e.clientX-r.left,e.clientY-r.top,e.deltaY<0?1.12:.89);},{passive:false});
+  canvas.addEventListener('wheel',e=>{e.preventDefault();const r=canvas.getBoundingClientRect();const delta=e.deltaMode===1?e.deltaY*30:e.deltaMode===2?e.deltaY*300:e.deltaY;const f=Math.pow(0.999,delta);zoomAt(e.clientX-r.left,e.clientY-r.top,f);},{passive:false});
   canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});didPan=false;if(pointers.size===1)panStart={tx:transform.x,ty:transform.y,px:e.clientX,py:e.clientY};if(pointers.size===2){lastPinchDist=getPinchDist();panStart=null;}});
   canvas.addEventListener('pointermove',e=>{
     if(!pointers.has(e.pointerId)) return;
