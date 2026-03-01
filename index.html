@@ -2157,11 +2157,27 @@ function drawMap(){
       ctx.fillStyle='#ffffff';ctx.strokeStyle='#b07808';ctx.lineWidth=2;
       ctx.fill();ctx.stroke();
     } else {
-      ctx.fillStyle='#ffffff';
-      if(n.types.includes('underground')){ctx.strokeStyle='rgba(155,15,15,.8)';ctx.lineWidth=1.8;}
-      else if(n.types.includes('bus')){ctx.strokeStyle='rgba(15,110,35,.7)';ctx.lineWidth=1.4;}
-      else{ctx.strokeStyle='rgba(130,95,15,.5)';ctx.lineWidth=1;}
-      ctx.fill();ctx.stroke();
+      ctx.fillStyle='#ffffff';ctx.fill();
+
+      const hasUG=n.types.includes('underground');
+      const hasBus=n.types.includes('bus');
+      const lw=Math.max(1.2,R0*0.18);
+      ctx.lineCap='butt';
+
+      // Top half: solid red if underground, else solid yellow
+      ctx.beginPath();ctx.arc(sx,sy,R0,Math.PI,0);
+      ctx.setLineDash([]);
+      ctx.strokeStyle=hasUG?'rgba(155,15,15,.85)':'rgba(130,95,15,.5)';
+      ctx.lineWidth=hasUG?lw*1.6:lw;ctx.stroke();
+
+      // Bottom half: solid green if omnibus, else solid yellow
+      ctx.beginPath();ctx.arc(sx,sy,R0,0,Math.PI);
+      ctx.setLineDash([]);
+      ctx.strokeStyle=hasBus?'rgba(15,110,35,.8)':'rgba(130,95,15,.5)';
+      ctx.lineWidth=hasBus?lw*1.4:lw;
+      ctx.stroke();
+
+      ctx.setLineDash([]);ctx.lineCap='round';
     }
 
     // Station number — always visible, black, uses Arial for maximum legibility
