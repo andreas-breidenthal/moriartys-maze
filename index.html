@@ -1669,32 +1669,91 @@ function chokepointValue(nodeId, formation){
    Spread detectives across map quadrants toward well-connected nodes.
    No belief cloud yet — pure positioning. */
 function phase1Targets(){
-  // Divide map into 5 regions based on detective start positions
-  // Each detective targets best-connected node in their home region
+  // Find the best move-2 target for each detective:
+  // Prefer nearest Underground station reachable within 2 land hops (taxi or bus).
+  // Fall back to nearest Bus station if no Underground reachable.
+  // Assign targets across all detectives with no two sharing the same target.
+  // Tie-break by best spread (maximise minimum pairwise distance between targets).
+
+  // Build 1-hop and 2-hop reachable sets via taxi+bus only
+  function landReach(node){
+    const r1=new Set([...adj[node].taxi,...adj[node].bus]);
+    const r2=new Set(r1);
+    r1.forEach(n=>{
+      adj[n].taxi.forEach(nb=>r2.add(nb));
+      adj[n].bus.forEach(nb=>r2.add(nb));
+    });
+    r2.delete(node);
+    return{r1,r2};
+  }
+
+  // Underground and bus station sets (pre-built from STATIONS_RAW types)
+  const ugStations=new Set();
+  const busStations=new Set();
+  for(let i=1;i<=199;i++){
+    if(nodes[i].types.includes('underground')) ugStations.add(i);
+    else if(nodes[i].types.includes('bus')) busStations.add(i);
+  }
+
+  // Spread score: sum of pairwise pixel distances between assigned targets
+  function spreadScore(targetList){
+    let s=0;
+    for(let a=0;a<targetList.length;a++)
+      for(let b=a+1;b<targetList.length;b++){
+        const dx=nodes[targetList[a]].x-nodes[targetList[b]].x;
+        const dy=nodes[targetList[a]].y-nodes[targetList[b]].y;
+        s+=Math.hypot(dx,dy);
+      }
+    return s;
+  }
+
+  // For each detective, build ordered candidate list: UG first, then bus
+  const candidatesPerDet=G.detectives.map(det=>{
+    const{r1,r2}=landReach(det.node);
+    const ugCands=[];
+    const busCands=[];
+    // Underground candidates
+    ugStations.forEach(u=>{
+      if(r2.has(u)||u===det.node) ugCands.push({node:u,hops:r1.has(u)?1:2});
+    });
+    // If starting ON an underground station, it's a 0-hop candidate
+    if(ugStations.has(det.node)) ugCands.unshift({node:det.node,hops:0});
+    // Bus candidates (fallback)
+    busStations.forEach(b=>{
+      if(r2.has(b)) busCands.push({node:b,hops:r1.has(b)?1:2});
+    });
+    // Sort each by hops ascending
+    ugCands.sort((a,b)=>a.hops-b.hops);
+    busCands.sort((a,b)=>a.hops-b.hops);
+    return{det,ugCands,busCands};
+  });
+
+  // Greedy assignment with spread tie-breaking
+  // Try UG-first assignment; fall back to bus if clash unresolvable
+  const assigned=new Set();
   const targets=[];
-  const assignedNodes=new Set();
 
   G.detectives.forEach((det,di)=>{
-    // Score all nodes by connectivity, weighted by proximity to this detective
-    let bestNode=det.node,bestScore=-Infinity;
-    for(let i=1;i<=199;i++){
-      if(assignedNodes.has(i)) continue;
-      const hops=landHopDist(det.node,i);
-      if(hops>4) continue; // reachable within reveal cycle
-      const conn=adj[i].taxi.length+adj[i].bus.length*2+adj[i].underground.length*4;
-      // Spread bonus — prefer nodes far from other detectives' current positions
-      let spreadBonus=0;
-      G.detectives.forEach((od,odi)=>{
-        if(odi===di) return;
-        const d=Math.hypot(nodes[i].x-nodes[od.node].x,nodes[i].y-nodes[od.node].y);
-        spreadBonus+=Math.min(d*0.1,80);
-      });
-      const score=conn*20+spreadBonus-(hops*15);
-      if(score>bestScore){bestScore=score;bestNode=i;}
-    }
-    assignedNodes.add(bestNode);
-    targets.push(bestNode);
+    const{ugCands,busCands}=candidatesPerDet[di];
+    const allCands=[...ugCands,...busCands];
+    let best=null,bestSpread=-1;
+
+    allCands.forEach(c=>{
+      if(assigned.has(c.node)) return;
+      const trial=[...targets,c.node];
+      const sp=spreadScore(trial);
+      if(best===null||c.hops<(best.hops)||
+        (c.hops===best.hops&&sp>bestSpread)){
+        best=c;bestSpread=sp;
+      }
+    });
+
+    // Fallback: stay put if nothing available
+    if(!best) best={node:det.node,hops:0};
+    assigned.add(best.node);
+    targets.push(best.node);
   });
+
   return targets;
 }
 
@@ -1851,9 +1910,11 @@ function aiDetTeamMoves(){
 
   // Phase 1: moves 1-2 (before first reveal at move 3)
   if(moveNum<2){
+    // Targets are computed fresh each call (cached implicitly by plan persistence)
     const targets=phase1Targets();
     const moves=[];
     const planned=new Set();
+
     G.detectives.forEach((det,di)=>{
       const target=targets[di];
       const others=new Set(G.detectives.filter((_,j)=>j!==di).map(d=>d.node));
@@ -1861,27 +1922,45 @@ function aiDetTeamMoves(){
       let valid=detMoves(det,exclude);
       if(!valid.length) valid=detMoves(det,others);
       if(!valid.length){moves.push({detIdx:di,node:det.node,type:'taxi'});return;}
-      // Pick move that minimises hop distance to target
-      let best=valid[0],bestD=99;
-      valid.forEach(m=>{
-        const d=landHopDist(m.node,target);
-        // Ticket conservation
-        const remTix={...det.tickets,[m.type]:det.tickets[m.type]-1};
-        const stranded=detIsStranded(m.node,remTix)?-200:0;
-        const score=-(d*15)+adj[m.node].underground.length*20+
-                     adj[m.node].bus.length*10+stranded;
-        if(score>-d*15+bestD*15||bestD===99){
-          // Use proper scoring
-          let sc=-(d*15)+adj[m.node].underground.length*20+
-                  adj[m.node].bus.length*10+stranded;
-          if(sc>-(bestD*15)){bestD=d;best=m;}
+
+      // Prefer taxi, then bus — never use underground in phase 1
+      const landValid=valid.filter(m=>m.type!=='underground');
+      const pool=landValid.length?landValid:valid;
+
+      let best=pool[0];
+
+      if(moveNum===0){
+        // Move 1: step toward target but do NOT land on it yet
+        // Ideal: find a node that is 1 hop (land) from target and not the target itself
+        const r1FromTarget=new Set([...adj[target].taxi,...adj[target].bus]);
+        const goodStep=pool.filter(m=>m.node!==target&&r1FromTarget.has(m.node));
+        if(goodStep.length){
+          // Pick the one with best connectivity (more options for move 2)
+          goodStep.sort((a,b)=>{
+            const ca=adj[a.node].taxi.length+adj[a.node].bus.length*2;
+            const cb=adj[b.node].taxi.length+adj[b.node].bus.length*2;
+            return cb-ca;
+          });
+          best=goodStep[0];
+        } else {
+          // No ideal step — just move closer without landing on target
+          const notTarget=pool.filter(m=>m.node!==target);
+          const fallback=notTarget.length?notTarget:pool;
+          fallback.sort((a,b)=>landHopDist(a.node,target)-landHopDist(b.node,target));
+          best=fallback[0];
         }
-      });
-      // Simpler: just pick lowest hop distance
-      valid.forEach(m=>{
-        const d=landHopDist(m.node,target);
-        if(d<bestD){bestD=d;best=m;}
-      });
+      } else {
+        // Move 2: land on target
+        const onTarget=pool.filter(m=>m.node===target);
+        if(onTarget.length){
+          best=onTarget[0];
+        } else {
+          // Can't reach target directly — get as close as possible
+          pool.sort((a,b)=>landHopDist(a.node,target)-landHopDist(b.node,target));
+          best=pool[0];
+        }
+      }
+
       planned.add(best.node);
       moves.push({detIdx:di,node:best.node,type:best.type});
     });
