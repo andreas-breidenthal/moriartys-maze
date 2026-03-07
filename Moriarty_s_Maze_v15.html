@@ -3201,9 +3201,18 @@ function doMoriMove(dest,type){
   if(gameOver) return;
   // Hard ban: fog must never be used on reveal moves or moves 1-2
   const FOG_HARD_BAN=new Set([1,2,3,8,13,18,24]);
-  if(G.fogThisLeg && FOG_HARD_BAN.has(G.moriMoveCount+1)){
+
+  // Determine if Moriarty is controlled by AI
+  const aiMoriarty =
+    currentMode === 'detective' ||
+    currentMode === 'coach-detective' ||
+    (typeof simState !== 'undefined' && simState && simState.running);
+
+  // Only enforce fog ban for AI Moriarty
+  if(aiMoriarty && G.fogThisLeg && FOG_HARD_BAN.has(G.moriMoveCount+1)){
     console.warn('Fog ban enforced on move',G.moriMoveCount+1,'— fog stripped');
-    G.fogLeft++; G.fogThisLeg=false; // return the ticket
+    G.fogLeft++;
+    G.fogThisLeg=false;
   }
   const usingFog=G.fogThisLeg||(type==='water');
   // Validate: dest must be reachable and NOT occupied by a detective
