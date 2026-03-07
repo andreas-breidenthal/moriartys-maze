@@ -3259,22 +3259,26 @@ function doMoriMove(dest,type){
     if(currentMode==='detective'||currentMode==='coach-detective') promptCtx={who:'detective',detIdx:0};
     updateSidebar();
     G.finalDetPhase=true; // flag so endDetPhase knows to end game after
-    setTimeout(()=>{
-    if(currentMode==='moriarty'||currentMode==='coach-moriarty'){
-        showAI('One last chance for the Bureau…');setTimeout(runAIDetPhase,600);
-      } else {
-        showDetPrompt(0);
-      }
-    },200);
+    if(currentMode !== 'simulator'){
+      setTimeout(()=>{
+      if(currentMode==='moriarty'||currentMode==='coach-moriarty'){
+          showAI('One last chance for the Bureau…');setTimeout(runAIDetPhase,600);
+        } else {
+          showDetPrompt(0);
+        }
+      },200);
+    }
     return;
   }
 
   if(G.bluffLeg===1){
     G.bluffLeg=2;hidePrompt();
-    setTimeout(()=>{
-      if(currentMode==='moriarty'||currentMode==='coach-moriarty') showMoriPrompt(2);
-      else runAIMoriLeg();
-    },350);
+    if(currentMode !== 'simulator'){
+      setTimeout(()=>{
+        if(currentMode==='moriarty'||currentMode==='coach-moriarty') showMoriPrompt(2);
+        else runAIMoriLeg();
+      },350);
+    }
     return;
   }
   G.bluffLeg=0;
@@ -3282,13 +3286,16 @@ function doMoriMove(dest,type){
   hidePrompt();G.phase='detectives';G.coachDetRecs=null;pruneBeliefDetNodes();
   if(currentMode==='detective'||currentMode==='coach-detective') promptCtx={who:'detective',detIdx:0};
   updateSidebar();
-  setTimeout(()=>{
-    if(currentMode==='moriarty'||currentMode==='coach-moriarty'){
-      showAI('The detective bureau advances…');setTimeout(runAIDetPhase,600);
-    } else {
-      showDetPrompt(0);
-    }
-  },200);
+  
+  if(currentMode !== 'simulator'){
+    setTimeout(()=>{
+      if(currentMode==='moriarty'||currentMode==='coach-moriarty'){
+        showAI('The detective bureau advances…');setTimeout(runAIDetPhase,600);
+      } else {
+        showDetPrompt(0);
+      }
+    },200);
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -3763,10 +3770,13 @@ function simRunMoriMove(){
       fogLeft:G.fogLeft-(move.fogConsumed?1:0),
       bluffLeft:G.bluffLeft,
       minHops:Math.min(...revDetPos.map(dp=>landHopDist(dp,move.node))),
-      sanctTarget:G.sanctuaryTarget,
+      sanctTarget:G.sanctTarget,
       sanctStep:G.sanctuaryFirstStep
     };
   }
+
+  // Capture bluff state BEFORE doMoriMove mutates it
+  const wasBluffLeg1 = (G.bluffLeg === 1);
 
   doMoriMove(move.node, move.realType||move.type);
 
@@ -3774,18 +3784,15 @@ function simRunMoriMove(){
 
   if(pendingReveal) G._simGame.reveals.push(pendingReveal);
 
-  // Handle bluff leg 2
-  if(G.bluffLeg===1){
-    G.bluffLeg=2;
+  // Handle bluff leg 2 execution loop
+  if(wasBluffLeg1){
     // Bluff leg 1 — Moriarty moved, no detective phase. Push line now.
     if(G._simGame) G._simGame.moveLog.push(G._simGame.pendingLine);
     simState.timer=setTimeout(simRunMoriMove, SIM_MOVE_DELAY);
     return;
   }
-  if(G.bluffLeg===2){
-    G.bluffLeg=0;
-  }
 
+  // If it was a normal turn, or the end of Bluff Leg 2, detectives go next.
   simState.timer=setTimeout(simRunDetPhase, SIM_MOVE_DELAY);
 }
 
