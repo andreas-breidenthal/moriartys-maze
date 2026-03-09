@@ -2545,7 +2545,7 @@ function aiPickMoriMove(){
   // Set shared minimax deadline — 200ms normal, 100ms in fast sim
   const _simFast=G._simGame&&document.getElementById('sim-fast')&&
                  document.getElementById('sim-fast').checked;
-  _mmDeadline=Date.now()+(_simFast?100:200);
+  _mmDeadline=Date.now()+(_simFast?50:250);
   _mmMaxDepthReached=2;
 
   /* ── LEG 2 OF PRE-CALCULATED BLUFF ── */
