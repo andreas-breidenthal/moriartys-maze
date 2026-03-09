@@ -2542,7 +2542,7 @@ function aiPickMoriMove(){
   // Build detective coverage map (used by shadowBonus and beliefAmbiguityBonus)
   G._detCoverage=buildDetCoverageMap(detPos);
 
-  // Set shared minimax deadline — 200ms normal, 100ms in fast sim
+  // Set shared minimax deadline — 250ms normal, 50ms in fast sim
   const _simFast=G._simGame&&document.getElementById('sim-fast')&&
                  document.getElementById('sim-fast').checked;
   _mmDeadline=Date.now()+(_simFast?50:250);
@@ -4187,7 +4187,7 @@ function simPromptHTML(){
     <div class="sim-log-wrap">
       <div class="sim-log-hdr">
         <span class="sim-log-lbl">Simulation Log</span>
-        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--parchment);opacity:.7;cursor:pointer"><input type="checkbox" id="sim-fast" style="cursor:pointer"> Fast (100ms)</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--parchment);opacity:.7;cursor:pointer"><input type="checkbox" id="sim-fast" style="cursor:pointer"> Fast (50ms)</label>
         <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--parchment);opacity:.7;cursor:pointer"><input type="checkbox" id="sim-verbose" style="cursor:pointer"> Move-by-move</label>
         <button class="sim-copy-btn" onclick="simCopyLog()">Copy</button>
       </div>
