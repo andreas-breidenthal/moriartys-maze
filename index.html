@@ -4557,16 +4557,16 @@ function startGame(mode){
     buildTicketStrip();
     if(!canvas) initCanvas(); else resizeCanvas();
     centreMap();
-    const _allN2=Object.keys(nodes).map(Number);
-    const _dW2=_allN2.map(n=>Math.pow(200-MORIARTY_RANK[n],2));
-    const _tW2=_dW2.reduce((a,b)=>a+b,0);
-    const _dp2=[],_used2=new Set();
-    while(_dp2.length<5){let r=Math.random()*_tW2,cum=0;for(let i=0;i<_allN2.length;i++){cum+=_dW2[i];if(cum>=r&&!_used2.has(_allN2[i])){_dp2.push(_allN2[i]);_used2.add(_allN2[i]);break;}}}
-    const _mc2=MORI_STARTS.filter(n=>!_used2.has(n));
-    const picks=[..._dp2,_mc2[Math.floor(Math.random()*_mc2.length)]];
-    G.detectives.forEach((d,i)=>d.node=picks[i]);
-    G.moriNode=picks[5];
-    G.detStartNodes=picks.slice(0,5);
+      // === AUTHENTIC SCOTLAND YARD STARTING POSITIONS ===
+      // All 6 players (Moriarty + 5 detectives) drawn randomly without replacement
+      // from the official 18-station list — exactly like the physical board game
+      const pool = [...STARTING_STATIONS];
+      pool.sort(() => Math.random() - 0.5);   // simple fair shuffle
+
+      G.detectives.forEach((d, i) => d.node = pool[i]);
+      G.moriNode = pool[5];
+      G.detStartNodes = pool.slice(0, 5);
+    
     initBelief();G.phase='moriarty';
     updateSidebar();updateDetPanel();updateRevealPips();drawMap();
     return;
