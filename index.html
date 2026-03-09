@@ -4294,29 +4294,16 @@ function simNextGame(){
 
   // Start a fresh game in simulator mode
   gameOver=false;
-  G=freshGame();
-  const allNodes=Object.keys(nodes).map(Number);
-  const shuffle=arr=>{for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}return arr;};
-  // Detectives: weighted toward well-connected nodes (low rank number = better)
-  const detPool=[...allNodes];
-  const detWeights=detPool.map(n=>Math.pow(200-MORIARTY_RANK[n],2));
-  const totalW=detWeights.reduce((a,b)=>a+b,0);
-  const detPicks=[];
-  const usedNodes=new Set();
-  while(detPicks.length<5){
-    let r=Math.random()*totalW,cum=0;
-    for(let i=0;i<detPool.length;i++){
-      cum+=detWeights[i];
-      if(cum>=r&&!usedNodes.has(detPool[i])){detPicks.push(detPool[i]);usedNodes.add(detPool[i]);break;}
-    }
-  }
-  // Moriarty: random from valid start cards (excluding any used by detectives)
-  const moriCandidates=MORI_STARTS.filter(n=>!usedNodes.has(n));
-  const moriStart=moriCandidates[Math.floor(Math.random()*moriCandidates.length)];
-  const picks=[...detPicks,moriStart];
-  G.detectives.forEach((d,i)=>d.node=picks[i]);
-  G.moriNode=picks[5];
-  G.detStartNodes=picks.slice(0,5);
+    G=freshGame();
+    // === AUTHENTIC SCOTLAND YARD STARTING POSITIONS ===
+    // All 6 players (Moriarty + 5 detectives) drawn randomly without replacement
+    // from the official 18-station list — exactly like the physical board game
+    const pool = [...STARTING_STATIONS];
+    pool.sort(() => Math.random() - 0.5);   // simple fair shuffle
+
+    G.detectives.forEach((d, i) => d.node = pool[i]);
+    G.moriNode = pool[5];
+    G.detStartNodes = pool.slice(0, 5);
 
   document.getElementById('outcome').className='';
   document.getElementById('move-log').innerHTML='';
