@@ -3,11 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<<<<<<< HEAD
 <title>Moriarty's Maze v18.47</title>
-=======
-<title>Moriarty's Maze v18.27</title>
->>>>>>> cbd2d96a178ebe5239dc16d5e81a4ade7cc7edc0
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400;1,600&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -803,7 +799,6 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
       <span class="mode-icon">🔍</span>
       <div class="mode-title">Play as Detectives</div>
       <div class="mode-desc">Deduce, pursue, and corner the Professor.</div>
-<<<<<<< HEAD
     </button>
     <button class="mode-card" onclick="startGame('coach-moriarty')">
       <span class="mode-icon">🧭🎩</span>
@@ -811,15 +806,6 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
       <div class="mode-desc">You are on the run; Moriarty whispers strategy.</div>
     </button>
     <button class="mode-card" onclick="startGame('coach-detective')">
-=======
-    </div>
-    <div class="mode-card" onclick="startGame('coach-moriarty')">
-      <span class="mode-icon">🧭🎩</span>
-      <div class="mode-title">Coach: Moriarty</div>
-      <div class="mode-desc">You are on the run; Moriarty whispers strategy.</div>
-    </div>
-    <div class="mode-card" onclick="startGame('coach-detective')">
->>>>>>> cbd2d96a178ebe5239dc16d5e81a4ade7cc7edc0
       <span class="mode-icon">🧭🔍</span>
       <div class="mode-title">Coach: Detectives</div>
       <div class="mode-desc">Direct the pursuit; Sherlock offers guidance.</div>
@@ -958,15 +944,9 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
   <div class="out-rule"></div>
   <div class="out-sub" id="out-sub"></div>
   <div class="out-acts">
-<<<<<<< HEAD
     <button class="out-btn primary" id="aftermath-btn" onclick="viewAftermath()">View Aftermath</button>
     <button class="out-btn" onclick="startGame(currentMode)">Play Again</button>
     <button class="out-btn" onclick="backToTitle()">Return to Baker St</button>
-=======
-    <button class="out-btn" onclick="backToTitle()">Return to Baker St</button>
-    <button class="out-btn" onclick="startGame(currentMode)">Play Again</button>
-    <button class="out-btn" id="aftermath-btn" onclick="viewAftermath()">View Aftermath</button>
->>>>>>> cbd2d96a178ebe5239dc16d5e81a4ade7cc7edc0
   </div>
 </div>
 <script>
@@ -1518,11 +1498,7 @@ function isLegalDetMove(detIdx, dest, type){
    CONSTANTS
 ══════════════════════════════════════════════════════════════ */
 const MORIARTY_RANK=[199,180,9,94,108,47,80,39,16,22,48,57,53,192,162,135,116,85,2,11,12,15,147,184,112,29,51,13,101,157,37,3,35,131,166,96,20,61,28,68,102,164,148,5,93,152,186,138,92,8,19,154,182,21,64,132,44,90,174,104,34,141,111,165,86,175,158,194,144,89,31,120,133,43,173,122,69,149,181,190,81,73,185,30,139,4,126,124,109,199,103,115,42,114,107,95,58,41,105,25,134,91,169,54,76,176,82,130,161,75,99,193,113,56,77,150,160,110,119,79,23,40,125,153,183,7,163,146,196,123,65,27,142,187,118,177,50,52,59,179,198,106,188,167,127,32,100,10,63,88,17,49,136,195,197,83,191,168,129,45,156,171,1,172,18,137,143,140,78,98,121,36,145,38,66,6,87,84,46,71,170,55,14,26,178,189,70,155,151,33,117,128,67,60,97,24,74,72,62,159]; // index 0 unused; rank 1=best, 199=worst
-<<<<<<< HEAD
 const MORI_STARTS=RULES.START_POOL; // alias kept for any replay/log references
-=======
-const MORI_STARTS=[13,26,29,34,50,53,91,94,103,112,117,132,138,141,155,174,197,198]; // shared 18-station start pool
->>>>>>> cbd2d96a178ebe5239dc16d5e81a4ade7cc7edc0
 const START_EXCLUSIONS={
   1:[8,9,13,18,19,20,33,34,44,45,46,47,57,58,59,61,74,75,77,78,79],
   2:[9,10,11,20,21,33,34],
@@ -1728,24 +1704,15 @@ const START_EXCLUSIONS={
 function drawStartingPositions(){
   // All 6 characters draw from the canonical 18-station pool — board game rules.
   // Pool stations are well-separated by design; no adjacency check needed.
-<<<<<<< HEAD
   const pool = RULES.START_POOL;
-=======
-  const pool=[13,26,29,34,50,53,91,94,103,112,117,132,138,141,155,174,197,198];
->>>>>>> cbd2d96a178ebe5239dc16d5e81a4ade7cc7edc0
   const shuffled=[...pool];
   for(let i=shuffled.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];}
   G.moriNode=shuffled[0];
   G.detectives.forEach((d,i)=>d.node=shuffled[i+1]);
   G.detStartNodes=shuffled.slice(1,6);
 }
-<<<<<<< HEAD
 const REVEAL_MOVES=RULES.REVEAL_MOVES;
 const MAX_MOVES=RULES.MAX_MOVES,NUM_DETS=RULES.NUM_DETS;
-=======
-const REVEAL_MOVES=[3,8,13,18,24];
-const MAX_MOVES=24,NUM_DETS=5;
->>>>>>> cbd2d96a178ebe5239dc16d5e81a4ade7cc7edc0
 const DET_NAMES=['Sherlock Holmes','Dr Watson','Insp. Lestrade','Insp. Gregson','Wiggins'];
 const DET_SHORT=['Holmes','Watson','Lestrade','Gregson','Wiggins'];
 // Updated icons per spec
@@ -2300,11 +2267,7 @@ function reachableSafeZone(moriNode, detPos, mDepth, dDepth){
 /* Score a leaf node from Moriarty's perspective — kept fast, no BFS */
 function minimaxLeafScore(moriNode, detPos){
   const detSet=new Set(detPos);
-<<<<<<< HEAD
   if(detSet.has(moriNode)) return WEIGHTS.CAPTURE;
-=======
-  if(detSet.has(moriNode)) return -999999;
->>>>>>> cbd2d96a178ebe5239dc16d5e81a4ade7cc7edc0
 
   const hops=detPos.map(dp=>landHopDist(dp,moriNode));
   const minHop=Math.min(...hops);
@@ -2319,30 +2282,17 @@ function minimaxLeafScore(moriNode, detPos){
   const freeMob=allExits.filter(n=>!detReach1.has(n)).length;
   const totalExits=allExits.length;
   const sealedExits=totalExits-freeMob;
-<<<<<<< HEAD
   const boxingPenalty=totalExits>0?(sealedExits/totalExits)*WEIGHTS.BOXING_RATIO:WEIGHTS.BOXING_RATIO*2;
 
   // Peninsula penalty — low-degree nodes are dead ends, doubly dangerous when detectives are close
   const deg=NODE_DEGREE[moriNode]||4;
   const peninsulaPenalty=deg<=2?WEIGHTS.PENINSULA_DEG2:deg<=3?WEIGHTS.PENINSULA_DEG3:0;
-=======
-  const boxingPenalty=totalExits>0?(sealedExits/totalExits)*1000:2000;
-
-  // Peninsula penalty — low-degree nodes are dead ends, doubly dangerous when detectives are close
-  const deg=NODE_DEGREE[moriNode]||4;
-  const peninsulaPenalty=deg<=2?8000:deg<=3?3000:0;
->>>>>>> cbd2d96a178ebe5239dc16d5e81a4ade7cc7edc0
   const closePenalty=minHop<=3?peninsulaPenalty:Math.floor(peninsulaPenalty*0.5);
 
   const rank=MORIARTY_RANK[moriNode]||199;
   const rankScore=(200-rank)*2;
-<<<<<<< HEAD
   const beliefScore=Math.min((G.M_beliefTree.size||1)*0.5, WEIGHTS.BELIEF_CAP);
   return minHop*WEIGHTS.MIN_HOP_MULT + sumHops*WEIGHTS.SUM_HOPS_MULT + freeMob*WEIGHTS.FREE_MOB_MULT - boxingPenalty - closePenalty + rankScore + beliefScore;
-=======
-  const beliefScore=Math.min((G.M_beliefTree.size||1)*0.5, 80);
-  return minHop*400 + sumHops*60 + freeMob*80 - boxingPenalty - closePenalty + rankScore + beliefScore;
->>>>>>> cbd2d96a178ebe5239dc16d5e81a4ade7cc7edc0
 }
 
 /* Fast greedy detective step — used inside minimax for speed */
@@ -2401,11 +2351,7 @@ function paranoidDetStep(detPos, moriNode){
 /* Minimax — pure depth-capped, no time check */
 function paranoidMinimax(moriNode, detPos, depth, alpha, beta, moriTurn){
   const detSet=new Set(detPos);
-<<<<<<< HEAD
   if(detSet.has(moriNode)) return WEIGHTS.CAPTURE;
-=======
-  if(detSet.has(moriNode)) return -999999;
->>>>>>> cbd2d96a178ebe5239dc16d5e81a4ade7cc7edc0
   if(depth===0) return minimaxLeafScore(moriNode, detPos);
 
   if(moriTurn){
@@ -2435,7 +2381,6 @@ function escapeScore(fromNode, detPos, _unused){
   const depth=fast?2:3;
   _mmMaxDepthReached=depth;
   return paranoidMinimax(fromNode, detPos, depth, -Infinity, Infinity, true);
-<<<<<<< HEAD
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -2620,8 +2565,6 @@ function workerBatchEscape(jobs, fast){
     });
     _mmWorker.postMessage({type:'batch', jobs});
   });
-=======
->>>>>>> cbd2d96a178ebe5239dc16d5e81a4ade7cc7edc0
 }
 
 /* ── THREAT LEVEL ── */
@@ -2871,11 +2814,7 @@ function aiPickMoriMove(){
     return exits.every(n=>dr1.has(n));
   });
   const noSafeMoves=workingCandidates.length===0||allBoxed;
-<<<<<<< HEAD
   const crisisBluff=noSafeMoves&&G.bluffLeft>0&&G.bluff.leg===0;
-=======
-  const crisisBluff=noSafeMoves&&G.bluffLeft>0&&G.bluffLeg===0;
->>>>>>> cbd2d96a178ebe5239dc16d5e81a4ade7cc7edc0
   // 2. Span-the-reveal: fire on the reveal move itself, gated by bluff count and threat
   const currentReveal=REVEAL_MOVES.find(r=>r===nextMove);
   const spanBluff=!crisisBluff&&currentReveal&&G.bluffLeft>0&&G.bluff.leg===0&&(
@@ -2892,17 +2831,10 @@ function aiPickMoriMove(){
   // 4. Encirclement escape: best move is nearly fully boxed, bluff can reach open ground
   const bestFreeMob=workingCandidates.length>0?Math.max(...workingCandidates.map(m=>freeMobCount(m.node))):0;
   const encirclementBluff=!crisisBluff&&!spanBluff&&!proactiveBluff&&
-<<<<<<< HEAD
                            G.bluffLeft>0&&G.bluff.leg===0&&
                            bestFreeMob<=1&&nextMove>3;
   // 5. Forced backstop: first bluff no later than move 11, second no later than move 23
   const forcedBluff=!crisisBluff&&!spanBluff&&!proactiveBluff&&!encirclementBluff&&G.bluff.leg===0&&(
-=======
-                           G.bluffLeft>0&&G.bluffLeg===0&&
-                           bestFreeMob<=1&&nextMove>3;
-  // 5. Forced backstop: first bluff no later than move 11, second no later than move 23
-  const forcedBluff=!crisisBluff&&!spanBluff&&!proactiveBluff&&!encirclementBluff&&G.bluffLeg===0&&(
->>>>>>> cbd2d96a178ebe5239dc16d5e81a4ade7cc7edc0
     (nextMove===11&&G.bluffLeft>=2)||(nextMove===23&&G.bluffLeft>=1)
   );
   const bluffWanted=crisisBluff||spanBluff||proactiveBluff||encirclementBluff||forcedBluff;
@@ -2947,7 +2879,6 @@ function aiPickMoriMove(){
     const esc=escapeScore(m.node,detPos);
     // Reachable safe zone — BFS once per candidate, outside minimax
     const sz=reachableSafeZone(m.node,projectedDetPos,3,2);
-<<<<<<< HEAD
     const trapPenalty=sz<=2?WEIGHTS.TRAP_SZ_2:sz<=5?WEIGHTS.TRAP_SZ_5:sz<=10?WEIGHTS.TRAP_SZ_10:0;
     const zoneBonus=sz*WEIGHTS.ZONE_PER_NODE;
     // Transport bonus
@@ -2961,21 +2892,6 @@ function aiPickMoriMove(){
     const sealed=sealedExitCount(m.node);
     const totalEx=['taxi','bus','underground','water'].flatMap(t=>(adj[m.node][t]||[])).filter(n=>!detSet.has(n)).length;
     const sealPenalty=totalEx>0?(sealed/totalEx)*WEIGHTS.SEAL_RATIO:WEIGHTS.SEAL_RATIO*2;
-=======
-    const trapPenalty=sz<=2?8000:sz<=5?3000:sz<=10?800:0;
-    const zoneBonus=sz*120;
-    // Transport bonus
-    const reachBonus=m.type==='underground'?300:m.type==='water'?250:m.type==='bus'?60:0;
-    // Penalise recently visited nodes — heavier for dead-end nodes (degree≤3)
-    const deg=NODE_DEGREE[m.node]||4;
-    const visitPenalty=recentlyVisited.has(m.node)?(deg<=2?3000:deg<=3?2000:1500):0;
-    // Penalise detective-adjacent nodes
-    const dangerPenalty=detAdj.has(m.node)?600:0;
-    // Penalise sealed exits
-    const sealed=sealedExitCount(m.node);
-    const totalEx=['taxi','bus','underground','water'].flatMap(t=>(adj[m.node][t]||[])).filter(n=>!detSet.has(n)).length;
-    const sealPenalty=totalEx>0?(sealed/totalEx)*1200:2000;
->>>>>>> cbd2d96a178ebe5239dc16d5e81a4ade7cc7edc0
     const total=esc+zoneBonus-trapPenalty+reachBonus-visitPenalty-dangerPenalty-sealPenalty;
     if(total>bestScore){bestScore=total;best=m;}
   });
@@ -2987,7 +2903,6 @@ function aiPickMoriMove(){
       if(imm<=-99999) return;
       const s=minimaxLeafScore(m.node,detPos);
       const sz=reachableSafeZone(m.node,projectedDetPos,3,2);
-<<<<<<< HEAD
       const trapPenalty=sz<=2?WEIGHTS.TRAP_SZ_2:sz<=5?WEIGHTS.TRAP_SZ_5:sz<=10?WEIGHTS.TRAP_SZ_10:0;
       const zoneBonus=sz*WEIGHTS.ZONE_PER_NODE;
       const reachBonus=m.type==='underground'?WEIGHTS.REACH_UNDERGROUND:m.type==='water'?WEIGHTS.REACH_WATER:m.type==='bus'?WEIGHTS.REACH_BUS:0;
@@ -2997,17 +2912,6 @@ function aiPickMoriMove(){
       const sealed=sealedExitCount(m.node);
       const totalEx=['taxi','bus','underground','water'].flatMap(t=>(adj[m.node][t]||[])).filter(n=>!detSet.has(n)).length;
       const sealPenalty=totalEx>0?(sealed/totalEx)*WEIGHTS.SEAL_RATIO:WEIGHTS.SEAL_RATIO*2;
-=======
-      const trapPenalty=sz<=2?8000:sz<=5?3000:sz<=10?800:0;
-      const zoneBonus=sz*120;
-      const reachBonus=m.type==='underground'?200:m.type==='water'?150:m.type==='bus'?60:0;
-      const deg=NODE_DEGREE[m.node]||4;
-      const visitPenalty=recentlyVisited.has(m.node)?(deg<=2?3000:deg<=3?2000:1500):0;
-      const dangerPenalty=detAdj.has(m.node)?600:0;
-      const sealed=sealedExitCount(m.node);
-      const totalEx=['taxi','bus','underground','water'].flatMap(t=>(adj[m.node][t]||[])).filter(n=>!detSet.has(n)).length;
-      const sealPenalty=totalEx>0?(sealed/totalEx)*1200:2000;
->>>>>>> cbd2d96a178ebe5239dc16d5e81a4ade7cc7edc0
       const total=s+zoneBonus-trapPenalty+reachBonus-visitPenalty-dangerPenalty-sealPenalty;
       if(total>bestScore){bestScore=total;best=m;}
     });
@@ -3037,7 +2941,6 @@ function aiPickMoriMove(){
     const landingNextBest=Math.max(...(moriMoves(best.node).filter(m=>!detSet.has(m.node)).map(m=>escapeScore(m.node,detPos)).concat([-9999])));
     const riverWorthIt=landingScore>currentScore&&landingNextBest>currentScore;
     if(!riverWorthIt) best=workingCandidates.filter(m=>m.type!=='water'&&!detSet.has(m.node)).reduce((a,b)=>escapeScore(b.node,detPos)>escapeScore(a.node,detPos)?b:a, workingCandidates.filter(m=>m.type!=='water'&&!detSet.has(m.node))[0]||best);
-<<<<<<< HEAD
   }
 
   const isRiverboat=best.type==='water';
@@ -3073,43 +2976,6 @@ function aiPickMoriMove(){
 
     heavyFog=preRevealFog||reactiveFog||budgetFog;
   }
-=======
-  }
-
-  const isRiverboat=best.type==='water';
-
-  if(!isRiverboat){
-    const minHops=Math.min(...detPos.map(dp=>landHopDist(dp,best.node)));
-    const destTypes=new Set(moriMoves(best.node).filter(m=>m.type!=='water').map(m=>m.type));
-    const multiSrc=srcTypes.size>1;
-
-    // Fog slot budget
-    const FOG_BUDGET_BANNED=new Set([1,2,3,8,13,18,24]);
-    const BLUFF_RESERVED=new Set([21,23]);
-    let slotsLeft=0;
-    for(let m=nextMove+1;m<=MAX_MOVES;m++){
-      if(FOG_BUDGET_BANNED.has(m)||BLUFF_RESERVED.has(m)) continue;
-      if(G.bluffPairStart>0&&(m===G.bluffPairStart||m===G.bluffPairStart+1)) continue;
-      slotsLeft++;
-    }
-
-    // Pre-reveal: move 7, 12 or 17 — one before reveal, detective within 4 steps
-    const PRE_REVEAL_MOVES=new Set([7,12,17]);
-    const preRevealFog=G.fogLeft>1&&!G.fogThisLeg&&!bluffWanted&&
-                       PRE_REVEAL_MOVES.has(nextMove)&&multiSrc&&minHopsToSrc<=4;
-
-    // Reactive: detective adjacent, allowed move numbers
-    const REACTIVE_MOVES=new Set([5,6,10,11,15,16,20,21,22,23,24]);
-    const reactiveFog=G.fogLeft>0&&!G.fogThisLeg&&!bluffWanted&&
-                      REACTIVE_MOVES.has(nextMove)&&multiSrc&&destTypes.size>1&&minHops<=1;
-
-    // Budget: more tickets than slots left
-    const budgetFog=G.fogLeft>0&&!G.fogThisLeg&&!bluffWanted&&
-                    multiSrc&&G.fogLeft>slotsLeft;
-
-    heavyFog=preRevealFog||reactiveFog||budgetFog;
-  }
->>>>>>> cbd2d96a178ebe5239dc16d5e81a4ade7cc7edc0
   return _sanitize({
     node:best.node,
     type:(isRiverboat||heavyFog)?'fog':best.type,
@@ -4076,12 +3942,9 @@ function drawMap(){
 
   // Replay end effect — drawn last, over everything
   if(replayEndAnim) drawReplayEndEffect();
-<<<<<<< HEAD
 
   // Map highlights — drawn over all tokens so they're always visible
   drawHighlights();
-=======
->>>>>>> cbd2d96a178ebe5239dc16d5e81a4ade7cc7edc0
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -5350,11 +5213,7 @@ function simRunMoriMove(){
   if(move.bluffConsumed&&G.bluff.leg===0){
     G.bluffLeft--;G.bluff.leg=1;G.bluff.pairStart=G.moriMoveCount+1;
     if(G._simGame){G._simGame.bluffUsed++;G._simGame.bluffMoves.push(G.moriMoveCount+1);}
-<<<<<<< HEAD
     activateBluffBracket(G.bluff.pairStart);updateSidebar();
-=======
-    activateBluffBracket(G.bluffPairStart);updateSidebar();
->>>>>>> cbd2d96a178ebe5239dc16d5e81a4ade7cc7edc0
   }
 
   if(move.fogConsumed&&!G.fogThisLeg&&G.fogLeft>0){
