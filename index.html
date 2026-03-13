@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Moriarty's Maze v18.72</title>
+<title>Moriarty's Maze v18.73</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400;1,600&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -1803,18 +1803,6 @@ function topBeliefNode(){
 /* Belief ambiguity bonus — reward moves that keep detective uncertainty wide.
    Multi-transport nodes create broader tree expansion next step = harder to track.
    Based on Java possLocationScore / spreadOutScore insight. */
-function beliefAmbiguityBonus(nodeId){
-  const types=new Set(['taxi','bus','underground','water'].filter(t=>(adj[nodeId][t]||[]).length>0));
-  const treeSize=G.M_beliefTree.size;
-  // More transport types at destination = next expansion stays wide
-  const typeBonus=(types.size-1)*80; // 0 for taxi-only, 80 for 2 types, 160 for 3, 240 for 4
-  // Large current tree = detectives uncertain = reward staying in ambiguous space
-  const sizeBonus=Math.min(treeSize*0.8,200);
-  return typeBonus+sizeBonus;
-}
-
-
-
 
 /* Hot zone summary for coach notes — returns {hotCentre, hotCount} */
 function moriBeliefSummary(){
@@ -2110,7 +2098,7 @@ function minimaxLeafScore(moriNode, dets){
   // Free mobility: exits no detective can seal in one step (ticket-aware)
   const allExits=['taxi','bus','underground','water'].flatMap(t=>(adj[moriNode][t]||[])).filter(n=>!detSet.has(n));
   const detReach1=new Set(dets.flatMap(det=>{
-    const tk=det.tickets||{taxi:10,bus:8,underground:4};
+    const tk=det.tickets||{taxi:0,bus:0,underground:0};
     return ['taxi','bus','underground'].filter(t=>(tk[t]||0)>0).flatMap(t=>(adj[det.node||det][t]||[]));
   }));
   const freeMob=allExits.filter(n=>!detReach1.has(n)).length;
@@ -2134,7 +2122,7 @@ function greedyDetStep(dets, moriNode){
   return dets.map(det=>{
     const pos=det.node||det;
     if(pos===moriNode) return det;
-    const tickets=det.tickets||{taxi:10,bus:8,underground:4};
+    const tickets=det.tickets||{taxi:0,bus:0,underground:0};
     const types=['taxi','bus','underground'].filter(t=>(tickets[t]||0)>0);
     let bestNode=pos, bestH=landHopDist(pos,moriNode), bestType=null;
     for(const t of types){
@@ -2145,47 +2133,6 @@ function greedyDetStep(dets, moriNode){
     }
     if(!bestType) return det; // stranded — no valid ticket move
     return {node:bestNode, tickets:{...tickets, [bestType]:tickets[bestType]-1}};
-  });
-}
-
-/* Intercept fan-out step — used for outer threat assessment only */
-function paranoidDetStep(detPos, moriNode){
-  const moriReach=new Map();
-  const mq=[{node:moriNode,d:0}];
-  const mv=new Set([moriNode]);
-  while(mq.length){
-    const{node:n,d}=mq.shift();
-    if(d>0&&!moriReach.has(n)) moriReach.set(n,d);
-    if(d>=3) continue;
-    ['taxi','bus','underground','water'].forEach(t=>{
-      (adj[n][t]||[]).forEach(nb=>{
-        if(!mv.has(nb)){mv.add(nb);mq.push({node:nb,d:d+1});}
-      });
-    });
-  }
-  const claimed=new Set();
-  const targets=detPos.map(pos=>{
-    let bestTarget=null, bestCost=999;
-    moriReach.forEach((moriDepth, node)=>{
-      if(claimed.has(node)) return;
-      const detHops=landHopDist(pos,node);
-      const cost=detHops+moriDepth*0.5;
-      if(cost<bestCost){bestCost=cost;bestTarget=node;}
-    });
-    if(bestTarget) claimed.add(bestTarget);
-    return bestTarget||moriNode;
-  });
-  return detPos.map((pos,i)=>{
-    const target=targets[i];
-    if(pos===target) return pos;
-    const moves=['taxi','bus','underground'].flatMap(t=>(adj[pos][t]||[]));
-    if(!moves.length) return pos;
-    let best=pos, bestHops=landHopDist(pos,target);
-    moves.forEach(nb=>{
-      const h=landHopDist(nb,target);
-      if(h<bestHops){bestHops=h;best=nb;}
-    });
-    return best;
   });
 }
 
@@ -2217,7 +2164,7 @@ function paranoidMinimax(moriNode, dets, depth, alpha, beta, moriTurn){
 
 /* Fixed depth search — depth 3 normal, depth 2 fast */
 let _mmMaxDepthReached=2;
-function escapeScore(fromNode, dets, _unused){
+function escapeScore(fromNode, dets){
   const fast=document.getElementById("sim-fast")?.checked;
   const depth=fast?2:3;
   _mmMaxDepthReached=depth;
@@ -4248,12 +4195,6 @@ function hidePrompt(){
   if(g('commit-btn'))  g('commit-btn').disabled=true;
   drawMap();
 }
-function resetDest(){
-  // Legacy stub — destination is now selected by map click, not a dropdown
-  const cb=document.getElementById('commit-btn');
-  if(cb) cb.disabled=true;
-}
-
 /* ══════════════════════════════════════════════════════════════
    MAP HIGHLIGHT SYSTEM
    Computes which stations glow on the canvas based on prompt state.
