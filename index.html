@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Moriarty's Maze v18.72</title>
+<title>Moriarty's Maze v18.76</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400;1,600&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -380,18 +380,24 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
 .mp-btn.cc{background:rgba(26,122,48,.09);border-color:rgba(26,122,48,.5);color:var(--bus)}
 .mp-btn.cc:hover{background:rgba(26,122,48,.2)}
 
-/* ── MODAL ── */
-#modal{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.8);
-  display:none;align-items:center;justify-content:center;padding:20px}
+/* ── RULES PANEL ── */
+#modal{position:fixed;top:44px;right:8px;z-index:300;
+  display:none;width:320px;max-width:calc(100vw - 16px);
+  max-height:calc(100vh - 60px);
+  background:var(--panel-bg);border:2px solid var(--gold);border-radius:3px;
+  box-shadow:0 8px 32px rgba(0,0,0,.6);
+  overflow:hidden;display:none;flex-direction:column}
 #modal.on{display:flex}
-.modal-box{background:var(--panel-bg);border:2px solid var(--gold);padding:28px;
-  max-width:440px;width:100%;box-shadow:0 0 60px rgba(0,0,0,.5);border-radius:3px}
-.modal-title{font-family:'Cinzel',serif;font-size:17px;font-weight:900;color:var(--gold);
-  text-align:center;margin-bottom:12px;letter-spacing:2px}
-.modal-body{font-size:15px;color:var(--parch-sub);line-height:1.7;margin-bottom:16px}
-.modal-acts{display:flex;gap:8px;justify-content:center}
+.modal-box{padding:20px 22px 16px;overflow-y:auto;flex:1;
+  scrollbar-width:thin;scrollbar-color:rgba(176,120,8,.2) transparent;
+  -webkit-overflow-scrolling:touch}
+.modal-title{font-family:'Cinzel',serif;font-size:15px;font-weight:900;color:var(--gold);
+  margin-bottom:10px;letter-spacing:2px}
+.modal-body{font-size:14px;color:var(--parch-sub);line-height:1.7;margin-bottom:0}
+.modal-acts{padding:12px 22px 14px;border-top:1px solid var(--parch-dk);
+  display:flex;justify-content:flex-end;flex-shrink:0}
 .modal-btn{background:rgba(176,120,8,.1);border:1.5px solid rgba(176,120,8,.45);color:var(--gold);
-  font-family:'Cinzel',serif;font-size:13px;padding:8px 18px;cursor:pointer;
+  font-family:'Cinzel',serif;font-size:12px;padding:6px 16px;cursor:pointer;
   letter-spacing:1.5px;text-transform:uppercase;transition:all .2s;border-radius:2px;font-weight:700}
 .modal-btn:hover{background:rgba(176,120,8,.22)}
 
@@ -664,6 +670,10 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
 #story-screen{position:fixed;inset:0;z-index:500;overflow-y:auto;
   background:radial-gradient(ellipse at 35% 30%,#2d1f08 0%,#0d0904 65%);
   padding:48px 20px 72px;}
+@keyframes c-drop{from{transform:translateY(-100%)}to{transform:translateY(0)}}
+@keyframes c-lift{from{transform:translateY(0)}to{transform:translateY(-100%)}}
+.c-drop{animation:c-drop .42s cubic-bezier(.4,0,.2,1) forwards}
+.c-lift{animation:c-lift .36s cubic-bezier(.4,0,.2,1) forwards}
 .st-wrap{max-width:680px;margin:0 auto;font-family:'Crimson Text',serif;color:var(--parch-text);}
 .st-masthead{text-align:center;margin-bottom:32px;}
 .st-eyebrow{font-family:'Cinzel',serif;font-size:12px;letter-spacing:9px;text-transform:uppercase;color:var(--gold-hi);opacity:.7;margin-bottom:14px;}
@@ -797,13 +807,13 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
     </div>
 
     <div class="st-begin-wrap">
-      <button class="st-begin-btn" onclick="beginPursuit()">Begin the Pursuit</button>
+      <button class="st-begin-btn" id="st-begin-btn" onclick="beginPursuit()">Begin the Pursuit</button>
     </div>
 
   </div>
 </div>
 
-<div id="title-screen" style="display:none">
+<div id="title-screen">
   <div class="t-orn">London · 1895</div>
   <h1>MORIARTY'S<br><span>MAZE</span></h1>
   <div class="t-sub">A Hidden Movement Pursuit Across Victorian London</div>
@@ -842,8 +852,9 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
       <div class="reveal-pips" id="reveal-pips"></div>
     </div>
     <div class="tb-actions">
+      <button class="tb-btn" onclick="showStory()">Story</button>
       <button class="tb-btn" onclick="showRules()">Rules</button>
-      <button class="tb-btn" onclick="backToTitle()">← Exit</button>
+      <button class="tb-btn" onclick="backToTitle()">Return</button>
     </div>
   </div>
 
@@ -951,8 +962,8 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
   <div class="modal-box">
     <div class="modal-title" id="modal-title"></div>
     <div class="modal-body" id="modal-body"></div>
-    <div class="modal-acts" id="modal-acts"></div>
   </div>
+  <div class="modal-acts" id="modal-acts"></div>
 </div>
 <div id="outcome">
   <div class="out-ornament" id="out-ornament">London · 1895</div>
@@ -961,8 +972,8 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
   <div class="out-sub" id="out-sub"></div>
   <div class="out-acts">
     <button class="out-btn primary" id="aftermath-btn" onclick="viewAftermath()">View Aftermath</button>
-    <button class="out-btn" onclick="startGame(currentMode)">Play Again</button>
-    <button class="out-btn" onclick="backToTitle()">Return to Baker St</button>
+    <button class="out-btn" onclick="outcomePlayAgain()">Play Again</button>
+    <button class="out-btn" onclick="outcomeReturn()">Return to Baker St</button>
   </div>
 </div>
 <script>
@@ -5002,21 +5013,45 @@ function endGame(winner,reason){
         reason==='surrender'?'Watch Moriarty Surrender':
         'Watch Moriarty\'s Capture';
     }
+    _curtainDrop(ov);
   },400);
 }
 
 function viewAftermath(){
   const ov=document.getElementById('outcome');
-  ov.classList.remove('on');
-  buildReplayPanel(G._endTheme||'mori');
-  startReplay();
+  _curtainLift(ov,()=>{
+    ov.className='';
+    buildReplayPanel(G._endTheme||'mori');
+    startReplay();
+  });
+}
+
+function outcomePlayAgain(){
+  const ov=document.getElementById('outcome');
+  _curtainLift(ov,()=>{ ov.className=''; startGame(currentMode); });
+}
+
+function outcomeReturn(){
+  const ov=document.getElementById('outcome');
+  _curtainLift(ov,()=>{ ov.className=''; backToTitle(); });
 }
 
 /* ══════════════════════════════════════════════════════════════
    RULES
 ══════════════════════════════════════════════════════════════ */
+function showStory(){
+  const s=document.getElementById('story-screen');
+  s.style.display='';
+  s.scrollTop=0;
+  document.getElementById('st-begin-btn').textContent=
+    (gameOver===false && document.getElementById('game').classList.contains('on'))
+    ? 'Continue the Pursuit'
+    : 'Begin the Pursuit';
+  _curtainDrop(s);
+}
 function showRules(){
-  document.getElementById('modal').classList.add('on');
+  const m=document.getElementById('modal');
+  m.classList.add('on');
   document.getElementById('modal-title').textContent='Rules of the Chase';
   document.getElementById('modal-body').innerHTML=
     '<strong>Moriarty</strong> makes 24 moves. Detectives win by landing on his station, or surrounding him completely. Moriarty wins by surviving.<br><br>'+
@@ -5025,9 +5060,15 @@ function showRules(){
     '<strong>Heavy Fog</strong> (5) — hides transport; required for Riverboat. Strip shows 🌫.<br><br>'+
     '<strong>Double Bluff</strong> (2) — two moves in one turn, grouped on the strip with a gold bracket.<br><br>'+
     '<strong>Transport:</strong> 🐴 Hansom Cab · 🚃 Omnibus · 🚂 Underground · ⚓ Riverboat';
-  document.getElementById('modal-acts').innerHTML='<button class="modal-btn" onclick="closeModal()">Understood</button>';
+  document.getElementById('modal-acts').innerHTML=
+    '<button class="modal-btn" onclick="closeModal()">Understood</button>';
+  _curtainDrop(m);
 }
-function closeModal(){document.getElementById('modal').classList.remove('on');}
+function closeModal(){
+  _curtainLift(document.getElementById('modal'),()=>{
+    document.getElementById('modal').classList.remove('on');
+  });
+}
 document.getElementById('modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
 
 /* ══════════════════════════════════════════════════════════════
@@ -5429,18 +5470,32 @@ function simPrintSummary(){
 }
 
 function beginPursuit(){
-  document.getElementById('story-screen').style.display='none';
-  document.getElementById('title-screen').style.display='flex';
+  _curtainLift(document.getElementById('story-screen'));
+}
+
+
+/* drop: make el visible, animate down */
+function _curtainDrop(el){
+  el.style.display='';
+  el.classList.remove('c-lift','c-drop');
+  void el.offsetWidth;
+  el.classList.add('c-drop');
+}
+/* lift: animate up, then hide */
+function _curtainLift(el, cb){
+  el.classList.remove('c-lift','c-drop');
+  void el.offsetWidth;
+  el.classList.add('c-lift');
+  setTimeout(()=>{ el.style.display='none'; el.classList.remove('c-lift'); if(cb) cb(); }, 380);
 }
 
 function startGame(mode){
+  if(_backToTitleCleanup){clearTimeout(_backToTitleCleanup);_backToTitleCleanup=null;}
   currentMode=mode;gameOver=false;
-  initMmWorker(); // Spin up Colonel Moran's back-room worker (no-op if already running)
+  initMmWorker();
 
-  // Simulator: set up UI shell then hand off to sim controller
   if(mode==='simulator'){
     G=freshGame();
-    document.getElementById('title-screen').style.display='none';
     document.getElementById('outcome').className='';
     document.getElementById('game').classList.add('on','sim');
     document.getElementById('move-log').innerHTML='';
@@ -5457,15 +5512,14 @@ function startGame(mode){
     drawStartingPositions();
     initBelief();G.phase='moriarty';
     updateSidebar();updateDetPanel();updateRevealPips();drawMap();
+    requestAnimationFrame(()=>_curtainLift(document.getElementById('title-screen')));
     return;
   }
 
   G=freshGame();
-  // Randomly assign all 6 starting nodes (5 detectives + Moriarty), no overlaps
-  drawStartingPositions(); // permanent record — never changes
-  logGameSnapshot('start'); // move 0 — starting positions
+  drawStartingPositions();
+  logGameSnapshot('start');
 
-  document.getElementById('title-screen').style.display='none';
   document.getElementById('outcome').className='';
   document.getElementById('game').classList.add('on');
   document.getElementById('move-log').innerHTML='';
@@ -5477,7 +5531,6 @@ function startGame(mode){
   document.getElementById('notes-coach-log').style.display=isCoach?'block':'none';
   document.getElementById('notes-area').style.display=isCoach?'flex':'none';
 
-  // Restore prompt box to original HTML (may have been replaced by end-game display)
   const prompt=document.getElementById('move-prompt');
   prompt.className='';
   prompt.innerHTML=PROMPT_BOX_HTML;
@@ -5492,19 +5545,37 @@ function startGame(mode){
 
   if(mode==='moriarty'||mode==='coach-moriarty') showMoriPrompt();
   else{showAI('Moriarty vanishes into the fog…');setTimeout(runAIMori,1200);}
+
+  requestAnimationFrame(()=>_curtainLift(document.getElementById('title-screen')));
 }
+
+let _backToTitleCleanup=null;
 
 function backToTitle(){
   if(simState.running||simState.paused){
-    simState.running=false;
-    simState.paused=false;
+    simState.running=false;simState.paused=false;
     if(simState.timer) clearTimeout(simState.timer);
     const strip=document.getElementById('ticket-strip');
     if(strip) strip.style.display='';
   }
   gameOver=true;hideAI();
-  document.getElementById('title-screen').style.display='flex';
-  document.getElementById('game').classList.remove('on','sim');
+  const t=document.getElementById('title-screen');
+  t.style.display='flex';
+  t.classList.remove('c-drop','c-lift');
+  _curtainDrop(t);
+  // Clear game only after title has fully covered it
+  _backToTitleCleanup=setTimeout(()=>{
+    _backToTitleCleanup=null;
+    document.getElementById('game').classList.remove('on','sim');
+    document.getElementById('outcome').className='';
+    document.getElementById('move-log').innerHTML='';
+    document.getElementById('notes-coach-log').innerHTML='';
+    document.getElementById('move-num').textContent='0';
+    document.getElementById('coach-rec').textContent='';
+    const prompt=document.getElementById('move-prompt');
+    if(prompt){prompt.className='';prompt.innerHTML=PROMPT_BOX_HTML;}
+    if(canvas && ctx) ctx.clearRect(0,0,canvas.width,canvas.height);
+  }, 500);
 }
 
 window.addEventListener('resize',()=>{if(canvas)resizeCanvas();});
