@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Moriarty's Maze v18.73</title>
+<title>Moriarty's Maze v18.75</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400;1,600&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -650,6 +650,16 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
   .think-dots span{width:3px;height:3px}
 
 }
+
+/* ── SIMULATOR MODE — hide all non-essential UI ── */
+#game.sim .tb-move{display:none}
+#game.sim #left-panel{display:none}
+#game.sim #map-area{display:none}
+#game.sim #right-panel{display:none !important}
+#game.sim #move-log-wrap{display:none}
+#game.sim #notes-area{display:none !important}
+#game.sim #notes-coach-log{display:none !important}
+
 /* ── STORY SCREEN ── */
 #story-screen{position:fixed;inset:0;z-index:500;overflow-y:auto;
   background:radial-gradient(ellipse at 35% 30%,#2d1f08 0%,#0d0904 65%);
@@ -1581,6 +1591,7 @@ function otherDetNodes(di){
    TICKET STRIP
 ══════════════════════════════════════════════════════════════ */
 function buildTicketStrip(){
+  if(currentMode==='simulator') return;
   const strip=document.getElementById('ticket-strip');
   strip.innerHTML='';
   for(let m=1;m<=MAX_MOVES;m++){
@@ -1610,6 +1621,7 @@ function fillTicketCell(moveNum,transportType){
 }
 
 function activateBluffBracket(moveNum){
+  if(currentMode==='simulator') return;
   if(moveNum+1>MAX_MOVES) return;
   const c1=document.getElementById('tc-'+moveNum);
   const c2=document.getElementById('tc-'+(moveNum+1));
@@ -2154,7 +2166,7 @@ function paranoidMinimax(moriNode, dets, depth, alpha, beta, moriTurn){
         if(alpha>=beta) return best;
       }
     }
-    return best===-Infinity ? -999999 : best;
+    return best===-Infinity ? WEIGHTS.CAPTURE : best;
   } else {
     // Fast greedy step inside minimax — tickets decremented
     const nextDets=greedyDetStep(dets, moriNode);
@@ -2192,7 +2204,7 @@ function escapeScore(fromNode, dets){
 ══════════════════════════════════════════════════════════════ */
 const _MM_WORKER_SRC = `
 'use strict';
-let _adj, _ND, _MR;
+let _adj, _ND, _MR, _W;
 
 self.onmessage = function({data}){
   const {type} = data;
@@ -2200,6 +2212,7 @@ self.onmessage = function({data}){
     _adj = data.adj;
     _ND  = data.NODE_DEGREE;
     _MR  = data.MORIARTY_RANK;
+    _W   = data.WEIGHTS;
     self.postMessage({type:'ready'});
   } else if(type === 'batch'){
     const results = data.jobs.map(j=>({
@@ -2270,30 +2283,32 @@ function _greedyDet(dets, moriNode){
 function _leafScore(moriNode, dets, beliefSize){
   const detNodes=dets.map(d=>d.node);
   const detSet=new Set(detNodes);
-  if(detSet.has(moriNode)) return -999999;
+  if(detSet.has(moriNode)) return _W.CAPTURE;
   const hops=dets.map(det=>_hopDistDet(det, moriNode));
   const minHop=Math.min(...hops);
   const sumHops=hops.reduce((a,b)=>a+b,0);
-  if(minHop===0) return -999999;
-  if(minHop===1) return -50000;
+  if(minHop===0) return _W.CAPTURE;
+  if(minHop===1) return _W.ADJACENT;
   const allExits=['taxi','bus','underground','water'].flatMap(t=>(_adj[moriNode][t]||[])).filter(n=>!detSet.has(n));
-  const detReach1=new Set(dets.flatMap(det=>
-    ['taxi','bus','underground'].filter(t=>(det.tickets[t]||0)>0).flatMap(t=>(_adj[det.node][t]||[]))
-  ));
+  const detReach1=new Set(dets.flatMap(det=>{
+    const tk=det.tickets||{taxi:0,bus:0,underground:0};
+    return ['taxi','bus','underground'].filter(t=>(tk[t]||0)>0).flatMap(t=>(_adj[det.node][t]||[]));
+  }));
   const freeMob=allExits.filter(n=>!detReach1.has(n)).length;
   const totalExits=allExits.length;
-  const boxingPenalty=totalExits>0?((totalExits-freeMob)/totalExits)*1000:2000;
+  const sealedExits=totalExits-freeMob;
+  const boxingPenalty=totalExits>0?(sealedExits/totalExits)*_W.BOXING_RATIO:_W.BOXING_RATIO*2;
   const deg=(_ND[moriNode]||4);
-  const peninsulaPenalty=deg<=2?8000:deg<=3?3000:0;
+  const peninsulaPenalty=deg<=2?_W.PENINSULA_DEG2:deg<=3?_W.PENINSULA_DEG3:0;
   const closePenalty=minHop<=3?peninsulaPenalty:Math.floor(peninsulaPenalty*0.5);
   const rankScore=(200-(_MR[moriNode]||199))*2;
-  const beliefScore=Math.min((beliefSize||1)*0.5, 80);
-  return minHop*400 + sumHops*60 + freeMob*80 - boxingPenalty - closePenalty + rankScore + beliefScore;
+  const beliefScore=Math.min((beliefSize||1)*0.5, _W.BELIEF_CAP);
+  return minHop*_W.MIN_HOP_MULT + sumHops*_W.SUM_HOPS_MULT + freeMob*_W.FREE_MOB_MULT - boxingPenalty - closePenalty + rankScore + beliefScore;
 }
 
 function _mm(moriNode, dets, depth, alpha, beta, moriTurn, beliefSize){
   const detSet=new Set(dets.map(d=>d.node));
-  if(detSet.has(moriNode)) return -999999;
+  if(detSet.has(moriNode)) return _W.CAPTURE;
   if(depth===0) return _leafScore(moriNode, dets, beliefSize);
   if(moriTurn){
     let best=-Infinity;
@@ -2306,7 +2321,7 @@ function _mm(moriNode, dets, depth, alpha, beta, moriTurn, beliefSize){
         if(alpha>=beta) return best;
       }
     }
-    return best===-Infinity ? -999999 : best;
+    return best===-Infinity ? _W.CAPTURE : best;
   } else {
     const nextDets=_greedyDet(dets, moriNode);
     return _mm(moriNode, nextDets, depth-1, alpha, beta, true, beliefSize);
@@ -2335,7 +2350,7 @@ function initMmWorker(){
       }
     };
     _mmWorker.onerror = (e)=>{
-      console.warn('MM worker error — falling back to sync',e);
+      // Worker failed — sync fallback takes over silently
       _mmWorker = null; _mmWorkerReady = false;
     };
     // Send static graph tables (one-time init)
@@ -2349,10 +2364,11 @@ function initMmWorker(){
       type:'init',
       adj: adjPlain,
       NODE_DEGREE: {...NODE_DEGREE},
-      MORIARTY_RANK: [...MORIARTY_RANK]
+      MORIARTY_RANK: [...MORIARTY_RANK],
+      WEIGHTS: {...WEIGHTS}
     });
   } catch(e){
-    console.warn('Web Worker unavailable — using sync minimax',e);
+    // Blob workers blocked by CSP in some environments — sync fallback handles everything
     _mmWorker = null;
   }
 }
@@ -3732,6 +3748,7 @@ function buildParchmentBg(W,H){
 }
 
 function drawMap(){
+  if(currentMode==='simulator') return;
   if(!canvas||!ctx) return;
   const W=canvas.width,H=canvas.height;
   ctx.clearRect(0,0,W,H);
@@ -4642,6 +4659,7 @@ function runAIMoriLeg(){
    UI
 ══════════════════════════════════════════════════════════════ */
 function addLog(mn,icon,text,isReveal=false){
+  if(currentMode==='simulator') return;
   const log=document.getElementById('move-log');
   const e=document.createElement('div');
   const who=icon==='🎩'?'mori':'det';
@@ -4663,12 +4681,12 @@ function addCoachEntry(text,rec){
   log.prepend(e);log.scrollTop=0;
   document.getElementById('coach-rec').textContent=rec||'';
 }
-function flashReveal(){const el=document.getElementById('reveal-flash');el.style.display='block';setTimeout(()=>el.style.display='none',3500);}
+function flashReveal(){if(currentMode==='simulator') return; const el=document.getElementById('reveal-flash');el.style.display='block';setTimeout(()=>el.style.display='none',3500);}
 function showAI(msg){document.getElementById('ai-msg').textContent=msg;document.getElementById('ai-bar').classList.add('on');}
 function hideAI(){document.getElementById('ai-bar').classList.remove('on');}
 
 function updateSidebar(){
-  document.getElementById('fog-left').textContent=G.fogLeft;
+  if(currentMode==='simulator') return;
   document.getElementById('bluff-left').textContent=G.bluffLeft;
   document.getElementById('fog-btn-n').textContent=G.fogLeft;
   document.getElementById('bluff-btn-n').textContent=G.bluffLeft;
@@ -4677,6 +4695,7 @@ function updateSidebar(){
   updateDetPanel();updateRevealPips();
 }
 function updateDetPanel(){
+  if(currentMode==='simulator') return;
   const list=document.getElementById('det-list');list.innerHTML='';
   G.detectives.forEach((det,i)=>{
     const isActive=promptCtx&&promptCtx.who==='detective'&&promptCtx.detIdx===i;
@@ -4696,6 +4715,7 @@ function updateDetPanel(){
   });
 }
 function updateRevealPips(){
+  if(currentMode==='simulator') return;
   const pips=document.getElementById('reveal-pips');pips.innerHTML='';
   REVEAL_MOVES.forEach(r=>{
     const p=document.createElement('div');
@@ -5035,7 +5055,7 @@ function simPromptHTML(){
     <div class="sim-top-row">
       <div class="sim-field">
         <label>Games to Run</label>
-        <input id="sim-count" type="number" min="1" max="500" value="20">
+        <input id="sim-count" type="number" min="1" value="20">
       </div>
       <div class="sim-gauge" id="sim-gauge">
         <div class="sim-gauge-bar-wrap">
@@ -5112,7 +5132,7 @@ function simSetButtons(running, paused){
 
 function simStart(){
   const countEl=document.getElementById('sim-count');
-  const n=Math.max(1,Math.min(500,parseInt(countEl?countEl.value:20)||20));
+  const n=Math.max(1,parseInt(countEl?countEl.value:20)||20);
   simState={running:true,paused:false,total:n,current:0,results:[],timer:null,startTime:Date.now()};
   simSetButtons(true,false);
   const logEl=document.getElementById('sim-log');
@@ -5172,15 +5192,7 @@ function simNextGame(){
   gameOver=false;
   G=freshGame();
   drawStartingPositions();
-
-  document.getElementById('outcome').className='';
-  document.getElementById('move-log').innerHTML='';
-  document.getElementById('move-num').textContent='0';
-  buildTicketStrip();
-  if(!canvas) initCanvas(); else resizeCanvas();
-  centreMap();
   initBelief();G.phase='moriarty';
-  updateSidebar();updateDetPanel();updateRevealPips();drawMap();
 
   // Track per-game data
   const startMinHops=Math.min(...G.detectives.map(det=>landHopDistDet(det,G.moriNode)));
@@ -5423,13 +5435,14 @@ function beginPursuit(){
 
 function startGame(mode){
   currentMode=mode;gameOver=false;
+  initMmWorker(); // Spin up Colonel Moran's back-room worker (no-op if already running)
 
   // Simulator: set up UI shell then hand off to sim controller
   if(mode==='simulator'){
     G=freshGame();
     document.getElementById('title-screen').style.display='none';
     document.getElementById('outcome').className='';
-    document.getElementById('game').classList.add('on');
+    document.getElementById('game').classList.add('on','sim');
     document.getElementById('move-log').innerHTML='';
     document.getElementById('move-num').textContent='0';
     document.getElementById('coach-rec').textContent='';
@@ -5491,7 +5504,7 @@ function backToTitle(){
   }
   gameOver=true;hideAI();
   document.getElementById('title-screen').style.display='flex';
-  document.getElementById('game').classList.remove('on');
+  document.getElementById('game').classList.remove('on','sim');
 }
 
 window.addEventListener('resize',()=>{if(canvas)resizeCanvas();});
