@@ -2702,15 +2702,13 @@ function aiPickMoriMove(){
       if(spanBluff){
         const leg2esc=escapeScore(legs.leg2.node,dets,4);
         if(leg2esc>=150||level==='crisis'){
-          G.bluff.secondLeg=legs.leg2;
           return{node:legs.leg1.node,type:legs.leg1.type,realType:legs.leg1.type,
-                 fogConsumed:false,bluffConsumed:true};
+                 fogConsumed:false,bluffConsumed:true,_secondLeg:legs.leg2};
         }
         // Quality gate failed — fall through to normal move
       } else {
-        G.bluff.secondLeg=legs.leg2;
         return{node:legs.leg1.node,type:legs.leg1.type,realType:legs.leg1.type,
-               fogConsumed:false,bluffConsumed:true};
+               fogConsumed:false,bluffConsumed:true,_secondLeg:legs.leg2};
       }
     }
   }
@@ -3314,7 +3312,7 @@ function coachMoriSuggest(){
   }
 
   G.coachMovRec=rec;
-  return{rec,rec2:rec.bluffConsumed?G.bluff.secondLeg:null,text:lines.join('\n')};
+  return{rec,rec2:rec.bluffConsumed?rec._secondLeg:null,text:lines.join('\n')};
 }
 
 function coachDetSuggest(){
@@ -4169,14 +4167,23 @@ function showMoriPrompt(leg=1){
   document.getElementById('bluff-btn-n').textContent=G.bluffLeft;
   document.getElementById('cancel-btn').classList.remove('on');
   document.getElementById('cc-btn').style.display=currentMode==='coach-moriarty'?'':'none';
+  document.getElementById('coach-rec').textContent='';
   buildMoriTransport();
   // Coach mode: get recommendation and set highlight
   if(currentMode==='coach-moriarty'){
     const s=coachMoriSuggest();
-    addCoachEntry(s.text+'\n— — — — —','Rec: Stn '+s.rec.node);
-    mapHighlight.coachRec=s.rec.node;
-    mapHighlight.coachRecFog=!!(s.rec.fogConsumed||s.rec.realType==='water');
-    if(s.rec.bluffConsumed&&s.rec2) mapHighlight.coachRec2=s.rec2.node;
+    const detOccupied=new Set(G.detectives.map(d=>d.node));
+    const validMoves=moriMoves(G.moriNode);
+    const recReachable=!detOccupied.has(s.rec.node)&&validMoves.some(m=>m.node===s.rec.node);
+    if(recReachable){
+      addCoachEntry(s.text+'\n— — — — —','Rec: Stn '+s.rec.node);
+      mapHighlight.coachRec=s.rec.node;
+      mapHighlight.coachRecFog=!!(s.rec.fogConsumed||s.rec.realType==='water');
+      if(s.rec.bluffConsumed&&s.rec2) mapHighlight.coachRec2=s.rec2.node;
+    } else {
+      // Rec is stale — show text only, no station highlight
+      addCoachEntry(s.text+'\n— — — — —','');
+    }
   }
   updateHighlights();
 }
@@ -4198,6 +4205,7 @@ function showDetPrompt(di){
   document.getElementById('mp-title').textContent=`${det.emoji} ${det.short} (${di+1}/5)`;
   document.getElementById('special-row').classList.remove('on');
   document.getElementById('cc-btn').style.display=currentMode==='coach-detective'?'':'none';
+  document.getElementById('coach-rec').textContent='';
   buildDetTransport(di);
   // Coach mode: get recommendation and set highlight
   if(currentMode==='coach-detective'){
@@ -4436,22 +4444,27 @@ function commitMove(){
   if(mapHighlight.bluffPending&&G.bluff.leg===0&&G.bluffLeft>0){
     G.bluffLeft--;G.bluff.leg=1;
     G.bluff.pairStart=G.moriMoveCount+1;
+    // Store secondLeg from coach rec if available
+    if(G.coachMovRec&&G.coachMovRec._secondLeg) G.bluff.secondLeg=G.coachMovRec._secondLeg;
     addLog(G.moriMoveCount,'⚡','Moriarty activates <strong>Double Bluff</strong>!');
     activateBluffBracket(G.bluff.pairStart);
     updateSidebar();
   }
   mapHighlight.fogPending=false;mapHighlight.bluffPending=false;
 
-  // Coach override detection — if human picked differently from recommendation,
-  // the coach's pre-calculated bluff secondLeg is now stale and MUST be cleared.
-  if(promptCtx.who==='moriarty'&&G.coachMovRec){
-    const rec=G.coachMovRec;
-    const isOverride=(dest!==rec.node)||(type!==(rec.realType||rec.type));
-    if(isOverride){
-      G.bluff.secondLeg=null;   // stale pre-calculation — discard
-      G._detCoverage=null;      // stale coverage map — discard
-      G.coachMovRec=null;       // no longer valid
+  // Coach override detection — always clear stale secondLeg when human acts
+  if(promptCtx.who==='moriarty'){
+    if(G.coachMovRec){
+      const rec=G.coachMovRec;
+      const isOverride=(dest!==rec.node)||(type!==(rec.realType||rec.type));
+      if(isOverride){
+        G.bluff.secondLeg=null;
+        G._detCoverage=null;
+        G.coachMovRec=null;
+      }
     }
+    // Always clear any stale secondLeg if bluff wasn't just activated
+    if(G.bluff.leg===0) G.bluff.secondLeg=null;
   }
 
   if(promptCtx.who==='moriarty') doMoriMove(dest,type);
@@ -4462,7 +4475,11 @@ function coachChoice(){
   if(promptCtx.who==='moriarty'&&G.coachMovRec){
     const r=G.coachMovRec;
     if(r.fogConsumed&&!G.fogThisLeg&&G.fogLeft>0){G.fogLeft--;G.fogThisLeg=true;addLog(G.moriMoveCount,'🌫','Moriarty plays <strong>Heavy Fog</strong>.');updateSidebar();}
-    if(r.bluffConsumed&&G.bluff.leg===0&&G.bluffLeft>0){G.bluffLeft--;G.bluff.leg=1;G.bluff.pairStart=G.moriMoveCount+1;addLog(G.moriMoveCount,'⚡','Moriarty activates <strong>Double Bluff</strong>!');activateBluffBracket(G.bluff.pairStart);updateSidebar();}
+    if(r.bluffConsumed&&G.bluff.leg===0&&G.bluffLeft>0){
+      G.bluffLeft--;G.bluff.leg=1;G.bluff.pairStart=G.moriMoveCount+1;
+      if(r._secondLeg) G.bluff.secondLeg=r._secondLeg;
+      addLog(G.moriMoveCount,'⚡','Moriarty activates <strong>Double Bluff</strong>!');activateBluffBracket(G.bluff.pairStart);updateSidebar();
+    }
     doMoriMove(r.node,r.realType||r.type);
   } else if(promptCtx.who==='detective'&&G.coachDetRecs){
     const rec=G.coachDetRecs.find(r=>r.detIdx===promptCtx.detIdx);
@@ -4651,7 +4668,7 @@ function runAIMori(){
     hideAI();
     const move=aiPickMoriMove();
     if(move.surrender){endGame('detectives','surrender');return;}
-    if(move.bluffConsumed&&G.bluff.leg===0){G.bluffLeft--;G.bluff.leg=1;G.bluff.pairStart=G.moriMoveCount+1;addLog(G.moriMoveCount,'⚡','Moriarty activates <strong>Double Bluff</strong>!');activateBluffBracket(G.bluff.pairStart);updateSidebar();}
+    if(move.bluffConsumed&&G.bluff.leg===0){G.bluffLeft--;G.bluff.leg=1;G.bluff.pairStart=G.moriMoveCount+1;if(move._secondLeg)G.bluff.secondLeg=move._secondLeg;addLog(G.moriMoveCount,'⚡','Moriarty activates <strong>Double Bluff</strong>!');activateBluffBracket(G.bluff.pairStart);updateSidebar();}
     if(move.fogConsumed&&!G.fogThisLeg&&G.fogLeft>0){G.fogLeft--;G.fogThisLeg=true;addLog(G.moriMoveCount,'🌫','Moriarty uses <strong>Heavy Fog</strong>.');updateSidebar();}
     doMoriMove(move.node,move.realType||move.type);
   },800);
@@ -5270,6 +5287,7 @@ function simRunMoriMove(){
 
   if(move.bluffConsumed&&G.bluff.leg===0){
     G.bluffLeft--;G.bluff.leg=1;G.bluff.pairStart=G.moriMoveCount+1;
+    if(move._secondLeg) G.bluff.secondLeg=move._secondLeg;
     if(G._simGame){G._simGame.bluffUsed++;G._simGame.bluffMoves.push(G.moriMoveCount+1);}
     activateBluffBracket(G.bluff.pairStart);updateSidebar();
   }
@@ -5490,7 +5508,6 @@ function _curtainLift(el, cb){
 }
 
 function startGame(mode){
-  if(_backToTitleCleanup){clearTimeout(_backToTitleCleanup);_backToTitleCleanup=null;}
   currentMode=mode;gameOver=false;
   initMmWorker();
 
@@ -5550,7 +5567,6 @@ function startGame(mode){
 }
 
 let _backToTitleCleanup=null;
-
 function backToTitle(){
   if(simState.running||simState.paused){
     simState.running=false;simState.paused=false;
@@ -5559,23 +5575,12 @@ function backToTitle(){
     if(strip) strip.style.display='';
   }
   gameOver=true;hideAI();
+  mapHighlight={valid:new Set(),hint:new Set(),coachRec:null,coachRecFog:false,coachRec2:null,
+    fogPending:false,bluffPending:false,selectedNode:null,filterType:null};
   const t=document.getElementById('title-screen');
   t.style.display='flex';
   t.classList.remove('c-drop','c-lift');
   _curtainDrop(t);
-  // Clear game only after title has fully covered it
-  _backToTitleCleanup=setTimeout(()=>{
-    _backToTitleCleanup=null;
-    document.getElementById('game').classList.remove('on','sim');
-    document.getElementById('outcome').className='';
-    document.getElementById('move-log').innerHTML='';
-    document.getElementById('notes-coach-log').innerHTML='';
-    document.getElementById('move-num').textContent='0';
-    document.getElementById('coach-rec').textContent='';
-    const prompt=document.getElementById('move-prompt');
-    if(prompt){prompt.className='';prompt.innerHTML=PROMPT_BOX_HTML;}
-    if(canvas && ctx) ctx.clearRect(0,0,canvas.width,canvas.height);
-  }, 500);
 }
 
 window.addEventListener('resize',()=>{if(canvas)resizeCanvas();});
