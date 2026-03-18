@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Moriarty's Maze v18.76</title>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400;1,600&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400;1,600&family=IM+Fell+English:ital@0;1&family=Inconsolata:wght@300;400&display=swap" rel="stylesheet">
 <style>
 :root {
   --parch:#f2e4c0; --parch-mid:#e8d4a0; --parch-dk:#c8aa60;
@@ -27,7 +27,7 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
 /* ── TITLE ── */
 #title-screen{
   position:fixed;inset:0;z-index:400;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:18px;padding:24px;
+  align-items:center;gap:18px;padding:24px;overflow-y:auto;
   background:radial-gradient(ellipse at 35% 30%,#2d1f08 0%,#0d0904 65%);
   overflow-y:auto;touch-action:pan-y;
 }
@@ -710,7 +710,10 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
 <div id="mobile-error-box" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#c00;color:#fff;font-size:13px;padding:8px 12px;white-space:pre-wrap;word-break:break-all;cursor:pointer;" onclick="this.style.display='none'"></div>
 
 <div id="story-screen">
-  <div class="st-wrap">
+  <div style="position:fixed;top:0;left:0;right:0;z-index:1001;padding:0.8rem 2rem;border-bottom:1px solid rgba(201,151,58,0.2);background:rgba(13,10,7,0.92);backdrop-filter:blur(4px);">
+    <a href="https://andreas-breidenthal.github.io/andreas-breidenthal/" style="font-family:'Inconsolata',monospace;font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;color:#9a8a6a;text-decoration:none;opacity:0.85;transition:opacity 0.2s;">Andreas Breidenthal</a>
+  </div>
+  <div class="st-wrap" style="margin-top:2.8rem;">
 
     <div class="st-masthead">
       <div class="st-eyebrow">London &middot; 1895</div>
@@ -814,6 +817,10 @@ body{font-family:'Crimson Text',serif;background:var(--ink);color:var(--parch-te
 </div>
 
 <div id="title-screen">
+  <div style="position:fixed;top:0;left:0;right:0;z-index:1001;padding:0.8rem 2rem;border-bottom:1px solid rgba(201,151,58,0.2);background:rgba(13,10,7,0.92);backdrop-filter:blur(4px);">
+    <a href="https://andreas-breidenthal.github.io/andreas-breidenthal/" style="font-family:'Inconsolata',monospace;font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;color:#9a8a6a;text-decoration:none;opacity:0.85;transition:opacity 0.2s;">Andreas Breidenthal</a>
+  </div>
+  <div style="height:2.8rem;flex-shrink:0;"></div>
   <div class="t-orn">London · 1895</div>
   <h1 onclick="showStory()" style="cursor:pointer">MORIARTY'S<br><span>MAZE</span></h1>
   <div class="t-sub">A Hidden Movement Pursuit Across Victorian London</div>
