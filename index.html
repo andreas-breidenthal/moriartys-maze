@@ -5643,6 +5643,24 @@ function relocateNotesArea(){
 relocateNotesArea();
 window.addEventListener('resize',relocateNotesArea);
 </script>
+  <script>
+    /* ── Patch for opinions-modal.js compatibility ──
+       Moriarty's DOM guard returns dummy objects for missing elements.
+       The modal needs real null returns for elements it hasn't injected yet.
+       We restore the real getElementById temporarily during modal init. */
+    (function() {
+      const _realGet = document.getElementById.bind(document);
+      const _guardedGet = document.getElementById;
+      document.getElementById = function(id) {
+        const el = _realGet(id);
+        return el !== null ? el : null;
+      };
+      // Restore Moriarty's guard after modal has initialised
+      window.addEventListener('load', function() {
+        document.getElementById = _guardedGet;
+      });
+    })();
+  </script>
   <script src="https://andreas-breidenthal.github.io/andreas-breidenthal/opinions-modal.js"></script>
   <script>
     // Wire up additional Opinions? triggers not handled by the modal script
